@@ -12,6 +12,7 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { generateLendingStatementPDF } from '../utils/pdfGenerator';
 import { LendingModal } from '../components/modals/LendingModal';
+import { FriendDetailModal } from '../components/modals/FriendDetailModal';
 
 export const LendingScreen = () => {
   const {
@@ -130,8 +131,10 @@ export const LendingScreen = () => {
         lendingSummary.friends.map((friend) => {
           const isOwed = friend.balance >= 0;
           return (
-            <View
+            <TouchableOpacity
               key={friend.name}
+              activeOpacity={0.8}
+              onPress={() => setSelectedFriendDetails(friend)}
               style={[
                 styles.friendCard,
                 { backgroundColor: theme.card, borderColor: theme.border },
@@ -147,7 +150,7 @@ export const LendingScreen = () => {
                   <View>
                     <Text style={[styles.friendName, { color: theme.text }]}>{friend.name}</Text>
                     <Text style={[styles.friendMeta, { color: theme.textMuted }]}>
-                      {friend.transactions.length} records • {friend.pendingCount} unsettled
+                      {friend.transactions.length} records • Tap for history & UPI request
                     </Text>
                   </View>
                 </View>
@@ -168,15 +171,24 @@ export const LendingScreen = () => {
                 </View>
               </View>
 
-              {/* Action Buttons: WhatsApp Share & Settle */}
+              {/* Action Buttons: Details, WhatsApp Share & Settle */}
               <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
+                {/* View Details / UPI Request */}
+                <TouchableOpacity
+                  onPress={() => setSelectedFriendDetails(friend)}
+                  style={[styles.shareBtn, { backgroundColor: `${theme.primary}20`, borderColor: `${theme.primary}40` }]}
+                >
+                  <Ionicons name="list" size={16} color={theme.primaryLight} />
+                  <Text style={[styles.shareBtnText, { color: theme.primaryLight }]}>History & UPI</Text>
+                </TouchableOpacity>
+
                 {/* Share PDF via WhatsApp */}
                 <TouchableOpacity
                   onPress={() => handleShareWhatsAppPDF(friend)}
                   style={[styles.shareBtn, { backgroundColor: '#25D36620', borderColor: '#25D36640' }]}
                 >
                   <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
-                  <Text style={[styles.shareBtnText, { color: '#25D366' }]}>Share PDF</Text>
+                  <Text style={[styles.shareBtnText, { color: '#25D366' }]}>PDF</Text>
                 </TouchableOpacity>
 
                 {/* Record New Entry for Friend */}
@@ -199,7 +211,7 @@ export const LendingScreen = () => {
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })
       )}
@@ -209,6 +221,14 @@ export const LendingScreen = () => {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         initialFriend={activeFriend}
+      />
+
+      {/* Friend Detail & WhatsApp UPI Request Modal */}
+      <FriendDetailModal
+        visible={!!selectedFriendDetails}
+        friend={selectedFriendDetails}
+        onClose={() => setSelectedFriendDetails(null)}
+        onOpenAddEntry={handleOpenAddForFriend}
       />
     </ScrollView>
   );

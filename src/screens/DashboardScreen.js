@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -17,6 +18,8 @@ export const DashboardScreen = ({
   onOpenTransfer,
   onOpenAddAccount,
   onOpenSmartInbox,
+  onOpenSettings,
+  onEditTransaction,
   onNavigateTab,
 }) => {
   const {
@@ -27,9 +30,34 @@ export const DashboardScreen = ({
     deleteTransaction,
   } = useFinance();
 
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
+  const [filterAccountId, setFilterAccountId] = useState('all');
+
   const alertedBudgets = budgetStatusList.filter(
     (b) => b.status === 'exceeded' || b.status === 'warning'
   );
+
+  const filteredTransactions = useMemo(() => {
+    let list = transactions;
+    if (filterType !== 'all') {
+      list = list.filter((t) => t.type === filterType);
+    }
+    if (filterAccountId !== 'all') {
+      list = list.filter((t) => t.accountId === filterAccountId);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (t) =>
+          (t.title && t.title.toLowerCase().includes(q)) ||
+          (t.note && t.note.toLowerCase().includes(q)) ||
+          String(t.amount).includes(q)
+      );
+    }
+    return list;
+  }, [transactions, filterType, filterAccountId, searchQuery]);
 
   const recentTransactions = transactions.slice(0, 5);
 
@@ -39,28 +67,146 @@ export const DashboardScreen = ({
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top App Header */}
+      {/* Top App Header with 3-Bar Hamburger Menu and Search */}
       <View style={styles.topBar}>
-        <View>
-          <Text style={[styles.welcomeSub, { color: theme.textMuted }]}>
-            Welcome back,
-          </Text>
-          <Text style={[styles.welcomeTitle, { color: theme.text }]}>
-            WealthFlow Dashboard
-          </Text>
+        <View style={styles.topLeft}>
+          {/* 3-bar Hamburger Menu Button for Settings */}
+          <TouchableOpacity
+            onPress={onOpenSettings}
+            style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            accessibilityLabel="Open Settings"
+          >
+            <Ionicons name="menu-outline" size={24} color={theme.text} />
+          </TouchableOpacity>
+
+          <View>
+            <Text style={[styles.welcomeSub, { color: theme.textMuted }]}>
+              Welcome back,
+            </Text>
+            <Text style={[styles.welcomeTitle, { color: theme.text }]}>
+              WealthFlow
+            </Text>
+          </View>
         </View>
 
         <View style={styles.headerRight}>
+          {/* Top Right Search Button */}
+          <TouchableOpacity
+            onPress={() => setShowSearch(!showSearch)}
+            style={[
+              styles.iconBtn,
+              {
+                backgroundColor: showSearch ? theme.primary : theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+            accessibilityLabel="Search Transactions"
+          >
+            <Ionicons
+              name={showSearch ? 'close' : 'search-outline'}
+              size={20}
+              color={showSearch ? '#FFF' : theme.text}
+            />
+          </TouchableOpacity>
+
           {/* SMS & Gmail Auto-fetch Inbox button with pulse dot */}
           <TouchableOpacity
             onPress={onOpenSmartInbox}
-            style={[styles.smartInboxBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            accessibilityLabel="Bank SMS Sync"
           >
             <Ionicons name="mail-unread-outline" size={20} color={theme.primaryLight} />
             <View style={[styles.pulseDot, { backgroundColor: theme.danger }]} />
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Expanded Search & Filter Drawer */}
+      {showSearch && (
+        <View style={[styles.searchDrawer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.searchInputWrapper, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+            <Ionicons name="search" size={18} color={theme.textMuted} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder="Search title, note, or amount..."
+              placeholderTextColor={theme.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Type Filter Chips */}
+          <View style={styles.filterChipRow}>
+            {['all', 'expense', 'income'].map((t) => {
+              const active = filterType === t;
+              return (
+                <TouchableOpacity
+                  key={t}
+                  onPress={() => setFilterType(t)}
+                  style={[
+                    styles.filterChip,
+                    active
+                      ? { backgroundColor: theme.primary }
+                      : { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      { color: active ? '#FFF' : theme.textMuted, textTransform: 'capitalize' },
+                    ]}
+                  >
+                    {t === 'all' ? 'All Types' : t}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Account Filter Chips */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+            <TouchableOpacity
+              onPress={() => setFilterAccountId('all')}
+              style={[
+                styles.accountChip,
+                filterAccountId === 'all'
+                  ? { backgroundColor: theme.primary }
+                  : { backgroundColor: theme.cardAlt, borderColor: theme.border },
+              ]}
+            >
+              <Text style={{ color: filterAccountId === 'all' ? '#FFF' : theme.textMuted, fontSize: 12, fontWeight: '600' }}>
+                All Accounts
+              </Text>
+            </TouchableOpacity>
+            {accounts.map((acc) => {
+              const active = filterAccountId === acc.id;
+              return (
+                <TouchableOpacity
+                  key={acc.id}
+                  onPress={() => setFilterAccountId(acc.id)}
+                  style={[
+                    styles.accountChip,
+                    active
+                      ? { backgroundColor: theme.primary }
+                      : { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={{ fontSize: 12, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
+                  <Text style={{ color: active ? '#FFF' : theme.textMuted, fontSize: 12, fontWeight: '600' }}>
+                    {acc.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Main Net Worth and Cash Flow Summary */}
       <SummaryCards />
@@ -77,10 +223,10 @@ export const DashboardScreen = ({
           </View>
           <View>
             <Text style={[styles.bannerTitle, { color: theme.text }]}>
-              SMS & Gmail Bank Auto-Sync
+              SMS & Bank Auto-Sync
             </Text>
             <Text style={[styles.bannerSub, { color: theme.textMuted }]}>
-              Pending transactions detected • Requires confirmation
+              Scan inbox messages & approve pending entries
             </Text>
           </View>
         </View>
@@ -157,9 +303,11 @@ export const DashboardScreen = ({
         ))}
       </ScrollView>
 
-      {/* Recent Transactions Section */}
+      {/* Transactions Section: Filtered Search Results OR Recent Activity */}
       <View style={[styles.sectionHeader, { marginTop: 22 }]}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          {showSearch ? `Search Results (${filteredTransactions.length})` : 'Recent Activity'}
+        </Text>
         <TouchableOpacity
           onPress={() => onNavigateTab('transactions')}
           style={styles.seeAllBtn}
@@ -169,17 +317,20 @@ export const DashboardScreen = ({
         </TouchableOpacity>
       </View>
 
-      {recentTransactions.length === 0 ? (
+      {(showSearch ? filteredTransactions : recentTransactions).length === 0 ? (
         <View style={[styles.emptyBox, { borderColor: theme.border }]}>
           <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-            No transactions recorded yet. Tap + to add one!
+            {showSearch
+              ? 'No transactions found matching your search and filter criteria.'
+              : 'No transactions recorded yet. Tap + to add one!'}
           </Text>
         </View>
       ) : (
-        recentTransactions.map((tx) => (
+        (showSearch ? filteredTransactions : recentTransactions).map((tx) => (
           <TransactionItem
             key={tx.id}
             transaction={tx}
+            onEdit={onEditTransaction}
             onDelete={deleteTransaction}
           />
         ))
@@ -201,22 +352,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  topLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   welcomeSub: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
   },
   welcomeTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-    marginTop: 2,
+    marginTop: 1,
   },
   headerRight: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  smartInboxBtn: {
+  iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 14,
@@ -231,6 +388,52 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  searchDrawer: {
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    padding: 0,
+  },
+  filterChipRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  accountChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginRight: 6,
   },
   autoFetchBanner: {
     flexDirection: 'row',
@@ -331,5 +534,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
   },
 });

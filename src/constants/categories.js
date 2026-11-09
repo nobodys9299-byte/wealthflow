@@ -33,7 +33,14 @@ export const ACCOUNT_ICONS_GALLERY = [
   { id: 'stock_growth', emoji: '📈', label: 'Brokerage', color: '#059669' },
   { id: 'piggy_bank', emoji: '🐷', label: 'Piggy Bank', color: '#EC4899' },
   { id: 'leather_wallet', emoji: '👛', label: 'Leather Pocket', color: '#D97706' },
-  { id: 'friend_debt', emoji: '🤝', label: 'Friend Loan', color: '#6366F1' },
+  { id: 'safe_box', emoji: '🗄️', label: 'Bank Locker / Safe', color: '#475569' },
+  { id: 'gold_bars', emoji: '🥇', label: 'Gold & Bullion', color: '#EAB308' },
+  { id: 'diamond_asset', emoji: '💎', label: 'Precious Assets', color: '#06B6D4' },
+  { id: 'business_briefcase', emoji: '💼', label: 'Business Account', color: '#6366F1' },
+  { id: 'mobile_upi', emoji: '📱', label: 'UPI / Mobile Pay', color: '#10B981' },
+  { id: 'real_estate', emoji: '🏠', label: 'Property / Mortgage', color: '#8B5CF6' },
+  { id: 'emergency_fund', emoji: '🚨', label: 'Emergency Fund', color: '#EF4444' },
+  { id: 'pension_fund', emoji: '🏖️', label: 'Retirement / Pension', color: '#14B8A6' },
 ];
 
 export const DEFAULT_ACCOUNTS = [

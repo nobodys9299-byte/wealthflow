@@ -72,26 +72,6 @@ export const AccountsScreen = ({
         </TouchableOpacity>
       </View>
 
-      {/* Friends & Lending Quick Access Card */}
-      <TouchableOpacity
-        onPress={() => onNavigateTab && onNavigateTab('lending')}
-        style={[styles.lendingPromoCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
-        activeOpacity={0.8}
-      >
-        <View style={styles.promoLeft}>
-          <View style={styles.promoIcon}>
-            <Text style={{ fontSize: 24 }}>🤝</Text>
-          </View>
-          <View>
-            <Text style={[styles.promoTitle, { color: theme.text }]}>Friend Debt & Lending</Text>
-            <Text style={[styles.promoSub, { color: theme.textMuted }]}>
-              Track money given or taken • Share statements on WhatsApp
-            </Text>
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-      </TouchableOpacity>
-
       {/* List of Accounts */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Accounts</Text>

@@ -6,16 +6,24 @@ import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
 import { CategoryVisual } from './common/CategoryVisual';
 
-export const TransactionItem = ({ transaction, onPress, onDelete }) => {
+export const TransactionItem = ({ transaction, onPress, onEdit, onDelete }) => {
   const { theme, currency, accounts } = useFinance();
   const isIncome = transaction.type === 'income';
   const category = getCategoryById(transaction.categoryId, transaction.type);
   const account = accounts.find((a) => a.id === transaction.accountId);
 
+  const handleItemPress = () => {
+    if (onEdit) {
+      onEdit(transaction);
+    } else if (onPress) {
+      onPress(transaction);
+    }
+  };
+
   return (
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={() => onPress && onPress(transaction)}
+      onPress={handleItemPress}
       style={[
         styles.container,
         {
@@ -53,7 +61,7 @@ export const TransactionItem = ({ transaction, onPress, onDelete }) => {
         </View>
       </View>
 
-      {/* Amount and delete button */}
+      {/* Amount and action buttons */}
       <View style={styles.rightSection}>
         <Text
           style={[
@@ -65,15 +73,27 @@ export const TransactionItem = ({ transaction, onPress, onDelete }) => {
           {formatCurrency(transaction.amount, currency.symbol)}
         </Text>
 
-        {onDelete && (
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={() => onDelete(transaction.id)}
-          >
-            <Ionicons name="trash-outline" size={16} color={theme.textMuted} />
-          </TouchableOpacity>
-        )}
+        <View style={styles.actionButtonsRow}>
+          {onEdit && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => onEdit(transaction)}
+            >
+              <Ionicons name="pencil" size={15} color={theme.primaryLight} />
+            </TouchableOpacity>
+          )}
+
+          {onDelete && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => onDelete(transaction.id)}
+            >
+              <Ionicons name="trash-outline" size={15} color={theme.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -121,13 +141,20 @@ const styles = StyleSheet.create({
   },
   rightSection: {
     alignItems: 'flex-end',
-    gap: 6,
+    gap: 4,
   },
   amount: {
     fontSize: 15,
     fontWeight: '800',
   },
-  deleteBtn: {
-    opacity: 0.6,
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  actionBtn: {
+    padding: 3,
+    opacity: 0.85,
   },
 });

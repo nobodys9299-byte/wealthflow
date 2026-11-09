@@ -13,9 +13,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categories';
+import { formatDateDisplay } from '../../utils/formatters';
+import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
+import { CategoryManagerModal } from './CategoryManagerModal';
 
 export const TransactionModal = ({ visible, onClose, initialData = null }) => {
-  const { theme, currency, accounts, addTransaction, editTransaction } = useFinance();
+  const { theme, currency, accounts, categories, addTransaction, editTransaction } = useFinance();
 
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -24,6 +27,10 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
   const [accountId, setAccountId] = useState(accounts[0]?.id || 'acc_checking');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
+
+  // Modals
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -84,7 +91,9 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
     onClose();
   };
 
-  const categoryList = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categoryList = type === 'income'
+    ? (categories?.income || INCOME_CATEGORIES)
+    : (categories?.expense || EXPENSE_CATEGORIES);
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
@@ -186,9 +195,20 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
               />
             </View>
 
-            {/* Category Selector */}
+            {/* Category Selector with Custom Category Manager */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Category</Text>
+              <View style={styles.labelHeaderRow}>
+                <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Category</Text>
+                <TouchableOpacity
+                  onPress={() => setShowCategoryManager(true)}
+                  style={[styles.manageCatBtn, { backgroundColor: theme.cardAlt }]}
+                >
+                  <Ionicons name="options-outline" size={13} color={theme.primaryLight} />
+                  <Text style={[styles.manageCatText, { color: theme.primaryLight }]}>
+                    Manage / Add Category
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.categoryGrid}>
                 {categoryList.map((cat) => {
                   const isSelected = categoryId === cat.id;
@@ -204,11 +224,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
                         },
                       ]}
                     >
-                      <Ionicons
-                        name={cat.icon}
-                        size={18}
-                        color={isSelected ? cat.color : theme.textMuted}
-                      />
+                      <Text style={{ fontSize: 18, marginBottom: 2 }}>{cat.emoji || '🏷️'}</Text>
                       <Text
                         style={[
                           styles.categoryLabel,
@@ -245,11 +261,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
                         },
                       ]}
                     >
-                      <Ionicons
-                        name={acc.icon || 'wallet-outline'}
-                        size={16}
-                        color={isSelected ? '#FFF' : theme.textMuted}
-                      />
+                      <Text style={{ fontSize: 14, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
                       <Text
                         style={[
                           styles.accountChipText,
@@ -264,23 +276,32 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
               </ScrollView>
             </View>
 
-            {/* Date Input */}
+            {/* Interactive Calendar Date Picker */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Date (YYYY-MM-DD)</Text>
-              <TextInput
+              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Date (DD/MM/YY)</Text>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
                 style={[
-                  styles.textInput,
+                  styles.dateTrigger,
                   {
                     backgroundColor: theme.inputBg,
-                    color: theme.text,
                     borderColor: theme.border,
                   },
                 ]}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={theme.textMuted}
-                value={date}
-                onChangeText={setDate}
-              />
+              >
+                <View style={styles.dateLeft}>
+                  <Ionicons name="calendar-outline" size={20} color={theme.primaryLight} />
+                  <Text style={[styles.dateText, { color: theme.text }]}>
+                    {formatDateDisplay(date)}
+                  </Text>
+                </View>
+                <View style={[styles.chooseDatePill, { backgroundColor: `${theme.primary}25` }]}>
+                  <Text style={[styles.chooseDatePillText, { color: theme.primaryLight }]}>
+                    Choose Date
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color={theme.primaryLight} />
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* Note Optional */}
@@ -322,6 +343,20 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Interactive Calendar Date Picker Modal */}
+      <CalendarDatePickerModal
+        visible={showDatePicker}
+        selectedDate={date}
+        onSelectDate={(newDate) => setDate(newDate)}
+        onClose={() => setShowDatePicker(false)}
+      />
+
+      {/* Custom Category Manager Modal */}
+      <CategoryManagerModal
+        visible={showCategoryManager}
+        onClose={() => setShowCategoryManager(false)}
+      />
     </Modal>
   );
 };
@@ -461,5 +496,53 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+  labelHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  manageCatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  manageCatText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  dateTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  dateLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dateText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  chooseDatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 4,
+  },
+  chooseDatePillText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

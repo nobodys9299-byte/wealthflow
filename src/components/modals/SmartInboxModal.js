@@ -16,6 +16,13 @@ import { formatCurrency } from '../../utils/formatters';
 import { getCategoryById } from '../../constants/categories';
 import { parseBankMessage, SAMPLE_BANK_MESSAGES } from '../../utils/smsParser';
 
+let SmsAndroid = null;
+try {
+  SmsAndroid = require('react-native-get-sms-android').default || require('react-native-get-sms-android');
+} catch (e) {
+  SmsAndroid = null;
+}
+
 export const SmartInboxModal = ({ visible, onClose }) => {
   const { theme, currency, accounts, addTransaction } = useFinance();
 
@@ -27,33 +34,103 @@ export const SmartInboxModal = ({ visible, onClose }) => {
 
   const [customText, setCustomText] = useState('');
   const [showTester, setShowTester] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState('Granted');
+  const [isScanning, setIsScanning] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState('Tap to Scan');
 
-  const requestAndroidSMSPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_SMS,
-          {
-            title: 'SMS Permission Required',
-            message: 'WealthFlow needs access to read incoming bank SMS messages to automatically fetch your transactions.',
-            buttonPositive: 'Allow',
-            buttonNegative: 'Deny',
-          }
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          setPermissionStatus('Granted');
-          alert('SMS Permission Granted! WealthFlow is now monitoring incoming bank alerts.');
-        } else {
-          setPermissionStatus('Denied');
-          alert('SMS permission was denied. You can still paste bank messages directly below.');
-        }
-      } catch (err) {
-        console.warn(err);
-      }
-    } else {
-      alert('On iOS and Web, bank messages can be pasted below or auto-scanned from clipboard.');
+  const scanDeviceSMS = async () => {
+    if (Platform.OS !== 'android') {
+      alert('Automatic SMS inbox reading is available on Android devices. On Web and iOS, use the Paste option below.');
+      return;
     }
+
+    setIsScanning(true);
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_SMS,
+        {
+          title: 'SMS Permission Required',
+          message: 'WealthFlow needs access to read incoming bank SMS messages to automatically fetch your transactions.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny',
+        }
+      );
+
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        setPermissionStatus('Denied');
+        setIsScanning(false);
+        alert('SMS permission was denied. Please allow SMS permission in Android App Info.');
+        return;
+      }
+
+      setPermissionStatus('Granted');
+
+      if (!SmsAndroid || !SmsAndroid.list) {
+        setIsScanning(false);
+        alert('SMS Native module is active on installed Android APK. If testing in development, please paste bank messages below.');
+        return;
+      }
+
+      const filter = {
+        box: 'inbox',
+        maxCount: 40,
+      };
+
+      SmsAndroid.list(
+        JSON.stringify(filter),
+        (fail) => {
+          setIsScanning(false);
+          console.warn('Failed to list SMS:', fail);
+          alert('Could not read SMS: ' + fail);
+        },
+        (count, smsList) => {
+          setIsScanning(false);
+          try {
+            const parsedArray = typeof smsList === 'string' ? JSON.parse(smsList) : smsList;
+            const foundEntries = [];
+            for (let msg of parsedArray) {
+              const body = msg.body || '';
+              const address = msg.address || 'Bank SMS';
+              const parsed = parseBankMessage(body, address);
+              if (parsed && parsed.amount > 0) {
+                if (!pendingList.some((p) => p.title === parsed.title && p.amount === parsed.amount && p.date === parsed.date)) {
+                  foundEntries.push(parsed);
+                }
+              }
+            }
+
+            if (foundEntries.length > 0) {
+              setPendingList((prev) => [...foundEntries, ...prev]);
+              alert(`Success! Auto-detected ${foundEntries.length} new bank transactions from your SMS inbox.`);
+            } else {
+              alert('Scanned your recent SMS inbox, but no new bank transaction alerts were found.');
+            }
+          } catch (err) {
+            console.warn('Parse SMS error:', err);
+          }
+        }
+      );
+    } catch (err) {
+      setIsScanning(false);
+      console.warn('SMS error:', err);
+      alert('Error requesting SMS permission: ' + err.message);
+    }
+  };
+
+  const handleApproveAll = () => {
+    if (pendingList.length === 0) return;
+    pendingList.forEach((item) => {
+      addTransaction({
+        type: item.type,
+        amount: item.amount,
+        title: item.title,
+        categoryId: item.categoryId,
+        accountId: accounts[0]?.id || 'acc_checking',
+        date: item.date,
+        note: `Auto-fetched from ${item.source}`,
+      });
+    });
+    setPendingList([]);
+    alert(`Added all ${pendingList.length} transactions to your accounts!`);
   };
 
   const handleApprove = (item) => {
@@ -113,13 +190,13 @@ export const SmartInboxModal = ({ visible, onClose }) => {
 
           {/* Permissions Status Banner */}
           <View style={[styles.permBanner, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-            <TouchableOpacity onPress={requestAndroidSMSPermission} style={styles.permCol}>
+            <TouchableOpacity onPress={scanDeviceSMS} style={styles.permCol}>
               <View style={styles.permBadge}>
                 <Ionicons name="chatbox-ellipses" size={14} color="#10B981" />
-                <Text style={[styles.permText, { color: theme.text }]}>Android SMS Permission</Text>
+                <Text style={[styles.permText, { color: theme.text }]}>Android SMS Reader</Text>
               </View>
               <Text style={[styles.permSub, { color: theme.primaryLight }]}>
-                Tap to Check / Request ({permissionStatus})
+                {isScanning ? 'Scanning SMS Inbox...' : 'Tap to Scan Device SMS'}
               </Text>
             </TouchableOpacity>
 
@@ -137,22 +214,36 @@ export const SmartInboxModal = ({ visible, onClose }) => {
           {/* Quick Actions */}
           <View style={styles.actionToolbar}>
             <TouchableOpacity
+              onPress={scanDeviceSMS}
+              style={[styles.toolBtn, { backgroundColor: theme.primary }]}
+            >
+              <Ionicons name="scan-outline" size={15} color="#FFF" />
+              <Text style={[styles.toolBtnText, { color: '#FFF' }]}>
+                {isScanning ? 'Scanning...' : 'Scan SMS'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => setShowTester(!showTester)}
               style={[styles.toolBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
             >
               <Ionicons name="create-outline" size={15} color={theme.primaryLight} />
               <Text style={[styles.toolBtnText, { color: theme.primaryLight }]}>
-                {showTester ? 'Hide Paste' : 'Paste Bank SMS'}
+                {showTester ? 'Hide Paste' : 'Paste SMS'}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={handleLoadSamples}
-              style={[styles.toolBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
-            >
-              <Ionicons name="refresh-outline" size={15} color={theme.textMuted} />
-              <Text style={[styles.toolBtnText, { color: theme.textMuted }]}>Simulate Bank Alerts</Text>
-            </TouchableOpacity>
+            {pendingList.length > 0 && (
+              <TouchableOpacity
+                onPress={handleApproveAll}
+                style={[styles.toolBtn, { backgroundColor: '#10B981' }]}
+              >
+                <Ionicons name="checkmark-done" size={15} color="#FFF" />
+                <Text style={[styles.toolBtnText, { color: '#FFF' }]}>
+                  Approve All ({pendingList.length})
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Manual SMS Input Box */}

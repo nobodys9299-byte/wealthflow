@@ -104,6 +104,8 @@ function MainApp() {
             onOpenTransfer={() => setTransferModalVisible(true)}
             onOpenAddAccount={openAddAccount}
             onOpenSmartInbox={() => setSmartInboxVisible(true)}
+            onOpenSettings={() => setActiveTab('settings')}
+            onEditTransaction={openEditTransaction}
             onNavigateTab={setActiveTab}
           />
         );
@@ -141,6 +143,7 @@ function MainApp() {
             onLockApp={() => setIsAppUnlocked(false)}
             onOpenSmartInbox={() => setSmartInboxVisible(true)}
             onNavigateTab={setActiveTab}
+            onBack={() => setActiveTab('dashboard')}
           />
         );
       default:
@@ -154,7 +157,6 @@ function MainApp() {
     { id: 'lending', label: 'Friends', icon: 'people-outline', activeIcon: 'people' },
     { id: 'budgets', label: 'Budgets', icon: 'shield-outline', activeIcon: 'shield' },
     { id: 'accounts', label: 'Wallets', icon: 'wallet-outline', activeIcon: 'wallet' },
-    { id: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
   ];
 
   return (

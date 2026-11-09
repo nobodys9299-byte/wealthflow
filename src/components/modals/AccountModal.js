@@ -19,7 +19,6 @@ const ACCOUNT_TYPES = [
   { id: 'savings', name: 'Savings Account' },
   { id: 'cash', name: 'Cash Wallet' },
   { id: 'card', name: 'Credit Card' },
-  { id: 'lending', name: 'Friend / Lending' },
   { id: 'crypto', name: 'Crypto / Assets' },
 ];
 

@@ -15,8 +15,9 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
+import { CategoryManagerModal } from '../components/modals/CategoryManagerModal';
 
-export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) => {
+export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onBack }) => {
   const {
     theme,
     themeId,
@@ -25,6 +26,8 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) =
     setCurrency,
     securitySettings,
     updateSecurity,
+    userUpiSettings,
+    updateUpiSettings,
     exportCSVString,
     importFromCSV,
     exportAsJSON,
@@ -40,6 +43,14 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) =
   const [backupModalVisible, setBackupModalVisible] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
 
+  // Category Manager Modal
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+
+  // UPI Setup Modal
+  const [upiModalVisible, setUpiModalVisible] = useState(false);
+  const [upiIdInput, setUpiIdInput] = useState(userUpiSettings?.upiId || '');
+  const [payeeNameInput, setPayeeNameInput] = useState(userUpiSettings?.payeeName || '');
+
   // CSV Modal
   const [csvModalVisible, setCsvModalVisible] = useState(false);
   const [csvInput, setCsvInput] = useState('');
@@ -52,6 +63,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) =
   const handleExportCSV = async () => {
     const csv = exportCSVString();
     setCsvInput(csv);
+    setCsvModalVisible(true);
 
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       try {
@@ -63,7 +75,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) =
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        return;
       } catch (e) {
         console.warn(e);
       }
@@ -78,14 +89,20 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) =
             dialogTitle: 'Share CSV Backup (WhatsApp / Drive)',
             UTI: 'public.comma-separated-values-text',
           });
-          return;
         }
       } catch (err) {
-        console.warn('Native CSV share failed, falling back to modal:', err);
+        console.warn('Native CSV share failed:', err);
       }
     }
+  };
 
-    setCsvModalVisible(true);
+  const handleSaveUpiSettings = () => {
+    updateUpiSettings({
+      upiId: upiIdInput.trim(),
+      payeeName: payeeNameInput.trim() || 'WealthFlow User',
+    });
+    setUpiModalVisible(false);
+    alert('UPI settings updated! You can now request payments directly via WhatsApp.');
   };
 
   const handleImportCSV = async () => {
@@ -141,10 +158,74 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) =
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={[styles.screenTitle, { color: theme.text }]}>Settings & Security</Text>
-        <Text style={[styles.subText, { color: theme.textMuted }]}>
-          4/6-digit passcode, themes, CSV data & WhatsApp share
-        </Text>
+        {onBack && (
+          <TouchableOpacity
+            onPress={onBack}
+            style={[styles.backBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
+          </TouchableOpacity>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.screenTitle, { color: theme.text }]}>Settings & Security</Text>
+          <Text style={[styles.subText, { color: theme.textMuted }]}>
+            Passcode, UPI WhatsApp requests, custom categories & CSV
+          </Text>
+        </View>
+      </View>
+
+      {/* UPI & Payment Settings for WhatsApp Requests */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>WHATSAPP PAYMENT & UPI SETTINGS</Text>
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <TouchableOpacity
+            onPress={() => {
+              setUpiIdInput(userUpiSettings?.upiId || '');
+              setPayeeNameInput(userUpiSettings?.payeeName || '');
+              setUpiModalVisible(true);
+            }}
+            style={styles.row}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: '#10B98125' }]}>
+                <Ionicons name="qr-code-outline" size={18} color="#10B981" />
+              </View>
+              <View>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>
+                  {userUpiSettings?.upiId ? `UPI ID: ${userUpiSettings.upiId}` : 'Configure UPI ID & QR Code'}
+                </Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                  Shared when requesting lending payments via WhatsApp
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Custom Categories Manager */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>CATEGORY MANAGEMENT</Text>
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <TouchableOpacity
+            onPress={() => setCategoryModalVisible(true)}
+            style={styles.row}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: '#8B5CF625' }]}>
+                <Ionicons name="pricetags-outline" size={18} color="#8B5CF6" />
+              </View>
+              <View>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>Manage Custom Categories</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                  Create, customize or remove income and expense categories
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Security & Biometrics Section */}
@@ -686,6 +767,75 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) =
           </View>
         </View>
       </Modal>
+
+      {/* UPI Settings Modal */}
+      <Modal visible={upiModalVisible} animationType="slide" transparent={true}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Configure UPI for WhatsApp</Text>
+              <TouchableOpacity onPress={() => setUpiModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+              Enter your UPI ID and name. WealthFlow will include this payment link and QR code in friendly WhatsApp payment requests.
+            </Text>
+
+            <View style={{ gap: 12, marginVertical: 14 }}>
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
+                  YOUR UPI ID (VPA)
+                </Text>
+                <TextInput
+                  style={[
+                    styles.textInputStyle,
+                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+                  ]}
+                  placeholder="e.g. yourname@oksbi or phone@paytm"
+                  placeholderTextColor={theme.textMuted}
+                  value={upiIdInput}
+                  onChangeText={setUpiIdInput}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
+                  PAYEE NAME
+                </Text>
+                <TextInput
+                  style={[
+                    styles.textInputStyle,
+                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+                  ]}
+                  placeholder="e.g. Alex Johnson"
+                  placeholderTextColor={theme.textMuted}
+                  value={payeeNameInput}
+                  onChangeText={setPayeeNameInput}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={handleSaveUpiSettings}
+                style={[styles.modalBtn, { backgroundColor: theme.primary }]}
+              >
+                <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                <Text style={styles.modalBtnText}>Save UPI Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Category Manager Modal */}
+      <CategoryManagerModal
+        visible={categoryModalVisible}
+        onClose={() => setCategoryModalVisible(false)}
+      />
     </ScrollView>
   );
 };
@@ -700,7 +850,25 @@ const styles = StyleSheet.create({
     paddingBottom: 90,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 16,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textInputStyle: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
   },
   screenTitle: {
     fontSize: 22,

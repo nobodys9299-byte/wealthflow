@@ -14,6 +14,8 @@ const STORAGE_KEYS = {
   CURRENCY: '@spendpulse_currency_v1',
   THEME_ID: '@spendpulse_theme_id_v2',
   SECURITY: '@spendpulse_security_v1',
+  CATEGORIES: '@spendpulse_categories_v2',
+  UPI_SETTINGS: '@spendpulse_upi_settings_v1',
 };
 
 const INITIAL_LENDING = [
@@ -49,6 +51,19 @@ export const FinanceProvider = ({ children }) => {
   const [themeId, setThemeId] = useState('dark');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Custom Categories
+  const [categories, setCategories] = useState({
+    expense: EXPENSE_CATEGORIES,
+    income: INCOME_CATEGORIES,
+  });
+
+  // User UPI Settings for WhatsApp requests & QR code
+  const [userUpiSettings, setUserUpiSettings] = useState({
+    upiId: '',
+    payeeName: 'WealthFlow User',
+    qrCodeUri: '',
+  });
+
   // Security state
   const [securitySettings, setSecuritySettings] = useState({
     enabled: false,
@@ -79,6 +94,8 @@ export const FinanceProvider = ({ children }) => {
           savedCurr,
           savedTheme,
           savedSecurity,
+          savedCategories,
+          savedUpi,
         ] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS),
           AsyncStorage.getItem(STORAGE_KEYS.ACCOUNTS),
@@ -88,17 +105,23 @@ export const FinanceProvider = ({ children }) => {
           AsyncStorage.getItem(STORAGE_KEYS.CURRENCY),
           AsyncStorage.getItem(STORAGE_KEYS.THEME_ID),
           AsyncStorage.getItem(STORAGE_KEYS.SECURITY),
+          AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES),
+          AsyncStorage.getItem(STORAGE_KEYS.UPI_SETTINGS),
         ]);
 
+        let loadedTx = INITIAL_TRANSACTIONS;
         if (savedTx) {
-          setTransactions(JSON.parse(savedTx));
+          loadedTx = JSON.parse(savedTx);
+          setTransactions(loadedTx);
         } else {
           setTransactions(INITIAL_TRANSACTIONS);
           await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(INITIAL_TRANSACTIONS));
         }
 
+        let loadedAcc = DEFAULT_ACCOUNTS;
         if (savedAcc) {
-          setAccounts(JSON.parse(savedAcc));
+          loadedAcc = JSON.parse(savedAcc);
+          setAccounts(loadedAcc);
         } else {
           setAccounts(DEFAULT_ACCOUNTS);
           await AsyncStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
@@ -111,8 +134,10 @@ export const FinanceProvider = ({ children }) => {
           await AsyncStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(INITIAL_BUDGETS));
         }
 
+        let loadedRecurring = INITIAL_RECURRING;
         if (savedRecurring) {
-          setRecurring(JSON.parse(savedRecurring));
+          loadedRecurring = JSON.parse(savedRecurring);
+          setRecurring(loadedRecurring);
         } else {
           setRecurring(INITIAL_RECURRING);
           await AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(INITIAL_RECURRING));
@@ -135,6 +160,14 @@ export const FinanceProvider = ({ children }) => {
           setThemeId(savedTheme);
         }
 
+        if (savedCategories) {
+          setCategories(JSON.parse(savedCategories));
+        }
+
+        if (savedUpi) {
+          setUserUpiSettings(JSON.parse(savedUpi));
+        }
+
         if (savedSecurity) {
           const parsedSec = JSON.parse(savedSecurity);
           setSecuritySettings(parsedSec);
@@ -144,6 +177,9 @@ export const FinanceProvider = ({ children }) => {
         } else {
           setIsAppUnlocked(true);
         }
+
+        // Automatic logging of due recurring bills
+        checkAndLogRecurringBills(loadedRecurring, loadedTx, loadedAcc);
       } catch (err) {
         console.error('Failed to load local storage data:', err);
         setTransactions(INITIAL_TRANSACTIONS);
@@ -223,6 +259,112 @@ export const FinanceProvider = ({ children }) => {
       } catch (e) {
         console.warn(e);
       }
+    }
+  };
+
+  const persistCategories = async (newCats) => {
+    setCategories(newCats);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(newCats));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const addCategory = ({ name, emoji, color, type }) => {
+    const cleanType = type === 'income' ? 'income' : 'expense';
+    const id = `cat_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const newCat = {
+      id,
+      name,
+      emoji: emoji || '🏷️',
+      icon: 'pricetag-outline',
+      color: color || '#3B82F6',
+      bg: `${color || '#3B82F6'}20`,
+      gradient: [color || '#3B82F6', color || '#3B82F6'],
+      isCustom: true,
+    };
+    const updated = {
+      ...categories,
+      [cleanType]: [...(categories[cleanType] || []), newCat],
+    };
+    persistCategories(updated);
+  };
+
+  const deleteCategory = (type, categoryId) => {
+    const cleanType = type === 'income' ? 'income' : 'expense';
+    setConfirmDialog({
+      visible: true,
+      title: 'Delete Category?',
+      message: 'Are you sure you want to delete this custom category?',
+      onConfirm: () => {
+        const updated = {
+          ...categories,
+          [cleanType]: (categories[cleanType] || []).filter((c) => c.id !== categoryId),
+        };
+        persistCategories(updated);
+      },
+    });
+  };
+
+  const updateUpiSettings = async (newSettings) => {
+    const merged = { ...userUpiSettings, ...newSettings };
+    setUserUpiSettings(merged);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.UPI_SETTINGS, JSON.stringify(merged));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const deleteFriendAccount = (friendName) => {
+    setConfirmDialog({
+      visible: true,
+      title: `Delete Friend Account (${friendName})?`,
+      message: `Are you sure you want to delete all loan & debt records for ${friendName}? This clears their balance and removes the contact.`,
+      onConfirm: () => {
+        const updated = lendingRecords.filter(
+          (r) => r.friendName?.toLowerCase() !== friendName?.toLowerCase()
+        );
+        persistLending(updated);
+      },
+    });
+  };
+
+  const checkAndLogRecurringBills = (recList, currentTxList, accList) => {
+    if (!recList || recList.length === 0) return;
+    const today = new Date();
+    const currentDay = today.getDate();
+    const todayStr = today.toISOString().split('T')[0];
+    const currentMonthStr = todayStr.substring(0, 7);
+
+    let createdTx = [];
+    let updatedRec = recList.map((r) => {
+      const dueDay = parseInt(r.dayOfMonth || r.dueDay, 10) || 1;
+      const lastLogged = r.lastLoggedDate || '';
+      const alreadyLoggedThisMonth = lastLogged.startsWith(currentMonthStr);
+
+      if (currentDay >= dueDay && !alreadyLoggedThisMonth) {
+        const autoTx = {
+          id: `tx_rec_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          type: r.type || 'expense',
+          amount: parseFloat(r.amount) || 0,
+          title: r.title || 'Recurring Bill',
+          categoryId: r.categoryId || 'bills',
+          accountId: r.accountId || accList[0]?.id || 'acc_checking',
+          date: todayStr,
+          note: `Auto-logged recurring bill (${r.frequency || 'Monthly'})`,
+          isRecurring: true,
+        };
+        createdTx.push(autoTx);
+        return { ...r, lastLoggedDate: todayStr };
+      }
+      return r;
+    });
+
+    if (createdTx.length > 0) {
+      persistTransactions([...createdTx, ...currentTxList]);
+      persistRecurring(updatedRec);
     }
   };
 
@@ -710,7 +852,17 @@ export const FinanceProvider = ({ children }) => {
         lendingSummary,
         addLendingRecord,
         settleFriendDebt,
+        deleteFriendAccount,
         deleteLendingRecord: requestDeleteLendingRecord,
+        // Categories Management
+        categories,
+        addCategory,
+        deleteCategory,
+        // UPI Settings for WhatsApp requests
+        userUpiSettings,
+        updateUpiSettings,
+        // Recurring processing
+        processDueRecurringTransactions: () => checkAndLogRecurringBills(recurring, transactions, accounts),
         netWorth,
         currentMonthStats,
         exportAsJSON,
