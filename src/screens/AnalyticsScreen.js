@@ -200,60 +200,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
     return result;
   }, [transactions]);
 
-  // 1. Transactions List for Account Analysis
-  const accountTransactionsList = useMemo(() => {
-    let list = filteredTransactions;
-    if (selectedAccountId !== 'all') {
-      list = list.filter((t) => t.accountId === selectedAccountId);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        (t) =>
-          (t.title && t.title.toLowerCase().includes(q)) ||
-          (t.note && t.note.toLowerCase().includes(q)) ||
-          String(t.amount).includes(q)
-      );
-    }
-    return list;
-  }, [filteredTransactions, selectedAccountId, searchQuery]);
-
-  // 2. Transactions List for Expense Overview
-  const expenseTransactionsList = useMemo(() => {
-    let list = filteredTransactions.filter((t) => t.type === 'expense');
-    if (selectedExpenseCat !== 'all') {
-      list = list.filter((t) => t.categoryId === selectedExpenseCat);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        (t) =>
-          (t.title && t.title.toLowerCase().includes(q)) ||
-          (t.note && t.note.toLowerCase().includes(q)) ||
-          String(t.amount).includes(q)
-      );
-    }
-    return list;
-  }, [filteredTransactions, selectedExpenseCat, searchQuery]);
-
-  // 3. Transactions List for Income Overview
-  const incomeTransactionsList = useMemo(() => {
-    let list = filteredTransactions.filter((t) => t.type === 'income');
-    if (selectedIncomeCat !== 'all') {
-      list = list.filter((t) => t.categoryId === selectedIncomeCat);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        (t) =>
-          (t.title && t.title.toLowerCase().includes(q)) ||
-          (t.note && t.note.toLowerCase().includes(q)) ||
-          String(t.amount).includes(q)
-      );
-    }
-    return list;
-  }, [filteredTransactions, selectedIncomeCat, searchQuery]);
-
   const topExpenseCategory = expenseBreakdown[0]
     ? getCategoryById(expenseBreakdown[0].categoryId, 'expense')
     : null;
@@ -300,7 +246,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
               key={`tab_${v.id}`}
               onPress={() => {
                 setActiveView(v.id);
-                setSearchQuery('');
               }}
               style={[
                 styles.quickTab,
@@ -768,7 +713,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                   key={item.id}
                   onPress={() => {
                     setActiveView(item.id);
-                    setSearchQuery('');
                     setDropdownOpen(false);
                   }}
                   style={[
@@ -814,7 +758,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       {/* DEDICATED NEW SCREEN MODAL FOR TAPPED CARD / HEAD        */}
       {/* ======================================================== */}
       <Modal
-        visible={!!selectedDetail}
+        visible={!!selectedDetail && !shareImageModalData}
         animationType="slide"
         onRequestClose={() => {
           setSelectedDetail(null);
