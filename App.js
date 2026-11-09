@@ -6,11 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Modal,
+  ScrollView,
   StatusBar as RNStatusBar,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { FinanceProvider, useFinance } from './src/context/FinanceContext';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { AnalyticsScreen } from './src/screens/AnalyticsScreen';
@@ -461,9 +464,11 @@ function MainApp() {
 
 export default function App() {
   return (
-    <FinanceProvider>
-      <MainApp />
-    </FinanceProvider>
+    <ErrorBoundary>
+      <FinanceProvider>
+        <MainApp />
+      </FinanceProvider>
+    </ErrorBoundary>
   );
 }
 
