@@ -5,10 +5,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import { AccountCard } from '../components/AccountCard';
+import { TransactionItem } from '../components/TransactionItem';
 import { formatCurrency } from '../utils/formatters';
 import { generateAccountStatementPDF } from '../utils/pdfGenerator';
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal';
@@ -27,10 +29,27 @@ export const AccountsScreen = ({
     transactions,
     netWorth,
     deleteAccount,
+    deleteTransaction,
   } = useFinance();
 
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedAccountForImage, setSelectedAccountForImage] = useState(null);
+  const [selectedReceiptForImage, setSelectedReceiptForImage] = useState(null);
+  const [selectedFilterAccount, setSelectedFilterAccount] = useState('all');
+  const [accountSearch, setAccountSearch] = useState('');
+
+  const filteredAccountTransactions = transactions.filter((t) => {
+    if (selectedFilterAccount !== 'all' && t.accountId !== selectedFilterAccount) return false;
+    if (accountSearch.trim()) {
+      const q = accountSearch.toLowerCase().trim();
+      return (
+        (t.title && t.title.toLowerCase().includes(q)) ||
+        (t.note && t.note.toLowerCase().includes(q)) ||
+        String(t.amount).includes(q)
+      );
+    }
+    return true;
+  });
 
   const handleShareStatement = async (acc) => {
     await generateAccountStatementPDF(acc, transactions, currency.symbol);
@@ -128,6 +147,102 @@ export const AccountsScreen = ({
         </View>
       ))}
 
+      {/* Account Transactions Ledger Section */}
+      <View style={[styles.sectionHeader, { marginTop: 16 }]}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Wallet Transactions Ledger</Text>
+          <Text style={[styles.countText, { color: theme.textMuted }]}>
+            {filteredAccountTransactions.length} records • {selectedFilterAccount === 'all' ? 'All Wallets' : accounts.find(a => a.id === selectedFilterAccount)?.name}
+          </Text>
+        </View>
+      </View>
+
+      {/* Account Filter Pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsScroll}>
+        <TouchableOpacity
+          onPress={() => setSelectedFilterAccount('all')}
+          style={[
+            styles.filterPill,
+            {
+              backgroundColor: selectedFilterAccount === 'all' ? theme.primary : theme.cardAlt,
+              borderColor: selectedFilterAccount === 'all' ? theme.primaryLight : theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.filterPillText, { color: selectedFilterAccount === 'all' ? '#FFF' : theme.text }]}>
+            All Wallets
+          </Text>
+        </TouchableOpacity>
+
+        {accounts.map((acc) => {
+          const isSelected = selectedFilterAccount === acc.id;
+          return (
+            <TouchableOpacity
+              key={`wallet_pill_${acc.id}`}
+              onPress={() => setSelectedFilterAccount(acc.id)}
+              style={[
+                styles.filterPill,
+                {
+                  backgroundColor: isSelected ? theme.primary : theme.cardAlt,
+                  borderColor: isSelected ? theme.primaryLight : theme.border,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 13, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
+              <Text style={[styles.filterPillText, { color: isSelected ? '#FFF' : theme.text }]}>
+                {acc.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Search Input */}
+      <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Ionicons name="search-outline" size={16} color={theme.textMuted} />
+        <TextInput
+          style={[styles.searchInput, { color: theme.text }]}
+          placeholder="Search wallet transactions..."
+          placeholderTextColor={theme.textMuted}
+          value={accountSearch}
+          onChangeText={setAccountSearch}
+        />
+        {accountSearch.length > 0 && (
+          <TouchableOpacity onPress={() => setAccountSearch('')}>
+            <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Transactions List */}
+      {filteredAccountTransactions.length === 0 ? (
+        <View style={[styles.emptyBox, { borderColor: theme.border }]}>
+          <Ionicons name="receipt-outline" size={32} color={theme.textMuted} />
+          <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 4 }}>
+            No transactions found for this wallet.
+          </Text>
+        </View>
+      ) : (
+        filteredAccountTransactions.map((item) => (
+          <View key={`wallet_tx_${item.id}`} style={{ marginBottom: 6 }}>
+            <TransactionItem
+              transaction={item}
+              onPress={() => onEditAccount && onEditAccount(item)}
+              onDelete={deleteTransaction}
+            />
+            <TouchableOpacity
+              onPress={() => setSelectedReceiptForImage(item)}
+              style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
+            >
+              <Ionicons name="image-outline" size={13} color="#25D366" />
+              <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
+                Share Receipt Image
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ))
+      )}
+
       {/* Category Manager Modal */}
       <CategoryManagerModal
         visible={categoryModalVisible}
@@ -140,6 +255,14 @@ export const AccountsScreen = ({
         onClose={() => setSelectedAccountForImage(null)}
         type="account"
         data={selectedAccountForImage}
+      />
+
+      {/* WhatsApp Transaction Receipt Image Preview Modal */}
+      <ReceiptImageShareModal
+        visible={!!selectedReceiptForImage}
+        onClose={() => setSelectedReceiptForImage(null)}
+        type="transaction"
+        data={selectedReceiptForImage}
       />
     </ScrollView>
   );
@@ -272,5 +395,60 @@ const styles = StyleSheet.create({
   },
   statementText: {
     fontSize: 12,
+  },
+  filterPillsScroll: {
+    gap: 8,
+    paddingBottom: 10,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    marginBottom: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    padding: 0,
+  },
+  emptyBox: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginBottom: 10,
+  },
+  quickShareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 5,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  quickShareText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
