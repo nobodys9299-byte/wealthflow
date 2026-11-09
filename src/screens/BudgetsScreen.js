@@ -1,0 +1,359 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFinance } from '../context/FinanceContext';
+import { BudgetCard } from '../components/BudgetCard';
+import { formatCurrency } from '../utils/formatters';
+import { getCategoryById } from '../constants/categories';
+
+export const BudgetsScreen = ({ onOpenAddBudget, onEditBudget, onOpenAddRecurring }) => {
+  const {
+    theme,
+    currency,
+    budgetStatusList,
+    deleteCategoryBudget,
+    recurring,
+    deleteRecurring,
+  } = useFinance();
+
+  const totalBudgetLimit = useMemo(() => {
+    return budgetStatusList.reduce((sum, b) => sum + b.limit, 0);
+  }, [budgetStatusList]);
+
+  const totalBudgetSpent = useMemo(() => {
+    return budgetStatusList.reduce((sum, b) => sum + b.spent, 0);
+  }, [budgetStatusList]);
+
+  const overallPercent = totalBudgetLimit > 0 ? Math.round((totalBudgetSpent / totalBudgetLimit) * 100) : 0;
+  const overallRemaining = Math.max(0, totalBudgetLimit - totalBudgetSpent);
+
+  return (
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.bg }]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.topHeader}>
+        <View>
+          <Text style={[styles.screenTitle, { color: theme.text }]}>Budget Goals</Text>
+          <Text style={[styles.subText, { color: theme.textMuted }]}>
+            Monthly limits & recurring subscriptions
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={onOpenAddBudget}
+          style={[styles.addBtn, { backgroundColor: theme.primary }]}
+        >
+          <Ionicons name="add" size={18} color="#FFF" />
+          <Text style={styles.addBtnText}>New Budget</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Overall Budget Hero Progress Card */}
+      <View
+        style={[
+          styles.overallCard,
+          {
+            backgroundColor: theme.card,
+            borderColor: overallPercent >= 100 ? theme.danger : theme.border,
+          },
+        ]}
+      >
+        <View style={styles.overallTop}>
+          <View>
+            <Text style={[styles.overallLabel, { color: theme.textMuted }]}>
+              MONTHLY BUDGET POOL
+            </Text>
+            <Text style={[styles.overallValue, { color: theme.text }]}>
+              {formatCurrency(totalBudgetSpent, currency.symbol)}{' '}
+              <Text style={{ fontSize: 16, color: theme.textMuted, fontWeight: '500' }}>
+                / {formatCurrency(totalBudgetLimit, currency.symbol)}
+              </Text>
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.overallBadge,
+              {
+                backgroundColor:
+                  overallPercent >= 100
+                    ? theme.dangerBg
+                    : overallPercent >= 80
+                    ? theme.warningBg
+                    : theme.successBg,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.overallBadgeText,
+                {
+                  color:
+                    overallPercent >= 100
+                      ? theme.danger
+                      : overallPercent >= 80
+                      ? theme.warning
+                      : theme.success,
+                },
+              ]}
+            >
+              {overallPercent}% Used
+            </Text>
+          </View>
+        </View>
+
+        {/* Progress Bar */}
+        <View style={[styles.progressTrack, { backgroundColor: theme.cardAlt }]}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${Math.min(100, overallPercent)}%`,
+                backgroundColor:
+                  overallPercent >= 100
+                    ? theme.danger
+                    : overallPercent >= 80
+                    ? theme.warning
+                    : theme.success,
+              },
+            ]}
+          />
+        </View>
+
+        <View style={styles.overallBottomRow}>
+          <Text style={[styles.overallMeta, { color: theme.textMuted }]}>
+            {overallRemaining > 0
+              ? `${formatCurrency(overallRemaining, currency.symbol)} remaining safe to spend`
+              : 'You have reached or exceeded this month’s allocated budget'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Category Budgets List */}
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Category Budgets</Text>
+        <Text style={[styles.countBadge, { color: theme.textMuted }]}>
+          {budgetStatusList.length} Categories
+        </Text>
+      </View>
+
+      {budgetStatusList.length === 0 ? (
+        <View style={[styles.emptyBox, { borderColor: theme.border }]}>
+          <Ionicons name="pie-chart-outline" size={38} color={theme.textMuted} />
+          <Text style={[styles.emptyText, { color: theme.text }]}>No category budgets configured</Text>
+          <Text style={[styles.emptySub, { color: theme.textMuted }]}>
+            Tap "New Budget" above to set limits on dining, groceries, shopping, etc.
+          </Text>
+        </View>
+      ) : (
+        budgetStatusList.map((item) => (
+          <BudgetCard
+            key={item.categoryId}
+            budget={item}
+            onEdit={onEditBudget}
+            onDelete={deleteCategoryBudget}
+          />
+        ))
+      )}
+
+      {/* Recurring Subscriptions & Fixed Bills Section */}
+      <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recurring Bills & Pay</Text>
+          <Text style={[styles.subText, { color: theme.textMuted }]}>Auto-tracked subscriptions & salary</Text>
+        </View>
+      </View>
+
+      <View style={[styles.recurringCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {recurring.map((rec) => {
+          const cat = getCategoryById(rec.categoryId, rec.type);
+          const isIncome = rec.type === 'income';
+
+          return (
+            <View key={rec.id} style={[styles.recurringRow, { borderBottomColor: theme.border }]}>
+              <View style={[styles.recIcon, { backgroundColor: `${cat.color}20` }]}>
+                <Ionicons name={cat.icon} size={18} color={cat.color} />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.recTitle, { color: theme.text }]}>{rec.title}</Text>
+                <Text style={[styles.recMeta, { color: theme.textMuted }]}>
+                  {rec.frequency.toUpperCase()} • Due: {rec.nextDueDate || 'Monthly'}
+                </Text>
+              </View>
+
+              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                <Text style={[styles.recAmount, { color: isIncome ? theme.success : theme.danger }]}>
+                  {isIncome ? '+' : '-'}{formatCurrency(rec.amount, currency.symbol)}
+                </Text>
+                <TouchableOpacity onPress={() => deleteRecurring(rec.id)}>
+                  <Ionicons name="trash-outline" size={14} color={theme.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 90,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  subText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 4,
+  },
+  addBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  overallCard: {
+    padding: 18,
+    borderRadius: 22,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  overallTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  overallLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  overallValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  overallBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  overallBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+    width: '100%',
+    marginBottom: 10,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  overallBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  overallMeta: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  countBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyBox: {
+    padding: 28,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  emptySub: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  recurringCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  recurringRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  recIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  recMeta: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  recAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+});

@@ -1,0 +1,295 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  FlatList,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFinance } from '../context/FinanceContext';
+import { TransactionItem } from '../components/TransactionItem';
+import { formatCurrency } from '../utils/formatters';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
+
+export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) => {
+  const { theme, currency, transactions, accounts, deleteTransaction } = useFinance();
+
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
+  const [filterAccount, setFilterAccount] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      // Type filter
+      if (filterType !== 'all' && t.type !== filterType) return false;
+
+      // Account filter
+      if (filterAccount !== 'all' && t.accountId !== filterAccount) return false;
+
+      // Category filter
+      if (filterCategory !== 'all' && t.categoryId !== filterCategory) return false;
+
+      // Search query
+      if (search.trim()) {
+        const query = search.toLowerCase();
+        const titleMatch = (t.title || '').toLowerCase().includes(query);
+        const noteMatch = (t.note || '').toLowerCase().includes(query);
+        const catMatch = (t.categoryId || '').toLowerCase().includes(query);
+        if (!titleMatch && !noteMatch && !catMatch) return false;
+      }
+
+      return true;
+    });
+  }, [transactions, search, filterType, filterAccount, filterCategory]);
+
+  const totalFilteredSum = useMemo(() => {
+    return filteredTransactions.reduce((acc, t) => {
+      const amt = parseFloat(t.amount) || 0;
+      return t.type === 'income' ? acc + amt : acc - amt;
+    }, 0);
+  }, [filteredTransactions]);
+
+  const allCategories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      {/* Header */}
+      <View style={styles.topHeader}>
+        <View>
+          <Text style={[styles.screenTitle, { color: theme.text }]}>Transactions</Text>
+          <Text style={[styles.subText, { color: theme.textMuted }]}>
+            {filteredTransactions.length} records found
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => onOpenAddTransaction('expense')}
+          style={[styles.addBtn, { backgroundColor: theme.primary }]}
+        >
+          <Ionicons name="add" size={20} color="#FFF" />
+          <Text style={styles.addBtnText}>Add</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Ionicons name="search-outline" size={18} color={theme.textMuted} />
+        <TextInput
+          style={[styles.searchInput, { color: theme.text }]}
+          placeholder="Search by title, merchant, note..."
+          placeholderTextColor={theme.textMuted}
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')}>
+            <Ionicons name="close-circle" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Filter Chips */}
+      <View style={styles.filterSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPills}>
+          {/* Type filter */}
+          {['all', 'expense', 'income'].map((t) => (
+            <TouchableOpacity
+              key={`type_${t}`}
+              onPress={() => setFilterType(t)}
+              style={[
+                styles.pill,
+                {
+                  backgroundColor: filterType === t ? theme.primary : theme.card,
+                  borderColor: filterType === t ? theme.primaryLight : theme.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  { color: filterType === t ? '#FFF' : theme.text },
+                ]}
+              >
+                {t.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {/* Account selector dropdown simulation */}
+          {accounts.map((acc) => (
+            <TouchableOpacity
+              key={`acc_pill_${acc.id}`}
+              onPress={() => setFilterAccount(filterAccount === acc.id ? 'all' : acc.id)}
+              style={[
+                styles.pill,
+                {
+                  backgroundColor: filterAccount === acc.id ? theme.primary : theme.card,
+                  borderColor: filterAccount === acc.id ? theme.primaryLight : theme.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  { color: filterAccount === acc.id ? '#FFF' : theme.text },
+                ]}
+              >
+                {acc.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Total Filtered Summary Pill */}
+      <View style={[styles.filteredSumBanner, { backgroundColor: theme.cardAlt }]}>
+        <Text style={[styles.sumLabel, { color: theme.textMuted }]}>Net for this filter:</Text>
+        <Text
+          style={[
+            styles.sumValue,
+            { color: totalFilteredSum >= 0 ? theme.success : theme.danger },
+          ]}
+        >
+          {totalFilteredSum >= 0 ? '+' : ''}
+          {formatCurrency(totalFilteredSum, currency.symbol)}
+        </Text>
+      </View>
+
+      {/* List */}
+      <FlatList
+        data={filteredTransactions}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <TransactionItem
+            transaction={item}
+            onPress={() => onEditTransaction && onEditTransaction(item)}
+            onDelete={deleteTransaction}
+          />
+        )}
+        ListEmptyComponent={
+          <View style={[styles.emptyWrap, { borderColor: theme.border }]}>
+            <Ionicons name="receipt-outline" size={42} color={theme.textMuted} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No transactions found</Text>
+            <Text style={[styles.emptySub, { color: theme.textMuted }]}>
+              Try adjusting your search terms or filters
+            </Text>
+          </View>
+        }
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  subText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 4,
+  },
+  addBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+  },
+  filterSection: {
+    marginBottom: 10,
+  },
+  filterPills: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filteredSumBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  sumLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sumValue: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 90,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginTop: 30,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  emptySub: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+});

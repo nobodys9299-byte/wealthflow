@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "WealthFlow",
+    "slug": "wealthflow-money-tracker",
+    "owner": "nobodys",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wealthflow.moneytracker",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "WealthFlow uses Face ID / Touch ID to securely protect your financial data."
+      }
+    },
+    "android": {
+      "package": "com.wealthflow.moneytracker",
+      "permissions": [
+        "RECEIVE_SMS",
+        "READ_SMS",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
