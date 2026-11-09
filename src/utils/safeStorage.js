@@ -1,74 +1,97 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const isWeb = Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+const getLocalStorage = () => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+};
+
+// In-memory fallback if native storage bridge is unavailable
+const memoryStorage = new Map();
 
 export const safeStorage = {
   async getItem(key) {
-    if (isWeb) {
+    const ls = getLocalStorage();
+    if (ls) {
       try {
-        return window.localStorage.getItem(key);
+        return ls.getItem(key);
       } catch (e) {
-        console.warn('Web localStorage getItem error:', e);
-        return null;
+        return memoryStorage.get(key) || null;
       }
     }
     try {
-      return await AsyncStorage.getItem(key);
+      if (Platform.OS !== 'web' && AsyncStorage && typeof AsyncStorage.getItem === 'function') {
+        return await AsyncStorage.getItem(key);
+      }
     } catch (e) {
-      console.warn('AsyncStorage getItem error:', e);
-      return null;
+      // fallback to memory
     }
+    return memoryStorage.get(key) || null;
   },
 
   async setItem(key, value) {
-    if (isWeb) {
+    memoryStorage.set(key, String(value));
+    const ls = getLocalStorage();
+    if (ls) {
       try {
-        window.localStorage.setItem(key, value);
+        ls.setItem(key, String(value));
         return;
       } catch (e) {
-        console.warn('Web localStorage setItem error:', e);
         return;
       }
     }
     try {
-      await AsyncStorage.setItem(key, value);
+      if (Platform.OS !== 'web' && AsyncStorage && typeof AsyncStorage.setItem === 'function') {
+        await AsyncStorage.setItem(key, String(value));
+      }
     } catch (e) {
-      console.warn('AsyncStorage setItem error:', e);
+      // memory fallback already recorded
     }
   },
 
   async removeItem(key) {
-    if (isWeb) {
+    memoryStorage.delete(key);
+    const ls = getLocalStorage();
+    if (ls) {
       try {
-        window.localStorage.removeItem(key);
+        ls.removeItem(key);
         return;
       } catch (e) {
-        console.warn('Web localStorage removeItem error:', e);
         return;
       }
     }
     try {
-      await AsyncStorage.removeItem(key);
+      if (Platform.OS !== 'web' && AsyncStorage && typeof AsyncStorage.removeItem === 'function') {
+        await AsyncStorage.removeItem(key);
+      }
     } catch (e) {
-      console.warn('AsyncStorage removeItem error:', e);
+      // ignore
     }
   },
 
   async clear() {
-    if (isWeb) {
+    memoryStorage.clear();
+    const ls = getLocalStorage();
+    if (ls) {
       try {
-        window.localStorage.clear();
+        ls.clear();
         return;
       } catch (e) {
-        console.warn('Web localStorage clear error:', e);
         return;
       }
     }
     try {
-      await AsyncStorage.clear();
+      if (Platform.OS !== 'web' && AsyncStorage && typeof AsyncStorage.clear === 'function') {
+        await AsyncStorage.clear();
+      }
     } catch (e) {
-      console.warn('AsyncStorage clear error:', e);
+      // ignore
     }
   },
 };
