@@ -12,6 +12,7 @@ import { AccountCard } from '../components/AccountCard';
 import { formatCurrency } from '../utils/formatters';
 import { generateAccountStatementPDF } from '../utils/pdfGenerator';
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal';
+import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
 export const AccountsScreen = ({
   onOpenAddAccount,
@@ -29,6 +30,7 @@ export const AccountsScreen = ({
   } = useFinance();
 
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [selectedAccountForImage, setSelectedAccountForImage] = useState(null);
 
   const handleShareStatement = async (acc) => {
     await generateAccountStatementPDF(acc, transactions, currency.symbol);
@@ -112,16 +114,16 @@ export const AccountsScreen = ({
           />
           {/* Statement Share Action Bar */}
           <TouchableOpacity
-            onPress={() => handleShareStatement(acc)}
+            onPress={() => setSelectedAccountForImage(acc)}
             style={[styles.statementBar, { backgroundColor: theme.card, borderColor: theme.border }]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+              <Ionicons name="image-outline" size={16} color="#25D366" />
               <Text style={[styles.statementText, { color: theme.text }]}>
-                Share <Text style={{ fontWeight: '800' }}>{acc.name}</Text> Statement as PDF
+                Share <Text style={{ fontWeight: '800' }}>{acc.name}</Text> Statement as Image
               </Text>
             </View>
-            <Ionicons name="share-outline" size={16} color={theme.primaryLight} />
+            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
           </TouchableOpacity>
         </View>
       ))}
@@ -130,6 +132,14 @@ export const AccountsScreen = ({
       <CategoryManagerModal
         visible={categoryModalVisible}
         onClose={() => setCategoryModalVisible(false)}
+      />
+
+      {/* WhatsApp Account Statement Image Preview Modal */}
+      <ReceiptImageShareModal
+        visible={!!selectedAccountForImage}
+        onClose={() => setSelectedAccountForImage(null)}
+        type="account"
+        data={selectedAccountForImage}
       />
     </ScrollView>
   );

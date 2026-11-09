@@ -131,7 +131,13 @@ function MainApp() {
           />
         );
       case 'analytics':
-        return <AnalyticsScreen />;
+        return (
+          <AnalyticsScreen
+            onEditTransaction={openEditTransaction}
+            onOpenAddTransaction={openAddTransaction}
+            onNavigateTab={setActiveTab}
+          />
+        );
       case 'budgets':
         return (
           <BudgetsScreen
@@ -168,7 +174,7 @@ function MainApp() {
 
   const navItems = [
     { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
-    { id: 'transactions', label: 'Activity', icon: 'receipt-outline', activeIcon: 'receipt' },
+    { id: 'analytics', label: 'Analysis', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
     { id: 'lending', label: 'Friends', icon: 'swap-horizontal-outline', activeIcon: 'swap-horizontal' },
     { id: 'budgets', label: 'Budgets', icon: 'shield-outline', activeIcon: 'shield' },
     { id: 'accounts', label: 'Wallets', icon: 'wallet-outline', activeIcon: 'wallet' },

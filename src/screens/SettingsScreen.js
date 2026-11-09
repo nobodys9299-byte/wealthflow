@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 
@@ -50,6 +51,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
   // CSV Modal
   const [csvModalVisible, setCsvModalVisible] = useState(false);
   const [csvInput, setCsvInput] = useState('');
+  const [showRawCsv, setShowRawCsv] = useState(false);
 
   // PIN Setup Modal
   const [pinModalVisible, setPinModalVisible] = useState(false);
@@ -57,12 +59,11 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
   const [newPin, setNewPin] = useState('');
 
   const handleExportCSV = async () => {
-    const csv = exportCSVString();
-    setCsvInput(csv);
-    setCsvModalVisible(true);
+    try {
+      const csv = exportCSVString();
+      setCsvInput(csv);
 
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      try {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -71,24 +72,65 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-      } catch (e) {
-        console.warn(e);
-      }
-    } else {
-      // Mobile native share of CSV file
-      try {
-        const fileUri = `${FileSystem.cacheDirectory}wealthflow_backup_${Date.now()}.csv`;
+        alert('CSV backup file successfully downloaded!');
+      } else {
+        const fileUri = `${FileSystem.documentDirectory}wealthflow_backup_${Date.now()}.csv`;
         await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri, {
             mimeType: 'text/csv',
-            dialogTitle: 'Share CSV Backup (WhatsApp / Drive)',
+            dialogTitle: 'Save / Export WealthFlow Backup CSV',
             UTI: 'public.comma-separated-values-text',
           });
+        } else {
+          alert('Sharing is not available on this device');
         }
-      } catch (err) {
-        console.warn('Native CSV share failed:', err);
       }
+    } catch (err) {
+      console.warn('Native CSV export failed:', err);
+      alert('Export failed: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const handlePickAndImportCSVFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values', 'text/plain', '*/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets ? result.assets[0] : result;
+      if (!file || !file.uri) {
+        alert('No file selected');
+        return;
+      }
+
+      let content = '';
+      if (Platform.OS === 'web' && file.file) {
+        content = await file.file.text();
+      } else {
+        content = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+      }
+
+      if (!content || !content.trim()) {
+        alert('The selected CSV file is empty');
+        return;
+      }
+
+      const res = await importFromCSV(content.trim());
+      if (res.success) {
+        alert(`Success! Imported ${res.count || 'all'} records from "${file.name || 'CSV file'}".`);
+        setCsvModalVisible(false);
+      } else {
+        alert('Failed to parse CSV file: ' + (res.error || 'Invalid CSV format'));
+      }
+    } catch (err) {
+      console.warn('Import CSV error:', err);
+      alert('Failed to import file: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -611,41 +653,98 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>CSV Data Backup & Restore</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>CSV File Backup & Restore</Text>
               <TouchableOpacity onPress={() => setCsvModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Copy or paste CSV text here to transfer all your transactions, accounts, and loans between apps.
+              Export and import your entire financial database as a CSV spreadsheet file to easily back up or transfer between apps.
             </Text>
 
-            <TextInput
-              style={[
-                styles.jsonTextarea,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              multiline
-              value={csvInput}
-              onChangeText={setCsvInput}
-              placeholder="Paste CSV text here..."
-              placeholderTextColor={theme.textMuted}
-            />
+            {/* Action 1: Export CSV File */}
+            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+              <View style={styles.fileActionHeader}>
+                <View style={[styles.fileIconBadge, { backgroundColor: `${theme.primary}20` }]}>
+                  <Ionicons name="document-text-outline" size={20} color={theme.primaryLight} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Export CSV File</Text>
+                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
+                    Save all accounts, transactions, and friend loans to a .csv file
+                  </Text>
+                </View>
+              </View>
 
-            <View style={styles.modalButtons}>
               <TouchableOpacity
-                onPress={handleImportCSV}
-                style={[styles.modalBtn, { backgroundColor: theme.primary }]}
+                onPress={handleExportCSVFile}
+                style={[styles.fileActionBtn, { backgroundColor: theme.primary }]}
               >
-                <Ionicons name="cloud-download-outline" size={18} color="#FFF" />
-                <Text style={styles.modalBtnText}>Restore from CSV</Text>
+                <Ionicons name="download-outline" size={18} color="#FFF" />
+                <Text style={styles.fileActionBtnText}>Export & Save .CSV File</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Action 2: Import CSV File */}
+            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+              <View style={styles.fileActionHeader}>
+                <View style={[styles.fileIconBadge, { backgroundColor: '#10B98120' }]}>
+                  <Ionicons name="folder-open-outline" size={20} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Import CSV File</Text>
+                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
+                    Select and restore a .csv backup file from your device storage
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={handlePickAndImportCSVFile}
+                style={[styles.fileActionBtn, { backgroundColor: '#10B981' }]}
+              >
+                <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
+                <Text style={styles.fileActionBtnText}>Choose & Import .CSV File</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Optional Collapsible Direct Text Input */}
+            <TouchableOpacity
+              onPress={() => setShowRawCsv(!showRawCsv)}
+              style={styles.toggleRawTextRow}
+            >
+              <Text style={[styles.toggleRawText, { color: theme.primaryLight }]}>
+                {showRawCsv ? '▲ Hide Direct CSV Text' : '▼ Advanced: View / Paste Direct CSV Text'}
+              </Text>
+            </TouchableOpacity>
+
+            {showRawCsv && (
+              <View style={{ marginTop: 8 }}>
+                <TextInput
+                  style={[
+                    styles.jsonTextarea,
+                    {
+                      backgroundColor: theme.inputBg,
+                      color: theme.text,
+                      borderColor: theme.border,
+                      maxHeight: 120,
+                    },
+                  ]}
+                  multiline
+                  value={csvInput}
+                  onChangeText={setCsvInput}
+                  placeholder="Paste CSV text here..."
+                  placeholderTextColor={theme.textMuted}
+                />
+                <TouchableOpacity
+                  onPress={handleImportCSV}
+                  style={[styles.fileActionBtn, { backgroundColor: theme.primary, marginTop: 8 }]}
+                >
+                  <Text style={styles.fileActionBtnText}>Restore from Pasted Text</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -1026,5 +1125,53 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '800',
+  },
+  fileActionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+  },
+  fileActionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  fileIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fileActionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  fileActionSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  fileActionBtn: {
+    flexDirection: 'row',
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  fileActionBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  toggleRawTextRow: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  toggleRawText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

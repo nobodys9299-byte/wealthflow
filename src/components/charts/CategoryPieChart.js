@@ -5,7 +5,7 @@ import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency } from '../../utils/formatters';
 import { getCategoryById } from '../../constants/categories';
 
-export const CategoryPieChart = ({ data = [], totalAmount = 0, size = 200, strokeWidth = 24 }) => {
+export const CategoryPieChart = ({ data = [], totalAmount = 0, size = 200, strokeWidth = 24, categoryType = 'expense' }) => {
   const { theme, currency } = useFinance();
   
   const radius = (size - strokeWidth) / 2;
@@ -15,7 +15,7 @@ export const CategoryPieChart = ({ data = [], totalAmount = 0, size = 200, strok
   if (!data || data.length === 0 || totalAmount <= 0) {
     return (
       <View style={[styles.emptyContainer, { borderColor: theme.border }]}>
-        <Text style={[styles.emptyText, { color: theme.textMuted }]}>No expense data for this period</Text>
+        <Text style={[styles.emptyText, { color: theme.textMuted }]}>No {categoryType} data for this period</Text>
       </View>
     );
   }
@@ -28,7 +28,7 @@ export const CategoryPieChart = ({ data = [], totalAmount = 0, size = 200, strok
     const strokeDashoffset = -accumulatedAngle * circumference;
     accumulatedAngle += fraction;
 
-    const cat = getCategoryById(item.categoryId, 'expense');
+    const cat = getCategoryById(item.categoryId, item.type || categoryType);
     return {
       ...item,
       color: cat.color,

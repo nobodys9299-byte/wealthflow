@@ -14,6 +14,7 @@ import { TransactionItem } from '../components/TransactionItem';
 import { formatCurrency } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
 import { generateTransactionPDF } from '../utils/pdfGenerator';
+import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
 export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) => {
   const { theme, currency, transactions, accounts, deleteTransaction } = useFinance();
@@ -21,6 +22,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterAccount, setFilterAccount] = useState('all');
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
@@ -167,14 +169,14 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
               onPress={() => onEditTransaction && onEditTransaction(item)}
               onDelete={deleteTransaction}
             />
-            {/* Quick Share Receipt via WhatsApp */}
+            {/* Quick Share Receipt Image via WhatsApp */}
             <TouchableOpacity
-              onPress={() => handleShareReceipt(item)}
+              onPress={() => setSelectedReceipt(item)}
               style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
             >
-              <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
+              <Ionicons name="image-outline" size={13} color="#25D366" />
               <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
-                Share Receipt PDF
+                Share Receipt Image
               </Text>
             </TouchableOpacity>
           </View>
@@ -188,6 +190,14 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
             </Text>
           </View>
         }
+      />
+
+      {/* WhatsApp Image Receipt Share Modal */}
+      <ReceiptImageShareModal
+        visible={!!selectedReceipt}
+        onClose={() => setSelectedReceipt(null)}
+        type="transaction"
+        data={selectedReceipt}
       />
     </View>
   );

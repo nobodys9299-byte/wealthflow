@@ -15,6 +15,7 @@ import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { generateLendingStatementPDF } from '../utils/pdfGenerator';
 import { LendingModal } from '../components/modals/LendingModal';
 import { FriendDetailModal } from '../components/modals/FriendDetailModal';
+import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
 export const LendingScreen = () => {
   const {
@@ -28,6 +29,7 @@ export const LendingScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [activeFriend, setActiveFriend] = useState('');
   const [selectedFriendDetails, setSelectedFriendDetails] = useState(null);
+  const [selectedShareFriend, setSelectedShareFriend] = useState(null);
   const [isExpandedPopup, setIsExpandedPopup] = useState(false);
   const [popupSearch, setPopupSearch] = useState('');
 
@@ -227,13 +229,13 @@ export const LendingScreen = () => {
                   <Text style={[styles.shareBtnText, { color: theme.primaryLight }]}>Reminder</Text>
                 </TouchableOpacity>
 
-                {/* Share PDF via WhatsApp */}
+                {/* Share Image Statement via WhatsApp */}
                 <TouchableOpacity
-                  onPress={() => handleShareWhatsAppPDF(friend)}
+                  onPress={() => setSelectedShareFriend(friend)}
                   style={[styles.shareBtn, { backgroundColor: '#25D36618', borderColor: '#25D36635' }]}
                 >
-                  <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-                  <Text style={[styles.shareBtnText, { color: '#25D366' }]}>PDF</Text>
+                  <Ionicons name="image-outline" size={14} color="#25D366" />
+                  <Text style={[styles.shareBtnText, { color: '#25D366' }]}>Image</Text>
                 </TouchableOpacity>
 
                 {/* Record New Entry for Friend */}
@@ -424,11 +426,11 @@ export const LendingScreen = () => {
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        onPress={() => handleShareWhatsAppPDF(friend)}
+                        onPress={() => setSelectedShareFriend(friend)}
                         style={[styles.popupBtn, { backgroundColor: '#25D36618' }]}
                       >
-                        <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
-                        <Text style={[styles.popupBtnText, { color: '#25D366' }]}>PDF</Text>
+                        <Ionicons name="image-outline" size={13} color="#25D366" />
+                        <Text style={[styles.popupBtnText, { color: '#25D366' }]}>Image</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -481,6 +483,14 @@ export const LendingScreen = () => {
         friend={selectedFriendDetails}
         onClose={() => setSelectedFriendDetails(null)}
         onOpenAddEntry={handleOpenAddForFriend}
+      />
+
+      {/* WhatsApp Image Statement Preview Modal */}
+      <ReceiptImageShareModal
+        visible={!!selectedShareFriend}
+        onClose={() => setSelectedShareFriend(null)}
+        type="friend"
+        data={selectedShareFriend}
       />
     </ScrollView>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -9,12 +9,12 @@ import {
   TextInput,
   Linking,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Sharing from 'expo-sharing';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
-import { generateLendingStatementPDF } from '../../utils/pdfGenerator';
+import { ReceiptImageShareModal } from './ReceiptImageShareModal';
 
 export const FriendDetailModal = ({
   visible,
@@ -34,15 +34,15 @@ export const FriendDetailModal = ({
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestAmountType, setRequestAmountType] = useState('full'); // 'full' | 'custom'
   const [customAmount, setCustomAmount] = useState('');
+  const [isExpandedPopup, setIsExpandedPopup] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [showImageShare, setShowImageShare] = useState(false);
+  const [selectedTxForImage, setSelectedTxForImage] = useState(null);
 
   if (!friend) return null;
 
   const isOwed = friend.balance >= 0;
   const absBalance = Math.abs(friend.balance);
-
-  const handleShareStatementPDF = async () => {
-    await generateLendingStatementPDF(friend, currency.symbol);
-  };
 
   const handleSendWhatsAppRequest = async () => {
     const upiId = userUpiSettings?.upiId || '';
@@ -63,12 +63,10 @@ export const FriendDetailModal = ({
       return;
     }
 
-    // Build standard UPI intent URI
     const upiLink = upiId
       ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amountToRequest}&cu=INR`
       : '';
 
-    // WhatsApp Message
     const message = `Hi ${friend.name}! 👋\n\nfriendly reminder regarding our pending balance:\n💵 *Amount Due: ${currency.symbol}${amountToRequest}*\n\n${
       upiId ? `💳 *Pay via UPI ID:* ${upiId}\n📱 *Pay Directly:* ${upiLink}\n\n` : ''
     }Thank you!`;
@@ -132,54 +130,88 @@ export const FriendDetailModal = ({
     setShowRequestModal(false);
   };
 
+  const filteredTransactions = useMemo(() => {
+    if (!searchFilter.trim()) return friend.transactions;
+    const q = searchFilter.toLowerCase().trim();
+    return friend.transactions.filter(
+      (t) =>
+        (t.note && t.note.toLowerCase().includes(q)) ||
+        String(t.amount).includes(q) ||
+        (t.date && t.date.includes(q))
+    );
+  }, [friend.transactions, searchFilter]);
+
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.friendInfo}>
-              <View style={[styles.avatar, { backgroundColor: `${theme.primary}25` }]}>
-                <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
-                  {friend.name.charAt(0).toUpperCase()}
-                </Text>
+    <>
+      <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+        <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+          <View
+            style={[
+              styles.card,
+              isExpandedPopup && styles.cardExpanded,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={[styles.friendInfo, { flex: 1 }]}>
+                <View style={[styles.avatar, { backgroundColor: `${theme.primary}25` }]}>
+                  <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
+                    {friend.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.friendName, { color: theme.text }]} numberOfLines={1}>
+                    {friend.name}
+                  </Text>
+                  <Text style={[styles.friendStatus, { color: isOwed ? theme.success : theme.danger }]} numberOfLines={1}>
+                    {isOwed ? 'Owes you money' : 'You owe this contact'}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text style={[styles.friendName, { color: theme.text }]}>{friend.name}</Text>
-                <Text style={[styles.friendStatus, { color: isOwed ? theme.success : theme.danger }]}>
-                  {isOwed ? 'Owes you money' : 'You owe this contact'}
-                </Text>
+
+              {/* Header Action Buttons: Expand Pop-up & Close */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  onPress={() => setIsExpandedPopup(!isExpandedPopup)}
+                  style={[styles.headerIconBtn, { backgroundColor: theme.cardAlt }]}
+                  accessibilityLabel="Expand to Pop-up Display"
+                >
+                  <Ionicons
+                    name={isExpandedPopup ? 'contract-outline' : 'expand-outline'}
+                    size={18}
+                    color={theme.primaryLight}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                  <Ionicons name="close" size={24} color={theme.textMuted} />
+                </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
+            {/* Hero Balance Box */}
+            <View
+              style={[
+                styles.heroBox,
+                {
+                  backgroundColor: isOwed ? theme.successBg : theme.dangerBg,
+                  borderColor: isOwed ? theme.success : theme.danger,
+                },
+              ]}
+            >
+              <Text style={[styles.heroLabel, { color: isOwed ? theme.success : theme.danger }]}>
+                {isOwed ? 'TOTAL RECEIVABLE' : 'TOTAL PAYABLE'}
+              </Text>
+              <Text style={[styles.heroAmount, { color: isOwed ? theme.success : theme.danger }]}>
+                {isOwed ? '+' : '-'}{formatCurrency(absBalance, currency.symbol)}
+              </Text>
+            </View>
 
-          {/* Hero Balance Box */}
-          <View
-            style={[
-              styles.heroBox,
-              {
-                backgroundColor: isOwed ? theme.successBg : theme.dangerBg,
-                borderColor: isOwed ? theme.success : theme.danger,
-              },
-            ]}
-          >
-            <Text style={[styles.heroLabel, { color: isOwed ? theme.success : theme.danger }]}>
-              {isOwed ? 'TOTAL RECEIVABLE' : 'TOTAL PAYABLE'}
-            </Text>
-            <Text style={[styles.heroAmount, { color: isOwed ? theme.success : theme.danger }]}>
-              {isOwed ? '+' : '-'}{formatCurrency(absBalance, currency.symbol)}
-            </Text>
-          </View>
-
-          {/* Quick Action Buttons */}
-          <View style={styles.actionsRow}>
-            {/* Request Money via WhatsApp & Direct SMS */}
-            {isOwed && absBalance > 0 && (
-              <>
+            {/* Quick Action Buttons: WhatsApp, Direct SMS & Share Image */}
+            <View style={styles.actionsRow}>
+              {/* WhatsApp Friendly Reminder */}
+              {isOwed && absBalance > 0 && (
                 <TouchableOpacity
                   onPress={() => setShowRequestModal(true)}
                   style={[styles.actionBtn, { backgroundColor: '#25D366' }]}
@@ -187,7 +219,10 @@ export const FriendDetailModal = ({
                   <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
                   <Text style={styles.actionBtnText}>WhatsApp</Text>
                 </TouchableOpacity>
+              )}
 
+              {/* Direct SMS Reminder */}
+              {isOwed && absBalance > 0 && (
                 <TouchableOpacity
                   onPress={() => setShowRequestModal(true)}
                   style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
@@ -195,213 +230,283 @@ export const FriendDetailModal = ({
                   <Ionicons name="chatbubble-ellipses-outline" size={16} color="#FFF" />
                   <Text style={styles.actionBtnText}>Direct SMS</Text>
                 </TouchableOpacity>
-              </>
-            )}
+              )}
 
-            {/* Share PDF Statement */}
-            <TouchableOpacity
-              onPress={handleShareStatementPDF}
-              style={[styles.actionBtn, { backgroundColor: theme.primary }]}
-            >
-              <Ionicons name="document-text-outline" size={16} color="#FFF" />
-              <Text style={styles.actionBtnText}>PDF Statement</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* New Entry and Settle controls */}
-          <View style={styles.subActionsRow}>
-            <TouchableOpacity
-              onPress={() => {
-                onClose();
-                onOpenAddEntry(friend.name);
-              }}
-              style={[styles.subBtn, { backgroundColor: theme.cardAlt }]}
-            >
-              <Ionicons name="add" size={16} color={theme.text} />
-              <Text style={[styles.subBtnText, { color: theme.text }]}>Add Loan Record</Text>
-            </TouchableOpacity>
-
-            {absBalance > 0 && (
+              {/* Share Image to WhatsApp */}
               <TouchableOpacity
-                onPress={() => settleFriendDebt(friend.name)}
-                style={[styles.subBtn, { backgroundColor: `${theme.success}25` }]}
+                onPress={() => setShowImageShare(true)}
+                style={[styles.actionBtn, { backgroundColor: theme.primary }]}
               >
-                <Ionicons name="checkmark-done" size={16} color={theme.success} />
-                <Text style={[styles.subBtnText, { color: theme.success }]}>Mark Settled</Text>
+                <Ionicons name="image-outline" size={16} color="#FFF" />
+                <Text style={styles.actionBtnText}>Share Image</Text>
               </TouchableOpacity>
+            </View>
+
+            {/* New Entry and Settle controls */}
+            <View style={styles.subActionsRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  onClose();
+                  onOpenAddEntry(friend.name);
+                }}
+                style={[styles.subBtn, { backgroundColor: theme.cardAlt }]}
+              >
+                <Ionicons name="add" size={16} color={theme.text} />
+                <Text style={[styles.subBtnText, { color: theme.text }]}>Add Entry</Text>
+              </TouchableOpacity>
+
+              {absBalance > 0 && (
+                <TouchableOpacity
+                  onPress={() => settleFriendDebt(friend.name)}
+                  style={[styles.subBtn, { backgroundColor: `${theme.success}25` }]}
+                >
+                  <Ionicons name="checkmark-done" size={16} color={theme.success} />
+                  <Text style={[styles.subBtnText, { color: theme.success }]}>Mark Settled</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                onPress={() => {
+                  deleteFriendAccount(friend.name);
+                  onClose();
+                }}
+                style={[styles.subBtn, { backgroundColor: theme.dangerBg }]}
+              >
+                <Ionicons name="trash-outline" size={16} color={theme.danger} />
+                <Text style={[styles.subBtnText, { color: theme.danger }]}>Clear Friend</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Filter if in Expanded View */}
+            {isExpandedPopup && (
+              <View style={[styles.expandedSearchBar, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+                <Ionicons name="search-outline" size={16} color={theme.textMuted} />
+                <TextInput
+                  style={[styles.expandedSearchInput, { color: theme.text }]}
+                  placeholder={`Search ${friend.name}'s transactions...`}
+                  placeholderTextColor={theme.textMuted}
+                  value={searchFilter}
+                  onChangeText={setSearchFilter}
+                />
+                {searchFilter.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchFilter('')}>
+                    <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
-            {/* Delete Friend Account after settlement */}
-            <TouchableOpacity
-              onPress={() => {
-                deleteFriendAccount(friend.name);
-                onClose();
-              }}
-              style={[styles.subBtn, { backgroundColor: theme.dangerBg }]}
-            >
-              <Ionicons name="trash-outline" size={16} color={theme.danger} />
-              <Text style={[styles.subBtnText, { color: theme.danger }]}>Delete Friend</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Transaction History Section */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Transaction History ({filteredTransactions.length})
+              </Text>
+              <TouchableOpacity
+                onPress={() => setIsExpandedPopup(!isExpandedPopup)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              >
+                <Ionicons name={isExpandedPopup ? 'contract' : 'scan-outline'} size={14} color={theme.primaryLight} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight }}>
+                  {isExpandedPopup ? 'Standard View' : 'Expand Pop-up'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-          {/* Transaction History Section */}
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Transaction History ({friend.transactions.length})
-          </Text>
-
-          <ScrollView style={styles.txList} showsVerticalScrollIndicator={false}>
-            {friend.transactions.map((t) => {
-              const isLent = t.type === 'lent';
-              return (
-                <View
-                  key={t.id}
-                  style={[
-                    styles.txItem,
-                    { backgroundColor: theme.cardAlt, borderColor: theme.border },
-                  ]}
-                >
-                  <View style={styles.txLeft}>
-                    <View style={[styles.txBadge, { backgroundColor: isLent ? theme.successBg : theme.dangerBg }]}>
-                      <Ionicons
-                        name={isLent ? 'arrow-up-circle' : 'arrow-down-circle'}
-                        size={16}
-                        color={isLent ? theme.success : theme.danger}
-                      />
-                    </View>
-                    <View>
-                      <Text style={[styles.txTitle, { color: theme.text }]}>
-                        {t.note || (isLent ? 'Money Lent' : 'Money Borrowed')}
-                      </Text>
-                      <Text style={[styles.txDate, { color: theme.textMuted }]}>
-                        {formatDateDisplay(t.date)} • {t.status?.toUpperCase() || 'PENDING'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text
+            <ScrollView style={styles.txList} showsVerticalScrollIndicator={false}>
+              {filteredTransactions.length === 0 ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: theme.textMuted, fontSize: 12 }}>No transactions found.</Text>
+                </View>
+              ) : (
+                filteredTransactions.map((t) => {
+                  const isLent = t.type === 'lent';
+                  return (
+                    <View
+                      key={t.id}
                       style={[
-                        styles.txAmount,
-                        { color: isLent ? theme.success : theme.danger },
+                        styles.txItem,
+                        { backgroundColor: theme.cardAlt, borderColor: theme.border },
                       ]}
                     >
-                      {isLent ? '+' : '-'}{formatCurrency(t.amount, currency.symbol)}
-                    </Text>
-                    <TouchableOpacity onPress={() => deleteLendingRecord(t.id)}>
-                      <Ionicons name="trash-outline" size={14} color={theme.textMuted} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
+                      <View style={styles.txLeft}>
+                        <View style={[styles.txBadge, { backgroundColor: isLent ? theme.successBg : theme.dangerBg }]}>
+                          <Ionicons
+                            name={isLent ? 'arrow-up-circle' : 'arrow-down-circle'}
+                            size={16}
+                            color={isLent ? theme.success : theme.danger}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.txTitle, { color: theme.text }]} numberOfLines={1}>
+                            {t.note || (isLent ? 'Money Lent' : 'Money Borrowed')}
+                          </Text>
+                          <Text style={[styles.txDate, { color: theme.textMuted }]}>
+                            {formatDateDisplay(t.date)} • {t.status?.toUpperCase() || 'PENDING'}
+                          </Text>
+                        </View>
+                      </View>
 
-          {/* UPI WhatsApp Request Modal */}
-          <Modal visible={showRequestModal} transparent animationType="fade">
-            <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-              <View style={[styles.requestCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={styles.header}>
-                  <Text style={[styles.title, { color: theme.text }]}>Request Payment via UPI</Text>
-                  <TouchableOpacity onPress={() => setShowRequestModal(false)}>
-                    <Ionicons name="close" size={22} color={theme.textMuted} />
-                  </TouchableOpacity>
-                </View>
+                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                        <Text
+                          style={[
+                            styles.txAmount,
+                            { color: isLent ? theme.success : theme.danger },
+                          ]}
+                        >
+                          {isLent ? '+' : '-'}{formatCurrency(t.amount, currency.symbol)}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          {/* Share single entry as image */}
+                          <TouchableOpacity
+                            onPress={() => setSelectedTxForImage({
+                              ...t,
+                              title: `${isLent ? 'Loan to' : 'Borrow from'} ${friend.name}: ${t.note || 'Cash'}`,
+                            })}
+                          >
+                            <Ionicons name="image-outline" size={15} color={theme.primaryLight} />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => deleteLendingRecord(t.id)}>
+                            <Ionicons name="trash-outline" size={15} color={theme.danger} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
 
-                <Text style={[styles.reqHelp, { color: theme.textMuted }]}>
-                  Choose how much to request from <Text style={{ fontWeight: '700', color: theme.text }}>{friend.name}</Text>:
-                </Text>
+        {/* UPI Request Config Modal */}
+        <Modal visible={showRequestModal} transparent animationType="fade" onRequestClose={() => setShowRequestModal(false)}>
+          <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+            <View style={[styles.requestCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Send Payment Request</Text>
+                <TouchableOpacity onPress={() => setShowRequestModal(false)}>
+                  <Ionicons name="close" size={24} color={theme.textMuted} />
+                </TouchableOpacity>
+              </View>
 
-                {/* Amount options */}
-                <View style={styles.optionRow}>
-                  <TouchableOpacity
-                    onPress={() => setRequestAmountType('full')}
-                    style={[
-                      styles.optChip,
-                      requestAmountType === 'full' && { backgroundColor: theme.primary },
-                    ]}
-                  >
-                    <Text style={[styles.optText, { color: requestAmountType === 'full' ? '#FFF' : theme.text }]}>
-                      Full Balance ({formatCurrency(absBalance, currency.symbol)})
-                    </Text>
-                  </TouchableOpacity>
+              <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+                Send a friendly reminder to <Text style={{ fontWeight: '700', color: theme.text }}>{friend.name}</Text> with your UPI payment details.
+              </Text>
 
-                  <TouchableOpacity
-                    onPress={() => setRequestAmountType('custom')}
-                    style={[
-                      styles.optChip,
-                      requestAmountType === 'custom' && { backgroundColor: theme.primary },
-                    ]}
-                  >
-                    <Text style={[styles.optText, { color: requestAmountType === 'custom' ? '#FFF' : theme.text }]}>
-                      Custom Amount
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+              {/* Amount options */}
+              <View style={styles.amountOptions}>
+                <TouchableOpacity
+                  onPress={() => setRequestAmountType('full')}
+                  style={[
+                    styles.amountOption,
+                    {
+                      backgroundColor: requestAmountType === 'full' ? theme.primary : theme.cardAlt,
+                      borderColor: requestAmountType === 'full' ? theme.primaryLight : theme.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'full' ? '#FFF' : theme.textMuted }]}>
+                    Full Pending Balance
+                  </Text>
+                  <Text style={[styles.amountOptionVal, { color: requestAmountType === 'full' ? '#FFF' : theme.text }]}>
+                    {formatCurrency(absBalance, currency.symbol)}
+                  </Text>
+                </TouchableOpacity>
 
-                {requestAmountType === 'custom' && (
-                  <TextInput
-                    style={[
-                      styles.customInput,
-                      { color: theme.text, borderColor: theme.border, backgroundColor: theme.inputBg },
-                    ]}
-                    keyboardType="decimal-pad"
-                    placeholder="Enter amount"
-                    placeholderTextColor={theme.textMuted}
-                    value={customAmount}
-                    onChangeText={setCustomAmount}
-                    autoFocus
-                  />
-                )}
+                <TouchableOpacity
+                  onPress={() => setRequestAmountType('custom')}
+                  style={[
+                    styles.amountOption,
+                    {
+                      backgroundColor: requestAmountType === 'custom' ? theme.primary : theme.cardAlt,
+                      borderColor: requestAmountType === 'custom' ? theme.primaryLight : theme.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'custom' ? '#FFF' : theme.textMuted }]}>
+                    Custom Amount
+                  </Text>
+                  {requestAmountType === 'custom' ? (
+                    <TextInput
+                      style={[styles.customInput, { color: '#FFF' }]}
+                      keyboardType="numeric"
+                      placeholder="0.00"
+                      placeholderTextColor="#FFF8"
+                      value={customAmount}
+                      onChangeText={setCustomAmount}
+                      autoFocus
+                    />
+                  ) : (
+                    <Text style={[styles.amountOptionVal, { color: theme.textMuted }]}>Enter amount</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
 
-                {/* UPI ID Info */}
-                <View style={[styles.upiInfoBox, { backgroundColor: theme.cardAlt }]}>
-                  <Ionicons name="qr-code-outline" size={18} color={theme.primaryLight} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.upiLabel, { color: theme.textMuted }]}>Your Payment UPI ID:</Text>
-                    <Text style={[styles.upiValue, { color: theme.text }]}>
-                      {userUpiSettings?.upiId || 'Not set (You can set in Settings)'}
-                    </Text>
-                  </View>
-                </View>
+              {/* Send buttons: WhatsApp & Direct SMS */}
+              <View style={styles.sendButtonsRow}>
+                <TouchableOpacity
+                  onPress={handleSendWhatsAppRequest}
+                  style={[styles.sendBtn, { backgroundColor: '#25D366' }]}
+                >
+                  <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
+                  <Text style={styles.sendBtnText}>Send WhatsApp</Text>
+                </TouchableOpacity>
 
-                <View style={styles.reqBtnRow}>
-                  <TouchableOpacity
-                    onPress={handleSendWhatsAppRequest}
-                    style={[styles.sendReqBtn, { backgroundColor: '#25D366' }]}
-                  >
-                    <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
-                    <Text style={styles.sendReqBtnText}>WhatsApp</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleSendDirectSMS}
-                    style={[styles.sendReqBtn, { backgroundColor: '#3B82F6' }]}
-                  >
-                    <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFF" />
-                    <Text style={styles.sendReqBtnText}>Direct SMS</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  onPress={handleSendDirectSMS}
+                  style={[styles.sendBtn, { backgroundColor: '#3B82F6' }]}
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFF" />
+                  <Text style={styles.sendBtnText}>Send Direct SMS</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </Modal>
-        </View>
-      </View>
-    </Modal>
+          </View>
+        </Modal>
+      </Modal>
+
+      {/* WhatsApp Image Statement Preview Modal */}
+      <ReceiptImageShareModal
+        visible={showImageShare}
+        onClose={() => setShowImageShare(false)}
+        type="friend"
+        data={friend}
+      />
+
+      {/* WhatsApp Single Transaction Image Preview Modal */}
+      <ReceiptImageShareModal
+        visible={!!selectedTxForImage}
+        onClose={() => setSelectedTxForImage(null)}
+        type="transaction"
+        data={selectedTxForImage}
+      />
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
   },
   card: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    width: '100%',
+    maxWidth: 440,
+    maxHeight: '85%',
+    borderRadius: 24,
     borderWidth: 1,
-    maxHeight: '90%',
-    padding: 20,
-    paddingBottom: 28,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  cardExpanded: {
+    maxHeight: '96%',
+    height: '96%',
   },
   header: {
     flexDirection: 'row',
@@ -434,56 +539,63 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
+  headerIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   closeBtn: {
     padding: 4,
   },
   heroBox: {
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
     alignItems: 'center',
-    marginVertical: 10,
+    marginBottom: 14,
   },
   heroLabel: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.8,
   },
   heroAmount: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
     marginTop: 2,
   },
   actionsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginVertical: 10,
+    gap: 8,
+    marginBottom: 10,
   },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
+    height: 40,
+    borderRadius: 12,
     gap: 6,
   },
   actionBtnText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   subActionsRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   subBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 9,
+    height: 36,
     borderRadius: 10,
     gap: 4,
   },
@@ -491,22 +603,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  expandedSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+    gap: 6,
+  },
+  expandedSearchInput: {
+    flex: 1,
+    fontSize: 12,
+    padding: 0,
+  },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
-    marginBottom: 10,
   },
   txList: {
-    maxHeight: 220,
+    marginTop: 4,
   },
   txItem: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
+    alignItems: 'center',
+    padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   txLeft: {
     flexDirection: 'row',
@@ -515,9 +641,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   txBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -526,89 +652,75 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   txDate: {
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 10,
+    marginTop: 1,
   },
   txAmount: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   requestCard: {
     width: '100%',
-    maxWidth: 360,
-    borderRadius: 24,
+    maxWidth: 380,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 20,
-    alignSelf: 'center',
+    padding: 18,
   },
-  title: {
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalTitle: {
     fontSize: 17,
     fontWeight: '800',
   },
-  reqHelp: {
+  modalHelp: {
     fontSize: 12,
-    marginBottom: 12,
+    lineHeight: 18,
+    marginBottom: 14,
   },
-  optionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  optChip: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#64748B30',
-  },
-  optText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  customInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  upiInfoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
+  amountOptions: {
     gap: 10,
     marginBottom: 16,
   },
-  upiLabel: {
-    fontSize: 10,
+  amountOption: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  amountOptionLabel: {
+    fontSize: 11,
     fontWeight: '700',
-    textTransform: 'uppercase',
   },
-  upiValue: {
-    fontSize: 13,
+  amountOptionVal: {
+    fontSize: 16,
     fontWeight: '800',
-    marginTop: 2,
+    marginTop: 4,
   },
-  reqBtnRow: {
+  customInput: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 4,
+    padding: 0,
+  },
+  sendButtonsRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  sendReqBtn: {
+  sendBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
+    height: 44,
+    borderRadius: 12,
     gap: 6,
   },
-  sendReqBtnText: {
+  sendBtnText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
 });
