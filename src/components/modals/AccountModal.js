@@ -6,20 +6,24 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
+import { ACCOUNT_ICONS_GALLERY } from '../../constants/categories';
 
 const ACCOUNT_TYPES = [
-  { id: 'bank', name: 'Bank Checking', icon: 'business-outline' },
-  { id: 'savings', name: 'Savings Account', icon: 'shield-checkmark-outline' },
-  { id: 'cash', name: 'Cash Wallet', icon: 'wallet-outline' },
-  { id: 'card', name: 'Credit Card', icon: 'card-outline' },
+  { id: 'bank', name: 'Bank Checking' },
+  { id: 'savings', name: 'Savings Account' },
+  { id: 'cash', name: 'Cash Wallet' },
+  { id: 'card', name: 'Credit Card' },
+  { id: 'lending', name: 'Friend / Lending' },
+  { id: 'crypto', name: 'Crypto / Assets' },
 ];
 
-const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F43F5E', '#F59E0B', '#06B6D4', '#EC4899'];
+const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F43F5E', '#F59E0B', '#06B6D4', '#EC4899', '#6366F1'];
 
 export const AccountModal = ({ visible, onClose, initialData = null }) => {
   const { theme, currency, addAccount, editAccount } = useFinance();
@@ -28,6 +32,7 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
   const [type, setType] = useState('bank');
   const [initialBalance, setInitialBalance] = useState('');
   const [color, setColor] = useState(COLORS[0]);
+  const [selectedEmoji, setSelectedEmoji] = useState('🏦');
 
   useEffect(() => {
     if (initialData) {
@@ -35,11 +40,13 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
       setType(initialData.type || 'bank');
       setInitialBalance(initialData.initialBalance !== undefined ? String(initialData.initialBalance) : '');
       setColor(initialData.color || COLORS[0]);
+      setSelectedEmoji(initialData.emoji || '🏦');
     } else {
       setName('');
       setType('bank');
       setInitialBalance('');
       setColor(COLORS[0]);
+      setSelectedEmoji('🏦');
     }
   }, [initialData, visible]);
 
@@ -54,6 +61,7 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
       type,
       initialBalance: parseFloat(initialBalance) || 0,
       color,
+      emoji: selectedEmoji,
     };
 
     if (initialData && initialData.id) {
@@ -81,101 +89,129 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Account Name */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Account Name</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="e.g. Chase Sapphire, Cash, Apple Card"
-              placeholderTextColor={theme.textMuted}
-              value={name}
-              onChangeText={setName}
-            />
-          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
+            {/* Account Name */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Account Name</Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.inputBg,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                placeholder="e.g. Chase Sapphire, Cash, HDFC Salary"
+                placeholderTextColor={theme.textMuted}
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
 
-          {/* Account Type */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Account Type</Text>
-            <View style={styles.typesRow}>
-              {ACCOUNT_TYPES.map((t) => {
-                const isSelected = type === t.id;
-                return (
-                  <TouchableOpacity
-                    key={t.id}
-                    onPress={() => setType(t.id)}
-                    style={[
-                      styles.typeChip,
-                      {
-                        backgroundColor: isSelected ? theme.primary : theme.inputBg,
-                        borderColor: isSelected ? theme.primaryLight : theme.border,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={t.icon}
-                      size={16}
-                      color={isSelected ? '#FFF' : theme.textMuted}
-                    />
-                    <Text
+            {/* Choose Account Image / Avatar from Gallery */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Account Icon / Emblem</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iconGallery}>
+                {ACCOUNT_ICONS_GALLERY.map((item) => {
+                  const isSelected = selectedEmoji === item.emoji;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => {
+                        setSelectedEmoji(item.emoji);
+                        setColor(item.color);
+                      }}
                       style={[
-                        styles.typeText,
-                        { color: isSelected ? '#FFF' : theme.text },
+                        styles.galleryItem,
+                        {
+                          backgroundColor: isSelected ? `${item.color}25` : theme.inputBg,
+                          borderColor: isSelected ? item.color : theme.border,
+                        },
                       ]}
                     >
-                      {t.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                      <Text style={{ fontSize: 24 }}>{item.emoji}</Text>
+                      <Text style={[styles.galleryLabel, { color: isSelected ? item.color : theme.textMuted }]}>
+                        {item.label.split(' ')[0]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
-          </View>
 
-          {/* Starting Balance */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>
-              Starting Balance ({currency.symbol})
-            </Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={theme.textMuted}
-              value={initialBalance}
-              onChangeText={setInitialBalance}
-            />
-          </View>
-
-          {/* Color Tag */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Badge Color</Text>
-            <View style={styles.colorsRow}>
-              {COLORS.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => setColor(c)}
-                  style={[
-                    styles.colorDot,
-                    { backgroundColor: c },
-                    color === c && { borderWidth: 3, borderColor: '#FFF' },
-                  ]}
-                />
-              ))}
+            {/* Account Type */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Account Classification</Text>
+              <View style={styles.typesRow}>
+                {ACCOUNT_TYPES.map((t) => {
+                  const isSelected = type === t.id;
+                  return (
+                    <TouchableOpacity
+                      key={t.id}
+                      onPress={() => setType(t.id)}
+                      style={[
+                        styles.typeChip,
+                        {
+                          backgroundColor: isSelected ? theme.primary : theme.inputBg,
+                          borderColor: isSelected ? theme.primaryLight : theme.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.typeText,
+                          { color: isSelected ? '#FFF' : theme.text },
+                        ]}
+                      >
+                        {t.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          </View>
+
+            {/* Starting Balance */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                Starting Balance ({currency.symbol})
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.inputBg,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={theme.textMuted}
+                value={initialBalance}
+                onChangeText={setInitialBalance}
+              />
+            </View>
+
+            {/* Color Tag */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Theme Color</Text>
+              <View style={styles.colorsRow}>
+                {COLORS.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => setColor(c)}
+                    style={[
+                      styles.colorDot,
+                      { backgroundColor: c },
+                      color === c && { borderWidth: 3, borderColor: '#FFF' },
+                    ]}
+                  />
+                ))}
+              </View>
+            </View>
+          </ScrollView>
 
           <TouchableOpacity
             onPress={handleSave}
@@ -202,14 +238,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     borderWidth: 1,
     padding: 20,
-    paddingBottom: 32,
-    gap: 16,
+    paddingBottom: 28,
+    maxHeight: '90%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 10,
   },
   title: {
     fontSize: 18,
@@ -218,11 +254,15 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 4,
   },
+  scrollBody: {
+    paddingBottom: 16,
+    gap: 14,
+  },
   group: {
-    gap: 8,
+    gap: 6,
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
@@ -233,19 +273,33 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
   },
+  iconGallery: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  galleryItem: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 4,
+  },
+  galleryLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
   typesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 6,
   },
   typeText: {
     fontSize: 12,
@@ -253,7 +307,7 @@ const styles = StyleSheet.create({
   },
   colorsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   colorDot: {
     width: 32,
@@ -267,7 +321,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 16,
     gap: 8,
-    marginTop: 6,
+    marginTop: 8,
   },
   saveBtnText: {
     color: '#FFF',

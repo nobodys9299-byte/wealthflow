@@ -16,6 +16,7 @@ import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { AnalyticsScreen } from './src/screens/AnalyticsScreen';
 import { BudgetsScreen } from './src/screens/BudgetsScreen';
 import { AccountsScreen } from './src/screens/AccountsScreen';
+import { LendingScreen } from './src/screens/LendingScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TransactionModal } from './src/components/modals/TransactionModal';
 import { TransferModal } from './src/components/modals/TransferModal';
@@ -129,13 +130,17 @@ function MainApp() {
             onOpenAddAccount={openAddAccount}
             onEditAccount={openEditAccount}
             onOpenTransfer={() => setTransferModalVisible(true)}
+            onNavigateTab={setActiveTab}
           />
         );
+      case 'lending':
+        return <LendingScreen />;
       case 'settings':
         return (
           <SettingsScreen
             onLockApp={() => setIsAppUnlocked(false)}
             onOpenSmartInbox={() => setSmartInboxVisible(true)}
+            onNavigateTab={setActiveTab}
           />
         );
       default:
@@ -146,7 +151,7 @@ function MainApp() {
   const navItems = [
     { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
     { id: 'transactions', label: 'Activity', icon: 'receipt-outline', activeIcon: 'receipt' },
-    { id: 'analytics', label: 'Insights', icon: 'pie-chart-outline', activeIcon: 'pie-chart' },
+    { id: 'lending', label: 'Friends', icon: 'people-outline', activeIcon: 'people' },
     { id: 'budgets', label: 'Budgets', icon: 'shield-outline', activeIcon: 'shield' },
     { id: 'accounts', label: 'Wallets', icon: 'wallet-outline', activeIcon: 'wallet' },
     { id: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
@@ -213,7 +218,7 @@ function MainApp() {
         message={confirmDialog.message}
       />
 
-      {/* SMS & Gmail Smart Inbox Modal */}
+      {/* SMS & Bank Smart Inbox Modal */}
       <SmartInboxModal
         visible={smartInboxVisible}
         onClose={() => setSmartInboxVisible(false)}
@@ -279,8 +284,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 12,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
+    paddingHorizontal: 10,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     paddingTop: 4,
   },
   bottomBar: {
@@ -300,7 +305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     flex: 1,
   },
   navLabel: {

@@ -12,28 +12,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionItem } from '../components/TransactionItem';
 import { formatCurrency } from '../utils/formatters';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
+import { getCategoryById } from '../constants/categories';
+import { generateTransactionPDF } from '../utils/pdfGenerator';
 
 export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) => {
   const { theme, currency, transactions, accounts, deleteTransaction } = useFinance();
 
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
+  const [filterType, setFilterType] = useState('all');
   const [filterAccount, setFilterAccount] = useState('all');
-  const [filterCategory, setFilterCategory] = useState('all');
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
-      // Type filter
       if (filterType !== 'all' && t.type !== filterType) return false;
-
-      // Account filter
       if (filterAccount !== 'all' && t.accountId !== filterAccount) return false;
 
-      // Category filter
-      if (filterCategory !== 'all' && t.categoryId !== filterCategory) return false;
-
-      // Search query
       if (search.trim()) {
         const query = search.toLowerCase();
         const titleMatch = (t.title || '').toLowerCase().includes(query);
@@ -44,7 +37,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
 
       return true;
     });
-  }, [transactions, search, filterType, filterAccount, filterCategory]);
+  }, [transactions, search, filterType, filterAccount]);
 
   const totalFilteredSum = useMemo(() => {
     return filteredTransactions.reduce((acc, t) => {
@@ -53,7 +46,11 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
     }, 0);
   }, [filteredTransactions]);
 
-  const allCategories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
+  const handleShareReceipt = async (transaction) => {
+    const cat = getCategoryById(transaction.categoryId, transaction.type);
+    const acc = accounts.find((a) => a.id === transaction.accountId);
+    await generateTransactionPDF(transaction, cat, acc, currency.symbol);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -95,7 +92,6 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
       {/* Filter Chips */}
       <View style={styles.filterSection}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPills}>
-          {/* Type filter */}
           {['all', 'expense', 'income'].map((t) => (
             <TouchableOpacity
               key={`type_${t}`}
@@ -119,7 +115,6 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
             </TouchableOpacity>
           ))}
 
-          {/* Account selector dropdown simulation */}
           {accounts.map((acc) => (
             <TouchableOpacity
               key={`acc_pill_${acc.id}`}
@@ -166,11 +161,23 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <TransactionItem
-            transaction={item}
-            onPress={() => onEditTransaction && onEditTransaction(item)}
-            onDelete={deleteTransaction}
-          />
+          <View style={{ marginBottom: 6 }}>
+            <TransactionItem
+              transaction={item}
+              onPress={() => onEditTransaction && onEditTransaction(item)}
+              onDelete={deleteTransaction}
+            />
+            {/* Quick Share Receipt via WhatsApp */}
+            <TouchableOpacity
+              onPress={() => handleShareReceipt(item)}
+              style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
+            >
+              <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
+              <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
+                Share Receipt PDF
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
         ListEmptyComponent={
           <View style={[styles.emptyWrap, { borderColor: theme.border }]}>
@@ -273,6 +280,22 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 90,
+  },
+  quickShareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: -6,
+    marginBottom: 8,
+    marginRight: 6,
+  },
+  quickShareText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   emptyWrap: {
     alignItems: 'center',

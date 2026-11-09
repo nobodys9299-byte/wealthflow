@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
@@ -25,8 +27,35 @@ export const SmartInboxModal = ({ visible, onClose }) => {
 
   const [customText, setCustomText] = useState('');
   const [showTester, setShowTester] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState('Granted');
 
-  // Approve and Add to actual ledger
+  const requestAndroidSMSPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_SMS,
+          {
+            title: 'SMS Permission Required',
+            message: 'WealthFlow needs access to read incoming bank SMS messages to automatically fetch your transactions.',
+            buttonPositive: 'Allow',
+            buttonNegative: 'Deny',
+          }
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          setPermissionStatus('Granted');
+          alert('SMS Permission Granted! WealthFlow is now monitoring incoming bank alerts.');
+        } else {
+          setPermissionStatus('Denied');
+          alert('SMS permission was denied. You can still paste bank messages directly below.');
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    } else {
+      alert('On iOS and Web, bank messages can be pasted below or auto-scanned from clipboard.');
+    }
+  };
+
   const handleApprove = (item) => {
     addTransaction({
       type: item.type,
@@ -38,24 +67,22 @@ export const SmartInboxModal = ({ visible, onClose }) => {
       note: `Auto-fetched from ${item.source}`,
     });
 
-    // Remove from pending queue
     setPendingList((prev) => prev.filter((p) => p.id !== item.id));
   };
 
-  // Dismiss without adding
   const handleDismiss = (id) => {
     setPendingList((prev) => prev.filter((p) => p.id !== id));
   };
 
   const handleParseCustom = () => {
     if (!customText.trim()) return;
-    const parsed = parseBankMessage(customText.trim(), 'Manual SMS Input');
+    const parsed = parseBankMessage(customText.trim(), 'Manual Bank SMS');
     if (parsed && parsed.amount > 0) {
       setPendingList((prev) => [parsed, ...prev]);
       setCustomText('');
       setShowTester(false);
     } else {
-      alert('Could not detect amount in this message. Try format like: "$45 debited at Starbucks"');
+      alert('Could not detect amount in this message. Example: "$52.00 debited at Starbucks"');
     }
   };
 
@@ -73,10 +100,10 @@ export const SmartInboxModal = ({ visible, onClose }) => {
             <View>
               <View style={styles.titleRow}>
                 <Ionicons name="mail-unread-outline" size={22} color={theme.primaryLight} />
-                <Text style={[styles.title, { color: theme.text }]}>SMS & Gmail Inbox</Text>
+                <Text style={[styles.title, { color: theme.text }]}>SMS & Bank Inbox</Text>
               </View>
               <Text style={[styles.subText, { color: theme.textMuted }]}>
-                {pendingList.length} transactions awaiting your confirmation
+                {pendingList.length} transactions pending your approval
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -86,34 +113,36 @@ export const SmartInboxModal = ({ visible, onClose }) => {
 
           {/* Permissions Status Banner */}
           <View style={[styles.permBanner, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-            <View style={styles.permCol}>
+            <TouchableOpacity onPress={requestAndroidSMSPermission} style={styles.permCol}>
               <View style={styles.permBadge}>
                 <Ionicons name="chatbox-ellipses" size={14} color="#10B981" />
-                <Text style={[styles.permText, { color: theme.text }]}>SMS Auto-Sync</Text>
+                <Text style={[styles.permText, { color: theme.text }]}>Android SMS Permission</Text>
               </View>
-              <Text style={[styles.permSub, { color: theme.textMuted }]}>Connected (READ_SMS)</Text>
-            </View>
+              <Text style={[styles.permSub, { color: theme.primaryLight }]}>
+                Tap to Check / Request ({permissionStatus})
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.dividerV} />
 
             <View style={styles.permCol}>
               <View style={styles.permBadge}>
-                <Ionicons name="logo-google" size={14} color="#3B82F6" />
-                <Text style={[styles.permText, { color: theme.text }]}>Gmail Alerts</Text>
+                <Ionicons name="shield-checkmark" size={14} color="#3B82F6" />
+                <Text style={[styles.permText, { color: theme.text }]}>100% Confirmation</Text>
               </View>
-              <Text style={[styles.permSub, { color: theme.textMuted }]}>Connected (Bank filters)</Text>
+              <Text style={[styles.permSub, { color: theme.textMuted }]}>Nothing added without approval</Text>
             </View>
           </View>
 
-          {/* Tester Toggle & Refresh */}
+          {/* Quick Actions */}
           <View style={styles.actionToolbar}>
             <TouchableOpacity
               onPress={() => setShowTester(!showTester)}
               style={[styles.toolBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
             >
-              <Ionicons name="add-circle-outline" size={15} color={theme.primaryLight} />
+              <Ionicons name="create-outline" size={15} color={theme.primaryLight} />
               <Text style={[styles.toolBtnText, { color: theme.primaryLight }]}>
-                {showTester ? 'Hide Parser' : 'Paste SMS to Test'}
+                {showTester ? 'Hide Paste' : 'Paste Bank SMS'}
               </Text>
             </TouchableOpacity>
 
@@ -122,19 +151,19 @@ export const SmartInboxModal = ({ visible, onClose }) => {
               style={[styles.toolBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
             >
               <Ionicons name="refresh-outline" size={15} color={theme.textMuted} />
-              <Text style={[styles.toolBtnText, { color: theme.textMuted }]}>Load Sample Bank SMS</Text>
+              <Text style={[styles.toolBtnText, { color: theme.textMuted }]}>Simulate Bank Alerts</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Manual SMS Input Tester Box */}
+          {/* Manual SMS Input Box */}
           {showTester && (
             <View style={[styles.testerBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
               <Text style={[styles.testerLabel, { color: theme.textMuted }]}>
-                Paste any bank SMS or email alert:
+                Paste any real bank SMS message:
               </Text>
               <TextInput
                 style={[styles.testerInput, { color: theme.text, borderColor: theme.border }]}
-                placeholder="e.g. Alert: $52.00 debited from A/c *1234 at Apple Store"
+                placeholder="e.g. Your A/c *1234 debited INR 500 at Starbucks on 09-Nov"
                 placeholderTextColor={theme.textMuted}
                 value={customText}
                 onChangeText={setCustomText}
@@ -144,7 +173,7 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                 onPress={handleParseCustom}
                 style={[styles.parseBtn, { backgroundColor: theme.primary }]}
               >
-                <Text style={styles.parseBtnText}>Parse & Preview</Text>
+                <Text style={styles.parseBtnText}>Detect Transaction</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -175,7 +204,6 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                       },
                     ]}
                   >
-                    {/* Source Tag & Date */}
                     <View style={styles.itemHeader}>
                       <View style={[styles.sourcePill, { backgroundColor: isIncome ? theme.successBg : theme.dangerBg }]}>
                         <Ionicons
@@ -195,7 +223,6 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                       <Text style={[styles.itemDate, { color: theme.textMuted }]}>{item.date}</Text>
                     </View>
 
-                    {/* Details Row */}
                     <View style={styles.itemMain}>
                       <View style={[styles.iconWrap, { backgroundColor: `${cat.color}25` }]}>
                         <Text style={{ fontSize: 20 }}>{cat.emoji || '🏷️'}</Text>
@@ -220,14 +247,12 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                       </Text>
                     </View>
 
-                    {/* Raw excerpt */}
                     {item.rawText && (
                       <Text style={[styles.rawText, { color: theme.textMuted }]} numberOfLines={2}>
                         "{item.rawText}"
                       </Text>
                     )}
 
-                    {/* Confirmation Buttons */}
                     <View style={styles.confirmActions}>
                       <TouchableOpacity
                         onPress={() => handleDismiss(item.id)}
@@ -245,7 +270,7 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                         ]}
                       >
                         <Ionicons name="checkmark" size={16} color="#FFF" />
-                        <Text style={styles.approveText}>Confirm & Add</Text>
+                        <Text style={styles.approveText}>Confirm & Add to Ledger</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -319,7 +344,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   permText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   permSub: {

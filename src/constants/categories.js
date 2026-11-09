@@ -23,6 +23,19 @@ export const INCOME_CATEGORIES = [
   { id: 'other_inc', name: 'Other Income', icon: 'add-circle-outline', emoji: '💵', color: '#14B8A6', bg: '#CCFBF1', gradient: ['#14B8A6', '#0F766E'] },
 ];
 
+export const ACCOUNT_ICONS_GALLERY = [
+  { id: 'wallet_cash', emoji: '💵', label: 'Cash / Wallet', color: '#10B981' },
+  { id: 'bank_classic', emoji: '🏦', label: 'Main Bank', color: '#3B82F6' },
+  { id: 'vault_savings', emoji: '🛡️', label: 'Savings Vault', color: '#8B5CF6' },
+  { id: 'card_platinum', emoji: '💳', label: 'Credit Card', color: '#F43F5E' },
+  { id: 'bank_digital', emoji: '🏛️', label: 'Central Bank', color: '#0284C7' },
+  { id: 'crypto_coin', emoji: '🪙', label: 'Crypto / Web3', color: '#F59E0B' },
+  { id: 'stock_growth', emoji: '📈', label: 'Brokerage', color: '#059669' },
+  { id: 'piggy_bank', emoji: '🐷', label: 'Piggy Bank', color: '#EC4899' },
+  { id: 'leather_wallet', emoji: '👛', label: 'Leather Pocket', color: '#D97706' },
+  { id: 'friend_debt', emoji: '🤝', label: 'Friend Loan', color: '#6366F1' },
+];
+
 export const DEFAULT_ACCOUNTS = [
   { id: 'acc_wallet', name: 'Cash Wallet', type: 'cash', emoji: '💵', initialBalance: 250, color: '#10B981', icon: 'wallet-outline' },
   { id: 'acc_checking', name: 'Main Checking', type: 'bank', emoji: '🏦', initialBalance: 3200, color: '#3B82F6', icon: 'business-outline' },

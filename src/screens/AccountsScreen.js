@@ -10,19 +10,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import { AccountCard } from '../components/AccountCard';
 import { formatCurrency } from '../utils/formatters';
+import { generateAccountStatementPDF } from '../utils/pdfGenerator';
 
 export const AccountsScreen = ({
   onOpenAddAccount,
   onEditAccount,
   onOpenTransfer,
+  onNavigateTab,
 }) => {
   const {
     theme,
     currency,
     accounts,
+    transactions,
     netWorth,
     deleteAccount,
   } = useFinance();
+
+  const handleShareStatement = async (acc) => {
+    await generateAccountStatementPDF(acc, transactions, currency.symbol);
+  };
 
   return (
     <ScrollView
@@ -34,7 +41,7 @@ export const AccountsScreen = ({
         <View>
           <Text style={[styles.screenTitle, { color: theme.text }]}>Accounts & Wallets</Text>
           <Text style={[styles.subText, { color: theme.textMuted }]}>
-            Multi-currency cash, banks, and cards
+            Multi-currency cash, banks, and statements
           </Text>
         </View>
 
@@ -65,6 +72,26 @@ export const AccountsScreen = ({
         </TouchableOpacity>
       </View>
 
+      {/* Friends & Lending Quick Access Card */}
+      <TouchableOpacity
+        onPress={() => onNavigateTab && onNavigateTab('lending')}
+        style={[styles.lendingPromoCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+        activeOpacity={0.8}
+      >
+        <View style={styles.promoLeft}>
+          <View style={styles.promoIcon}>
+            <Text style={{ fontSize: 24 }}>🤝</Text>
+          </View>
+          <View>
+            <Text style={[styles.promoTitle, { color: theme.text }]}>Friend Debt & Lending</Text>
+            <Text style={[styles.promoSub, { color: theme.textMuted }]}>
+              Track money given or taken • Share statements on WhatsApp
+            </Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+      </TouchableOpacity>
+
       {/* List of Accounts */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Accounts</Text>
@@ -74,12 +101,26 @@ export const AccountsScreen = ({
       </View>
 
       {accounts.map((acc) => (
-        <AccountCard
-          key={acc.id}
-          account={acc}
-          onEdit={onEditAccount}
-          onDelete={accounts.length > 1 ? deleteAccount : null}
-        />
+        <View key={acc.id} style={{ marginBottom: 14 }}>
+          <AccountCard
+            account={acc}
+            onEdit={onEditAccount}
+            onDelete={accounts.length > 1 ? deleteAccount : null}
+          />
+          {/* Statement Share Action Bar */}
+          <TouchableOpacity
+            onPress={() => handleShareStatement(acc)}
+            style={[styles.statementBar, { backgroundColor: theme.card, borderColor: theme.border }]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+              <Text style={[styles.statementText, { color: theme.text }]}>
+                Share <Text style={{ fontWeight: '800' }}>{acc.name}</Text> Statement as PDF
+              </Text>
+            </View>
+            <Ionicons name="share-outline" size={16} color={theme.primaryLight} />
+          </TouchableOpacity>
+        </View>
       ))}
     </ScrollView>
   );
@@ -129,15 +170,15 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   netWorthLeft: {
     flex: 1,
   },
   netWorthLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   netWorthValue: {
     fontSize: 24,
@@ -156,6 +197,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  lendingPromoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 18,
+  },
+  promoLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  promoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6366F125',
+  },
+  promoTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  promoSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -169,5 +240,18 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  statementBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: -4,
+  },
+  statementText: {
+    fontSize: 12,
   },
 });

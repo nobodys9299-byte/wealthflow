@@ -11,10 +11,12 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 
-export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
+export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab }) => {
   const {
     theme,
     themeId,
@@ -24,26 +26,32 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
     securitySettings,
     updateSecurity,
     exportCSVString,
+    importFromCSV,
     exportAsJSON,
     importFromJSON,
     resetToSampleData,
     clearAllData,
     transactions,
+    accounts,
+    lendingRecords,
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [backupModalVisible, setBackupModalVisible] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
-  const [csvPreviewModal, setCsvPreviewModal] = useState(false);
-  const [csvContent, setCsvContent] = useState('');
 
-  // Pin Edit modal
+  // CSV Modal
+  const [csvModalVisible, setCsvModalVisible] = useState(false);
+  const [csvInput, setCsvInput] = useState('');
+
+  // PIN Setup Modal
   const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [newPin, setNewPin] = useState(securitySettings.pin || '1234');
+  const [chosenLength, setChosenLength] = useState(securitySettings.pin?.length || 4);
+  const [newPin, setNewPin] = useState('');
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     const csv = exportCSVString();
-    setCsvContent(csv);
+    setCsvInput(csv);
 
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       try {
@@ -51,7 +59,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `money_tracker_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `wealthflow_backup_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -59,9 +67,40 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
       } catch (e) {
         console.warn(e);
       }
+    } else {
+      // Mobile native share of CSV file
+      try {
+        const fileUri = `${FileSystem.cacheDirectory}wealthflow_backup_${Date.now()}.csv`;
+        await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'text/csv',
+            dialogTitle: 'Share CSV Backup (WhatsApp / Drive)',
+            UTI: 'public.comma-separated-values-text',
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Native CSV share failed, falling back to modal:', err);
+      }
     }
 
-    setCsvPreviewModal(true);
+    setCsvModalVisible(true);
+  };
+
+  const handleImportCSV = async () => {
+    if (!csvInput.trim()) {
+      alert('Please paste valid CSV data to restore');
+      return;
+    }
+
+    const res = await importFromCSV(csvInput.trim());
+    if (res.success) {
+      alert(`Success! Imported ${res.count || 'all'} records.`);
+      setCsvModalVisible(false);
+    } else {
+      alert('Failed to parse CSV: ' + res.error);
+    }
   };
 
   const handleExportJSON = () => {
@@ -85,13 +124,14 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
   };
 
   const handleSavePin = () => {
-    if (newPin.length !== 4 || isNaN(Number(newPin))) {
-      alert('PIN must be exactly 4 numeric digits');
+    if (newPin.length !== chosenLength || isNaN(Number(newPin))) {
+      alert(`PIN must be exactly ${chosenLength} numeric digits`);
       return;
     }
-    updateSecurity({ pin: newPin });
+    updateSecurity({ pin: newPin, pinLength: chosenLength });
     setPinModalVisible(false);
-    alert('Security PIN updated successfully!');
+    setNewPin('');
+    alert(`Security PIN set to ${chosenLength} digits successfully!`);
   };
 
   return (
@@ -103,7 +143,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
       <View style={styles.header}>
         <Text style={[styles.screenTitle, { color: theme.text }]}>Settings & Security</Text>
         <Text style={[styles.subText, { color: theme.textMuted }]}>
-          Theme styling, passcode lock, and sync
+          4/6-digit passcode, themes, CSV data & WhatsApp share
         </Text>
       </View>
 
@@ -133,10 +173,14 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
             />
           </View>
 
-          {/* Change PIN */}
+          {/* Change PIN (4 or 6 Digits) */}
           {securitySettings.enabled && (
             <TouchableOpacity
-              onPress={() => setPinModalVisible(true)}
+              onPress={() => {
+                setChosenLength(securitySettings.pin?.length || 4);
+                setNewPin('');
+                setPinModalVisible(true);
+              }}
               style={[styles.row, { borderBottomColor: theme.border }]}
             >
               <View style={styles.rowLeft}>
@@ -144,9 +188,11 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                   <Ionicons name="key-outline" size={18} color={theme.primaryLight} />
                 </View>
                 <View>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>Change 4-Digit PIN</Text>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>
+                    Set PIN ({securitySettings.pin?.length || 4} Digits)
+                  </Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Current PIN: •••• ({securitySettings.pin})
+                    Supports 4 or 6 digits • Hidden on login screen
                   </Text>
                 </View>
               </View>
@@ -164,7 +210,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                 <View>
                   <Text style={[styles.rowTitle, { color: theme.text }]}>Fingerprint / Biometrics</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Unlock with device biometrics
+                    Unlock with fingerprint sensor
                   </Text>
                 </View>
               </View>
@@ -190,7 +236,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                 <View>
                   <Text style={[styles.rowTitle, { color: theme.text }]}>Lock App Now (Test Screen)</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Test the PIN & fingerprint keypad
+                    Verify keypad & hidden PIN
                   </Text>
                 </View>
               </View>
@@ -220,7 +266,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                   },
                 ]}
               >
-                {/* Color Swatches */}
                 <View style={styles.swatchRow}>
                   <View style={[styles.swatchDot, { backgroundColor: th.bg }]} />
                   <View style={[styles.swatchDot, { backgroundColor: th.primary }]} />
@@ -269,6 +314,31 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
         </View>
       </View>
 
+      {/* Friends Lending Quick Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>FRIEND DEBT & LENDING</Text>
+
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <TouchableOpacity
+            onPress={() => onNavigateTab && onNavigateTab('lending')}
+            style={styles.row}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: '#6366F125' }]}>
+                <Text style={{ fontSize: 18 }}>🤝</Text>
+              </View>
+              <View>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>Manage Lending Accounts</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                  {lendingRecords.length} loans tracked • WhatsApp PDF statements
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* SMS & Gmail Sync Section */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>AUTOMATIC TRANSACTION SYNC</Text>
@@ -285,7 +355,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
               <View>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>SMS & Gmail Bank Inbox</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Review & confirm automatically detected transactions
+                  Real SMS permission & pending confirmation queue
                 </Text>
               </View>
             </View>
@@ -294,12 +364,12 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
         </View>
       </View>
 
-      {/* Data Export & Backup Section */}
+      {/* Complete Data Export & CSV Backup */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>DATA & BACKUP</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>COMPLETE DATA BACKUP (CSV & JSON)</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Export CSV */}
+          {/* Export Full CSV */}
           <TouchableOpacity
             onPress={handleExportCSV}
             style={[styles.row, { borderBottomColor: theme.border }]}
@@ -309,13 +379,32 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                 <Ionicons name="document-text-outline" size={18} color={theme.success} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Export to CSV</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>Export All Data to CSV</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Download spreadsheet with all {transactions.length} transactions
+                  Exports transactions, accounts, and loans for Excel/WhatsApp
                 </Text>
               </View>
             </View>
-            <Ionicons name="download-outline" size={18} color={theme.textMuted} />
+            <Ionicons name="share-outline" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+
+          {/* Import Full CSV */}
+          <TouchableOpacity
+            onPress={() => setCsvModalVisible(true)}
+            style={[styles.row, { borderBottomColor: theme.border }]}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: `${theme.info}20` }]}>
+                <Ionicons name="cloud-upload-outline" size={18} color={theme.info} />
+              </View>
+              <View>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>Import & Restore from CSV</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                  Restore your entire app data from a CSV file
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
           </TouchableOpacity>
 
           {/* Backup / Restore JSON */}
@@ -325,12 +414,12 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
           >
             <View style={styles.rowLeft}>
               <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}20` }]}>
-                <Ionicons name="cloud-upload-outline" size={18} color={theme.primaryLight} />
+                <Ionicons name="code-download-outline" size={18} color={theme.primaryLight} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Backup & Restore (JSON)</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>JSON Database Backup</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Copy backup JSON code or restore from previous backup
+                  Raw database backup and restore
                 </Text>
               </View>
             </View>
@@ -341,7 +430,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
 
       {/* Reset & Maintenance */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>DATA RESET (WITH CONFIRMATION)</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>DATA RESET (CONFIRMATION PROTECTED)</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity
@@ -355,7 +444,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
               <View>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>Load Sample Data</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Populate demo accounts, budgets, and transactions
+                  Populate demo accounts, budgets, and loans
                 </Text>
               </View>
             </View>
@@ -367,7 +456,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                 <Ionicons name="trash-outline" size={18} color={theme.danger} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.danger }]}>Clear All Transactions</Text>
+                <Text style={[styles.rowTitle, { color: theme.danger }]}>Clear All App Data</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   Erase stored logs and start fresh
                 </Text>
@@ -381,18 +470,51 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
       <View style={styles.aboutBox}>
         <Text style={[styles.aboutTitle, { color: theme.text }]}>WealthFlow Money Tracker</Text>
         <Text style={[styles.aboutVersion, { color: theme.textMuted }]}>
-          Version 2.0.0 • React Native Expo
+          Version 2.2.0 • React Native Expo
         </Text>
       </View>
 
-      {/* PIN Edit Modal */}
+      {/* PIN Setup Modal (4 or 6 digits) */}
       <Modal visible={pinModalVisible} transparent animationType="fade">
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Set 4-Digit Passcode</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Set Passcode</Text>
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Enter a 4-digit numeric code to unlock your app
+              Choose 4 or 6 digits for your lock screen PIN
             </Text>
+
+            {/* Length selector */}
+            <View style={[styles.lengthSelector, { backgroundColor: theme.cardAlt }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  setChosenLength(4);
+                  setNewPin('');
+                }}
+                style={[
+                  styles.lenBtn,
+                  chosenLength === 4 && { backgroundColor: theme.primary },
+                ]}
+              >
+                <Text style={[styles.lenBtnText, { color: chosenLength === 4 ? '#FFF' : theme.textMuted }]}>
+                  4 Digits
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setChosenLength(6);
+                  setNewPin('');
+                }}
+                style={[
+                  styles.lenBtn,
+                  chosenLength === 6 && { backgroundColor: theme.primary },
+                ]}
+              >
+                <Text style={[styles.lenBtnText, { color: chosenLength === 6 ? '#FFF' : theme.textMuted }]}>
+                  6 Digits
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <TextInput
               style={[
@@ -404,7 +526,10 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                 },
               ]}
               keyboardType="number-pad"
-              maxLength={4}
+              secureTextEntry
+              placeholder={'•'.repeat(chosenLength)}
+              placeholderTextColor={theme.textMuted}
+              maxLength={chosenLength}
               value={newPin}
               onChangeText={setNewPin}
               autoFocus
@@ -422,6 +547,50 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                 style={[styles.modalBtn, { backgroundColor: theme.primary }]}
               >
                 <Text style={styles.modalBtnText}>Save PIN</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CSV Export / Import Modal */}
+      <Modal visible={csvModalVisible} animationType="slide" transparent={true}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>CSV Data Backup & Restore</Text>
+              <TouchableOpacity onPress={() => setCsvModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+              Copy or paste CSV text here to transfer all your transactions, accounts, and loans between apps.
+            </Text>
+
+            <TextInput
+              style={[
+                styles.jsonTextarea,
+                {
+                  backgroundColor: theme.inputBg,
+                  color: theme.text,
+                  borderColor: theme.border,
+                },
+              ]}
+              multiline
+              value={csvInput}
+              onChangeText={setCsvInput}
+              placeholder="Paste CSV text here..."
+              placeholderTextColor={theme.textMuted}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={handleImportCSV}
+                style={[styles.modalBtn, { backgroundColor: theme.primary }]}
+              >
+                <Ionicons name="cloud-download-outline" size={18} color="#FFF" />
+                <Text style={styles.modalBtnText}>Restore from CSV</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -476,7 +645,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
         </View>
       </Modal>
 
-      {/* Backup JSON Modal */}
+      {/* JSON Backup Modal */}
       <Modal visible={backupModalVisible} animationType="slide" transparent={true}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -488,7 +657,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
             </View>
 
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Copy this JSON to save your backup, or replace it and tap "Restore Data" to load.
+              Copy or replace JSON data to backup or restore.
             </Text>
 
             <TextInput
@@ -514,38 +683,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox }) => {
                 <Text style={styles.modalBtnText}>Restore Data</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* CSV Preview Modal */}
-      <Modal visible={csvPreviewModal} animationType="slide" transparent={true}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>CSV Export</Text>
-              <TouchableOpacity onPress={() => setCsvPreviewModal(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              CSV formatted data generated:
-            </Text>
-
-            <TextInput
-              style={[
-                styles.jsonTextarea,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              multiline
-              editable={false}
-              value={csvContent}
-            />
           </View>
         </View>
       </Modal>
@@ -669,6 +806,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     padding: 20,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -684,6 +822,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 12,
   },
+  lengthSelector: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 14,
+  },
+  lenBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  lenBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
   pinInput: {
     borderWidth: 1,
     borderRadius: 12,
@@ -691,7 +845,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
-    letterSpacing: 12,
+    letterSpacing: 10,
     marginBottom: 16,
   },
   currencyRow: {

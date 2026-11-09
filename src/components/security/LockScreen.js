@@ -16,6 +16,8 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
   const [hasBiometrics, setHasBiometrics] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const targetLength = correctPin.length === 6 ? 6 : 4;
+
   useEffect(() => {
     checkBiometrics();
   }, []);
@@ -29,7 +31,7 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
         triggerBiometricAuth();
       }
     } catch (e) {
-      console.warn('Biometrics not available:', e);
+      console.warn('Biometrics check:', e);
     }
   };
 
@@ -48,19 +50,19 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
   };
 
   const handleDigit = (digit) => {
-    if (pin.length >= 4) return;
+    if (pin.length >= targetLength) return;
     const nextPin = pin + digit;
     setPin(nextPin);
     setErrorMsg('');
 
-    if (nextPin.length === 4) {
+    if (nextPin.length === targetLength) {
       if (nextPin === correctPin) {
-        setTimeout(onUnlock, 150);
+        setTimeout(onUnlock, 120);
       } else {
         setTimeout(() => {
-          setErrorMsg('Incorrect PIN. Try again.');
+          setErrorMsg('Incorrect PIN. Please try again.');
           setPin('');
-        }, 200);
+        }, 180);
       }
     }
   };
@@ -84,15 +86,15 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
         <View style={[styles.shieldIcon, { backgroundColor: `${theme.primary}25` }]}>
           <Ionicons name="lock-closed" size={32} color={theme.primaryLight} />
         </View>
-        <Text style={[styles.title, { color: theme.text }]}>WealthFlow Security</Text>
+        <Text style={[styles.title, { color: theme.text }]}>WealthFlow Locked</Text>
         <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-          Enter your 4-digit PIN to access your finances
+          Enter your {targetLength}-digit security PIN to continue
         </Text>
       </View>
 
-      {/* PIN Dots Display */}
+      {/* Dynamic PIN Dots Display (4 or 6 dots, NO PIN text leakage!) */}
       <View style={styles.dotsContainer}>
-        {[0, 1, 2, 3].map((index) => {
+        {Array.from({ length: targetLength }).map((_, index) => {
           const filled = pin.length > index;
           return (
             <View
@@ -113,13 +115,12 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
         })}
       </View>
 
-      {errorMsg ? (
-        <Text style={[styles.errorText, { color: theme.danger }]}>{errorMsg}</Text>
-      ) : (
-        <Text style={[styles.hintText, { color: theme.textMuted }]}>
-          Default PIN is <Text style={{ fontWeight: '800', color: theme.primaryLight }}>{correctPin}</Text>
-        </Text>
-      )}
+      {/* Only show error message if failed, never show secret PIN! */}
+      <View style={styles.messageBox}>
+        {errorMsg ? (
+          <Text style={[styles.errorText, { color: theme.danger }]}>{errorMsg}</Text>
+        ) : null}
+      </View>
 
       {/* Keypad */}
       <View style={styles.keypad}>
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 24,
   },
   shieldIcon: {
     width: 68,
@@ -195,8 +196,8 @@ const styles = StyleSheet.create({
   },
   dotsContainer: {
     flexDirection: 'row',
-    gap: 18,
-    marginVertical: 18,
+    gap: 16,
+    marginVertical: 16,
   },
   dot: {
     width: 16,
@@ -204,14 +205,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
   },
+  messageBox: {
+    height: 24,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   errorText: {
     fontSize: 13,
     fontWeight: '700',
-    marginBottom: 18,
-  },
-  hintText: {
-    fontSize: 12,
-    marginBottom: 18,
   },
   keypad: {
     width: '100%',

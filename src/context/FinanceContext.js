@@ -3,17 +3,39 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { THEMES, CURRENCIES } from '../constants/theme';
 import { DEFAULT_ACCOUNTS, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
 import { INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING } from '../constants/initialData';
-import { generateCSV } from '../utils/formatters';
+import { generateFullAppCSV, parseFullAppCSV } from '../utils/formatters';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: '@spendpulse_transactions_v1',
   ACCOUNTS: '@spendpulse_accounts_v1',
   BUDGETS: '@spendpulse_budgets_v1',
   RECURRING: '@spendpulse_recurring_v1',
+  LENDING: '@spendpulse_lending_v1',
   CURRENCY: '@spendpulse_currency_v1',
   THEME_ID: '@spendpulse_theme_id_v2',
   SECURITY: '@spendpulse_security_v1',
 };
+
+const INITIAL_LENDING = [
+  {
+    id: 'lend_1',
+    friendName: 'Alex Johnson',
+    type: 'lent',
+    amount: 150,
+    date: new Date().toISOString().split('T')[0],
+    note: 'Weekend group dinner bill split',
+    status: 'pending',
+  },
+  {
+    id: 'lend_2',
+    friendName: 'Sarah Miller',
+    type: 'borrowed',
+    amount: 45,
+    date: new Date().toISOString().split('T')[0],
+    note: 'Concert ticket advance',
+    status: 'pending',
+  },
+];
 
 const FinanceContext = createContext(null);
 
@@ -22,7 +44,8 @@ export const FinanceProvider = ({ children }) => {
   const [accounts, setAccounts] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [recurring, setRecurring] = useState([]);
-  const [currency, setCurrency] = useState(CURRENCIES[0]); // USD default
+  const [lendingRecords, setLendingRecords] = useState([]);
+  const [currency, setCurrency] = useState(CURRENCIES[0]);
   const [themeId, setThemeId] = useState('dark');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,6 +53,7 @@ export const FinanceProvider = ({ children }) => {
   const [securitySettings, setSecuritySettings] = useState({
     enabled: false,
     pin: '1234',
+    pinLength: 4,
     biometrics: true,
   });
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
@@ -46,11 +70,21 @@ export const FinanceProvider = ({ children }) => {
   useEffect(() => {
     const loadStoredData = async () => {
       try {
-        const [savedTx, savedAcc, savedBudgets, savedRecurring, savedCurr, savedTheme, savedSecurity] = await Promise.all([
+        const [
+          savedTx,
+          savedAcc,
+          savedBudgets,
+          savedRecurring,
+          savedLending,
+          savedCurr,
+          savedTheme,
+          savedSecurity,
+        ] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS),
           AsyncStorage.getItem(STORAGE_KEYS.ACCOUNTS),
           AsyncStorage.getItem(STORAGE_KEYS.BUDGETS),
           AsyncStorage.getItem(STORAGE_KEYS.RECURRING),
+          AsyncStorage.getItem(STORAGE_KEYS.LENDING),
           AsyncStorage.getItem(STORAGE_KEYS.CURRENCY),
           AsyncStorage.getItem(STORAGE_KEYS.THEME_ID),
           AsyncStorage.getItem(STORAGE_KEYS.SECURITY),
@@ -84,6 +118,13 @@ export const FinanceProvider = ({ children }) => {
           await AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(INITIAL_RECURRING));
         }
 
+        if (savedLending) {
+          setLendingRecords(JSON.parse(savedLending));
+        } else {
+          setLendingRecords(INITIAL_LENDING);
+          await AsyncStorage.setItem(STORAGE_KEYS.LENDING, JSON.stringify(INITIAL_LENDING));
+        }
+
         if (savedCurr) {
           const parsed = JSON.parse(savedCurr);
           const match = CURRENCIES.find((c) => c.code === parsed.code);
@@ -109,6 +150,7 @@ export const FinanceProvider = ({ children }) => {
         setAccounts(DEFAULT_ACCOUNTS);
         setBudgets(INITIAL_BUDGETS);
         setRecurring(INITIAL_RECURRING);
+        setLendingRecords(INITIAL_LENDING);
         setIsAppUnlocked(true);
       } finally {
         setIsLoading(false);
@@ -150,6 +192,15 @@ export const FinanceProvider = ({ children }) => {
     setRecurring(newRec);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(newRec));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const persistLending = async (newLending) => {
+    setLendingRecords(newLending);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.LENDING, JSON.stringify(newLending));
     } catch (e) {
       console.warn(e);
     }
@@ -206,7 +257,6 @@ export const FinanceProvider = ({ children }) => {
     persistTransactions(updated);
   };
 
-  // Safe delete with confirmation dialog!
   const requestDeleteTransaction = (id) => {
     const target = transactions.find((t) => t.id === id);
     setConfirmDialog({
@@ -266,6 +316,7 @@ export const FinanceProvider = ({ children }) => {
       ...acc,
       id: `acc_${Date.now()}`,
       initialBalance: parseFloat(acc.initialBalance) || 0,
+      emoji: acc.emoji || '🏦',
     };
     persistAccounts([...accounts, newAcc]);
   };
@@ -352,6 +403,87 @@ export const FinanceProvider = ({ children }) => {
     });
   };
 
+  // Lending & Borrowing Actions
+  const addLendingRecord = (item) => {
+    const newRecord = {
+      ...item,
+      id: `lend_${Date.now()}`,
+      amount: parseFloat(item.amount) || 0,
+      status: 'pending',
+    };
+    persistLending([newRecord, ...lendingRecords]);
+  };
+
+  const settleFriendDebt = (friendName) => {
+    setConfirmDialog({
+      visible: true,
+      title: `Settle Balance with ${friendName}?`,
+      message: `Mark all active loans and borrowings with ${friendName} as fully settled?`,
+      onConfirm: () => {
+        const updated = lendingRecords.map((r) =>
+          r.friendName.toLowerCase() === friendName.toLowerCase()
+            ? { ...r, status: 'settled' }
+            : r
+        );
+        persistLending(updated);
+      },
+    });
+  };
+
+  const requestDeleteLendingRecord = (id) => {
+    setConfirmDialog({
+      visible: true,
+      title: 'Delete Loan Record?',
+      message: 'Are you sure you want to delete this loan transaction?',
+      onConfirm: () => {
+        persistLending(lendingRecords.filter((r) => r.id !== id));
+      },
+    });
+  };
+
+  // Lending Summary & Friend Groups
+  const lendingSummary = useMemo(() => {
+    const pending = lendingRecords.filter((r) => r.status === 'pending');
+    const totalLent = pending
+      .filter((r) => r.type === 'lent')
+      .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalBorrowed = pending
+      .filter((r) => r.type === 'borrowed')
+      .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+
+    const map = {};
+    lendingRecords.forEach((r) => {
+      const name = r.friendName;
+      if (!map[name]) {
+        map[name] = {
+          name,
+          balance: 0,
+          pendingCount: 0,
+          transactions: [],
+        };
+      }
+      map[name].transactions.push(r);
+      if (r.status === 'pending') {
+        map[name].pendingCount++;
+        const amt = parseFloat(r.amount) || 0;
+        if (r.type === 'lent') {
+          map[name].balance += amt; // they owe me (+)
+        } else {
+          map[name].balance -= amt; // I owe them (-)
+        }
+      }
+    });
+
+    const friends = Object.values(map);
+
+    return {
+      totalLent,
+      totalBorrowed,
+      netBalance: totalLent - totalBorrowed,
+      friends,
+    };
+  }, [lendingRecords]);
+
   // Calculated Account Balances
   const accountsWithBalances = useMemo(() => {
     return accounts.map((acc) => {
@@ -374,7 +506,6 @@ export const FinanceProvider = ({ children }) => {
     });
   }, [accounts, transactions]);
 
-  // Overall Financial Totals
   const netWorth = useMemo(() => {
     return accountsWithBalances.reduce((sum, acc) => sum + acc.currentBalance, 0);
   }, [accountsWithBalances]);
@@ -441,17 +572,18 @@ export const FinanceProvider = ({ children }) => {
     });
   }, [budgets, transactions]);
 
-  // Export / Import helpers
+  // Comprehensive Export & Import (JSON & CSV)
   const exportAsJSON = () => {
     return JSON.stringify(
       {
-        version: '2.0',
+        version: '3.0',
         exportedAt: new Date().toISOString(),
         currency,
         themeId,
         accounts,
         budgets,
         recurring,
+        lendingRecords,
         transactions,
       },
       null,
@@ -474,6 +606,9 @@ export const FinanceProvider = ({ children }) => {
       if (data.recurring && Array.isArray(data.recurring)) {
         await persistRecurring(data.recurring);
       }
+      if (data.lendingRecords && Array.isArray(data.lendingRecords)) {
+        await persistLending(data.lendingRecords);
+      }
       if (data.currency) {
         await persistCurrency(data.currency);
       }
@@ -486,21 +621,45 @@ export const FinanceProvider = ({ children }) => {
     }
   };
 
-  const exportCSVString = () => {
+  // Complete App CSV Export
+  const exportFullCSV = () => {
     const allCategories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
-    return generateCSV(transactions, accounts, allCategories);
+    return generateFullAppCSV(transactions, accounts, allCategories, lendingRecords);
+  };
+
+  // Complete App CSV Import
+  const importFromCSV = async (csvText) => {
+    try {
+      const parsed = parseFullAppCSV(csvText);
+      let count = 0;
+      if (parsed.transactions.length > 0) {
+        await persistTransactions([...parsed.transactions, ...transactions]);
+        count += parsed.transactions.length;
+      }
+      if (parsed.accounts.length > 0) {
+        await persistAccounts([...accounts, ...parsed.accounts]);
+      }
+      if (parsed.lending.length > 0) {
+        await persistLending([...parsed.lending, ...lendingRecords]);
+        count += parsed.lending.length;
+      }
+      return { success: true, count };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
   const requestResetToSampleData = () => {
     setConfirmDialog({
       visible: true,
       title: 'Reset to Sample Data?',
-      message: 'This will replace existing transactions with rich realistic demo data.',
+      message: 'This will populate demo transactions, accounts, and friends.',
       onConfirm: async () => {
         await persistTransactions(INITIAL_TRANSACTIONS);
         await persistAccounts(DEFAULT_ACCOUNTS);
         await persistBudgets(INITIAL_BUDGETS);
         await persistRecurring(INITIAL_RECURRING);
+        await persistLending(INITIAL_LENDING);
       },
     });
   };
@@ -508,12 +667,13 @@ export const FinanceProvider = ({ children }) => {
   const requestClearAllData = () => {
     setConfirmDialog({
       visible: true,
-      title: 'Clear All Transactions?',
-      message: 'Are you sure you want to erase all your logged transactions and budgets? This cannot be undone.',
+      title: 'Clear All Data?',
+      message: 'Are you sure you want to erase all your logged transactions, budgets, and lending records? This cannot be undone.',
       onConfirm: async () => {
         await persistTransactions([]);
         await persistBudgets([]);
         await persistRecurring([]);
+        await persistLending([]);
       },
     });
   };
@@ -546,11 +706,17 @@ export const FinanceProvider = ({ children }) => {
         recurring,
         addRecurring,
         deleteRecurring: requestDeleteRecurring,
+        lendingRecords,
+        lendingSummary,
+        addLendingRecord,
+        settleFriendDebt,
+        deleteLendingRecord: requestDeleteLendingRecord,
         netWorth,
         currentMonthStats,
         exportAsJSON,
         importFromJSON,
-        exportCSVString,
+        exportCSVString: exportFullCSV,
+        importFromCSV,
         resetToSampleData: requestResetToSampleData,
         clearAllData: requestClearAllData,
         // Security
