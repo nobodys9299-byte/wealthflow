@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { safeStorage as AsyncStorage } from '../utils/safeStorage';
 import { THEMES, CURRENCIES } from '../constants/theme';
 import { DEFAULT_ACCOUNTS, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
 import { INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING } from '../constants/initialData';
