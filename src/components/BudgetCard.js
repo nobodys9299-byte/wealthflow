@@ -35,12 +35,12 @@ export const BudgetCard = ({ budget, onEdit, onDelete }) => {
       ]}
     >
       <View style={styles.header}>
-        <View style={styles.catInfo}>
+        <View style={[styles.catInfo, { flex: 1, marginRight: 6 }]}>
           <CategoryVisual category={category} size={44} />
-          <View>
-            <Text style={[styles.catName, { color: theme.text }]}>{category.name}</Text>
-            <Text style={[styles.subText, { color: theme.textMuted }]}>
-              Limit: {formatCurrency(budget.limit, currency.symbol)} / month
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.catName, { color: theme.text }]} numberOfLines={1}>{category.name}</Text>
+            <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
+              Limit: {formatCurrency(budget.limit, currency.symbol)} / mo
             </Text>
           </View>
         </View>
@@ -77,14 +77,14 @@ export const BudgetCard = ({ budget, onEdit, onDelete }) => {
 
       {/* Bottom Metrics */}
       <View style={styles.metricsRow}>
-        <Text style={[styles.metricSpent, { color: theme.text }]}>
+        <Text style={[styles.metricSpent, { color: theme.text }]} numberOfLines={1}>
           Spent: <Text style={{ fontWeight: '800' }}>{formatCurrency(budget.spent, currency.symbol)}</Text>
         </Text>
-        <Text style={[styles.metricPercent, { color: statusColor }]}>
+        <Text style={[styles.metricPercent, { color: statusColor }]} numberOfLines={1}>
           {budget.rawPercent}%
         </Text>
-        <Text style={[styles.metricRemaining, { color: theme.textMuted }]}>
-          {budget.status === 'exceeded' ? 'Over by ' : 'Left: '}
+        <Text style={[styles.metricRemaining, { color: theme.textMuted }]} numberOfLines={1}>
+          {budget.status === 'exceeded' ? 'Over: ' : 'Left: '}
           <Text style={{ fontWeight: '700', color: budget.status === 'exceeded' ? theme.danger : theme.text }}>
             {formatCurrency(Math.abs(budget.limit - budget.spent), currency.symbol)}
           </Text>

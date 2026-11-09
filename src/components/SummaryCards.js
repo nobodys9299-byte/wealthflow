@@ -19,15 +19,15 @@ export const SummaryCards = () => {
         ]}
       >
         <View style={styles.netWorthHeader}>
-          <View>
-            <Text style={styles.netWorthLabel}>TOTAL NET WORTH</Text>
-            <Text style={styles.netWorthValue}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.netWorthLabel} numberOfLines={1}>TOTAL NET WORTH</Text>
+            <Text style={styles.netWorthValue} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(netWorth, currency.symbol)}
             </Text>
           </View>
           <View style={styles.savingsRateBadge}>
             <Ionicons name="sparkles" size={12} color="#FDE047" />
-            <Text style={styles.savingsRateText}>
+            <Text style={styles.savingsRateText} numberOfLines={1}>
               {currentMonthStats.savingsRate}% Saved this mo.
             </Text>
           </View>
@@ -40,9 +40,9 @@ export const SummaryCards = () => {
             <View style={styles.iconCircleIncome}>
               <Ionicons name="arrow-down-outline" size={14} color="#10B981" />
             </View>
-            <View>
-              <Text style={styles.cashFlowLabel}>Income ({currentMonthStats.monthName.split(' ')[0]})</Text>
-              <Text style={styles.incomeValue}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cashFlowLabel} numberOfLines={1}>Income ({currentMonthStats.monthName.split(' ')[0]})</Text>
+              <Text style={styles.incomeValue} numberOfLines={1} adjustsFontSizeToFit>
                 +{formatCurrency(currentMonthStats.income, currency.symbol)}
               </Text>
             </View>
@@ -52,9 +52,9 @@ export const SummaryCards = () => {
             <View style={styles.iconCircleExpense}>
               <Ionicons name="arrow-up-outline" size={14} color="#F43F5E" />
             </View>
-            <View>
-              <Text style={styles.cashFlowLabel}>Expenses</Text>
-              <Text style={styles.expenseValue}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cashFlowLabel} numberOfLines={1}>Expenses</Text>
+              <Text style={styles.expenseValue} numberOfLines={1} adjustsFontSizeToFit>
                 -{formatCurrency(currentMonthStats.expense, currency.symbol)}
               </Text>
             </View>

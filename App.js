@@ -21,6 +21,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TransactionModal } from './src/components/modals/TransactionModal';
 import { TransferModal } from './src/components/modals/TransferModal';
 import { BudgetModal } from './src/components/modals/BudgetModal';
+import { RecurringModal } from './src/components/modals/RecurringModal';
 import { AccountModal } from './src/components/modals/AccountModal';
 import { ConfirmDeleteModal } from './src/components/modals/ConfirmDeleteModal';
 import { SmartInboxModal } from './src/components/modals/SmartInboxModal';
@@ -49,6 +50,9 @@ function MainApp() {
 
   const [accountModalVisible, setAccountModalVisible] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
+
+  const [recurringModalVisible, setRecurringModalVisible] = useState(false);
+  const [editingRecurring, setEditingRecurring] = useState(null);
 
   const [smartInboxVisible, setSmartInboxVisible] = useState(false);
 
@@ -95,6 +99,16 @@ function MainApp() {
     setAccountModalVisible(true);
   };
 
+  const openAddRecurring = () => {
+    setEditingRecurring(null);
+    setRecurringModalVisible(true);
+  };
+
+  const openEditRecurring = (rec) => {
+    setEditingRecurring(rec);
+    setRecurringModalVisible(true);
+  };
+
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -123,7 +137,8 @@ function MainApp() {
           <BudgetsScreen
             onOpenAddBudget={openAddBudget}
             onEditBudget={openEditBudget}
-            onOpenAddRecurring={() => {}}
+            onOpenAddRecurring={openAddRecurring}
+            onEditRecurring={openEditRecurring}
           />
         );
       case 'accounts':
@@ -154,7 +169,7 @@ function MainApp() {
   const navItems = [
     { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
     { id: 'transactions', label: 'Activity', icon: 'receipt-outline', activeIcon: 'receipt' },
-    { id: 'lending', label: 'Friends', icon: 'people-outline', activeIcon: 'people' },
+    { id: 'lending', label: 'Friends', icon: 'swap-horizontal-outline', activeIcon: 'swap-horizontal' },
     { id: 'budgets', label: 'Budgets', icon: 'shield-outline', activeIcon: 'shield' },
     { id: 'accounts', label: 'Wallets', icon: 'wallet-outline', activeIcon: 'wallet' },
   ];
@@ -260,6 +275,16 @@ function MainApp() {
           setEditingAccount(null);
         }}
         initialData={editingAccount}
+      />
+
+      {/* Recurring Bills Modal */}
+      <RecurringModal
+        visible={recurringModalVisible}
+        onClose={() => {
+          setRecurringModalVisible(false);
+          setEditingRecurring(null);
+        }}
+        initialData={editingRecurring}
       />
     </SafeAreaView>
   );

@@ -15,7 +15,6 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
-import { CategoryManagerModal } from '../components/modals/CategoryManagerModal';
 
 export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onBack }) => {
   const {
@@ -42,9 +41,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [backupModalVisible, setBackupModalVisible] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
-
-  // Category Manager Modal
-  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
 
   // UPI Setup Modal
   const [upiModalVisible, setUpiModalVisible] = useState(false);
@@ -196,30 +192,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                 </Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   Shared when requesting lending payments via WhatsApp
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Custom Categories Manager */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>CATEGORY MANAGEMENT</Text>
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            onPress={() => setCategoryModalVisible(true)}
-            style={styles.row}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: '#8B5CF625' }]}>
-                <Ionicons name="pricetags-outline" size={18} color="#8B5CF6" />
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Manage Custom Categories</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Create, customize or remove income and expense categories
                 </Text>
               </View>
             </View>
@@ -831,11 +803,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
         </View>
       </Modal>
 
-      {/* Category Manager Modal */}
-      <CategoryManagerModal
-        visible={categoryModalVisible}
-        onClose={() => setCategoryModalVisible(false)}
-      />
     </ScrollView>
   );
 };

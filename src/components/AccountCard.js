@@ -49,11 +49,13 @@ export const AccountCard = ({ account, onEdit, onDelete, compact = false }) => {
       ]}
     >
       <View style={styles.topRow}>
-        <View style={styles.leftInfo}>
+        <View style={[styles.leftInfo, { flex: 1, marginRight: 8 }]}>
           <AccountVisual account={account} size={48} />
-          <View>
-            <Text style={[styles.accName, { color: theme.text }]}>{account.name}</Text>
-            <Text style={[styles.accType, { color: account.color }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.accName, { color: theme.text }]} numberOfLines={1}>
+              {account.name}
+            </Text>
+            <Text style={[styles.accType, { color: account.color }]} numberOfLines={1}>
               {account.type?.toUpperCase()} ACCOUNT
             </Text>
           </View>
@@ -80,6 +82,8 @@ export const AccountCard = ({ account, onEdit, onDelete, compact = false }) => {
             styles.balanceValue,
             { color: isNegative ? theme.danger : theme.text },
           ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
         >
           {formatCurrency(account.currentBalance, currency.symbol)}
         </Text>
@@ -87,20 +91,20 @@ export const AccountCard = ({ account, onEdit, onDelete, compact = false }) => {
 
       <View style={[styles.statsRow, { borderTopColor: theme.border }]}>
         <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Starting</Text>
-          <Text style={[styles.statValue, { color: theme.text }]}>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]} numberOfLines={1}>Starting</Text>
+          <Text style={[styles.statValue, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrency(account.initialBalance, currency.symbol)}
           </Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Income</Text>
-          <Text style={[styles.statValue, { color: theme.success }]}>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]} numberOfLines={1}>Income</Text>
+          <Text style={[styles.statValue, { color: theme.success }]} numberOfLines={1} adjustsFontSizeToFit>
             +{formatCurrency(account.totalIncome || 0, currency.symbol)}
           </Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Expenses</Text>
-          <Text style={[styles.statValue, { color: theme.danger }]}>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]} numberOfLines={1}>Expenses</Text>
+          <Text style={[styles.statValue, { color: theme.danger }]} numberOfLines={1} adjustsFontSizeToFit>
             -{formatCurrency(account.totalExpense || 0, currency.symbol)}
           </Text>
         </View>

@@ -9,10 +9,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import { BudgetCard } from '../components/BudgetCard';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
 
-export const BudgetsScreen = ({ onOpenAddBudget, onEditBudget, onOpenAddRecurring }) => {
+export const BudgetsScreen = ({
+  onOpenAddBudget,
+  onEditBudget,
+  onOpenAddRecurring,
+  onEditRecurring,
+}) => {
   const {
     theme,
     currency,
@@ -166,41 +171,73 @@ export const BudgetsScreen = ({ onOpenAddBudget, onEditBudget, onOpenAddRecurrin
 
       {/* Recurring Subscriptions & Fixed Bills Section */}
       <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Recurring Bills & Pay</Text>
-          <Text style={[styles.subText, { color: theme.textMuted }]}>Auto-tracked subscriptions & salary</Text>
+          <Text style={[styles.subText, { color: theme.textMuted }]}>Auto-tracked bills, salary & subscriptions</Text>
         </View>
+
+        <TouchableOpacity
+          onPress={onOpenAddRecurring}
+          style={[styles.addBtn, { backgroundColor: theme.primary }]}
+        >
+          <Ionicons name="add" size={16} color="#FFF" />
+          <Text style={styles.addBtnText}>Add Bill</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={[styles.recurringCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        {recurring.map((rec) => {
-          const cat = getCategoryById(rec.categoryId, rec.type);
-          const isIncome = rec.type === 'income';
+        {recurring.length === 0 ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <Text style={{ color: theme.textMuted, fontSize: 13 }}>No recurring bills added yet.</Text>
+          </View>
+        ) : (
+          recurring.map((rec) => {
+            const cat = getCategoryById(rec.categoryId, rec.type);
+            const isIncome = rec.type === 'income';
 
-          return (
-            <View key={rec.id} style={[styles.recurringRow, { borderBottomColor: theme.border }]}>
-              <View style={[styles.recIcon, { backgroundColor: `${cat.color}20` }]}>
-                <Ionicons name={cat.icon} size={18} color={cat.color} />
-              </View>
+            return (
+              <TouchableOpacity
+                key={rec.id}
+                activeOpacity={0.7}
+                onPress={() => onEditRecurring && onEditRecurring(rec)}
+                style={[styles.recurringRow, { borderBottomColor: theme.border }]}
+              >
+                <View style={[styles.recIcon, { backgroundColor: `${cat.color}20` }]}>
+                  <Text style={{ fontSize: 18 }}>{cat.emoji || '⚡'}</Text>
+                </View>
 
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.recTitle, { color: theme.text }]}>{rec.title}</Text>
-                <Text style={[styles.recMeta, { color: theme.textMuted }]}>
-                  {rec.frequency.toUpperCase()} • Due: {rec.nextDueDate || 'Monthly'}
-                </Text>
-              </View>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={[styles.recTitle, { color: theme.text }]} numberOfLines={1}>
+                    {rec.title}
+                  </Text>
+                  <Text style={[styles.recMeta, { color: theme.textMuted }]} numberOfLines={1}>
+                    {rec.frequency?.toUpperCase() || 'MONTHLY'} • Due: {formatDateDisplay(rec.nextDueDate || new Date().toISOString().split('T')[0])} (Day {rec.dayOfMonth || 1})
+                  </Text>
+                </View>
 
-              <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <Text style={[styles.recAmount, { color: isIncome ? theme.success : theme.danger }]}>
-                  {isIncome ? '+' : '-'}{formatCurrency(rec.amount, currency.symbol)}
-                </Text>
-                <TouchableOpacity onPress={() => deleteRecurring(rec.id)}>
-                  <Ionicons name="trash-outline" size={14} color={theme.textMuted} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        })}
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                  <Text style={[styles.recAmount, { color: isIncome ? theme.success : theme.danger }]}>
+                    {isIncome ? '+' : '-'}{formatCurrency(rec.amount, currency.symbol)}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                    <TouchableOpacity
+                      onPress={() => onEditRecurring && onEditRecurring(rec)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="pencil" size={15} color={theme.primaryLight} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => deleteRecurring(rec.id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={15} color={theme.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </View>
     </ScrollView>
   );

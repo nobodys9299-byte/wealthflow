@@ -36,26 +36,26 @@ export const TransactionItem = ({ transaction, onPress, onEdit, onDelete }) => {
       <CategoryVisual category={category} size={46} isTransfer={transaction.isTransfer} />
 
       {/* Details */}
-      <View style={styles.details}>
+      <View style={[styles.details, { flex: 1, marginRight: 6 }]}>
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
           {transaction.title}
         </Text>
         <View style={styles.metaRow}>
-          <Text style={[styles.categoryName, { color: category.color }]}>
+          <Text style={[styles.categoryName, { color: category.color }]} numberOfLines={1}>
             {category.name}
           </Text>
           {account && (
             <>
               <Text style={{ color: theme.border }}>•</Text>
               <View style={styles.accountBadge}>
-                <Text style={[styles.accountName, { color: theme.textMuted }]}>
+                <Text style={[styles.accountName, { color: theme.textMuted }]} numberOfLines={1}>
                   {account.name}
                 </Text>
               </View>
             </>
           )}
           <Text style={{ color: theme.border }}>•</Text>
-          <Text style={[styles.date, { color: theme.textMuted }]}>
+          <Text style={[styles.date, { color: theme.textMuted }]} numberOfLines={1}>
             {formatDateDisplay(transaction.date)}
           </Text>
         </View>
@@ -68,6 +68,8 @@ export const TransactionItem = ({ transaction, onPress, onEdit, onDelete }) => {
             styles.amount,
             { color: isIncome ? theme.success : theme.danger },
           ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
         >
           {isIncome ? '+' : '-'}
           {formatCurrency(transaction.amount, currency.symbol)}

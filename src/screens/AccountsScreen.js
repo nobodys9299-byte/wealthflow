@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { useFinance } from '../context/FinanceContext';
 import { AccountCard } from '../components/AccountCard';
 import { formatCurrency } from '../utils/formatters';
 import { generateAccountStatementPDF } from '../utils/pdfGenerator';
+import { CategoryManagerModal } from '../components/modals/CategoryManagerModal';
 
 export const AccountsScreen = ({
   onOpenAddAccount,
@@ -26,6 +27,8 @@ export const AccountsScreen = ({
     netWorth,
     deleteAccount,
   } = useFinance();
+
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
 
   const handleShareStatement = async (acc) => {
     await generateAccountStatementPDF(acc, transactions, currency.symbol);
@@ -72,6 +75,26 @@ export const AccountsScreen = ({
         </TouchableOpacity>
       </View>
 
+      {/* Add / Manage Categories Section */}
+      <TouchableOpacity
+        onPress={() => setCategoryModalVisible(true)}
+        style={[styles.categoryCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+        activeOpacity={0.8}
+      >
+        <View style={styles.catCardLeft}>
+          <View style={[styles.catCardIcon, { backgroundColor: '#8B5CF625' }]}>
+            <Ionicons name="pricetags-outline" size={20} color="#8B5CF6" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.catCardTitle, { color: theme.text }]}>Add & Manage Categories</Text>
+            <Text style={[styles.catCardSub, { color: theme.textMuted }]}>
+              Create or remove custom expense and income categories
+            </Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+      </TouchableOpacity>
+
       {/* List of Accounts */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Accounts</Text>
@@ -102,6 +125,12 @@ export const AccountsScreen = ({
           </TouchableOpacity>
         </View>
       ))}
+
+      {/* Category Manager Modal */}
+      <CategoryManagerModal
+        visible={categoryModalVisible}
+        onClose={() => setCategoryModalVisible(false)}
+      />
     </ScrollView>
   );
 };
@@ -177,7 +206,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  lendingPromoCard: {
+  categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -186,24 +215,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 18,
   },
-  promoLeft: {
+  catCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
-  promoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  catCardIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366F125',
   },
-  promoTitle: {
+  catCardTitle: {
     fontSize: 14,
     fontWeight: '800',
   },
-  promoSub: {
+  catCardSub: {
     fontSize: 11,
     marginTop: 2,
   },

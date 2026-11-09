@@ -108,16 +108,6 @@ export const DashboardScreen = ({
               color={showSearch ? '#FFF' : theme.text}
             />
           </TouchableOpacity>
-
-          {/* SMS & Gmail Auto-fetch Inbox button with pulse dot */}
-          <TouchableOpacity
-            onPress={onOpenSmartInbox}
-            style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-            accessibilityLabel="Bank SMS Sync"
-          >
-            <Ionicons name="mail-unread-outline" size={20} color={theme.primaryLight} />
-            <View style={[styles.pulseDot, { backgroundColor: theme.danger }]} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -210,28 +200,6 @@ export const DashboardScreen = ({
 
       {/* Main Net Worth and Cash Flow Summary */}
       <SummaryCards />
-
-      {/* Smart Auto-Fetch Banner */}
-      <TouchableOpacity
-        onPress={onOpenSmartInbox}
-        style={[styles.autoFetchBanner, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
-        activeOpacity={0.8}
-      >
-        <View style={styles.bannerLeft}>
-          <View style={[styles.bannerIcon, { backgroundColor: `${theme.primary}25` }]}>
-            <Ionicons name="flash-outline" size={18} color={theme.primaryLight} />
-          </View>
-          <View>
-            <Text style={[styles.bannerTitle, { color: theme.text }]}>
-              SMS & Bank Auto-Sync
-            </Text>
-            <Text style={[styles.bannerSub, { color: theme.textMuted }]}>
-              Scan inbox messages & approve pending entries
-            </Text>
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
-      </TouchableOpacity>
 
       {/* Quick Action Buttons */}
       <View style={styles.quickActions}>

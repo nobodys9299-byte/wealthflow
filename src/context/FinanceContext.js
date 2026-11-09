@@ -527,10 +527,28 @@ export const FinanceProvider = ({ children }) => {
   const addRecurring = (item) => {
     const newItem = {
       ...item,
-      id: `rec_${Date.now()}`,
+      id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       amount: parseFloat(item.amount) || 0,
+      frequency: item.frequency || 'monthly',
+      dayOfMonth: parseInt(item.dayOfMonth, 10) || 1,
+      type: item.type || 'expense',
+      nextDueDate: item.nextDueDate || new Date().toISOString().split('T')[0],
     };
     persistRecurring([...recurring, newItem]);
+  };
+
+  const editRecurring = (id, fields) => {
+    const updated = recurring.map((r) =>
+      r.id === id
+        ? {
+            ...r,
+            ...fields,
+            amount: fields.amount !== undefined ? parseFloat(fields.amount) : r.amount,
+            dayOfMonth: fields.dayOfMonth !== undefined ? (parseInt(fields.dayOfMonth, 10) || 1) : r.dayOfMonth,
+          }
+        : r
+    );
+    persistRecurring(updated);
   };
 
   const requestDeleteRecurring = (id) => {
@@ -847,6 +865,7 @@ export const FinanceProvider = ({ children }) => {
         deleteCategoryBudget: requestDeleteBudget,
         recurring,
         addRecurring,
+        editRecurring,
         deleteRecurring: requestDeleteRecurring,
         lendingRecords,
         lendingSummary,

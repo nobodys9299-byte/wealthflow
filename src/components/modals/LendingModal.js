@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -6,20 +6,32 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categories';
+import { formatDateDisplay } from '../../utils/formatters';
+import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
 
 export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
-  const { theme, currency, addLendingRecord } = useFinance();
+  const { theme, currency, categories, addLendingRecord } = useFinance();
 
   const [friendName, setFriendName] = useState(initialFriend);
   const [type, setType] = useState('lent'); // 'lent' (they owe me) or 'borrowed' (I owe them)
   const [amount, setAmount] = useState('');
+  const [categoryId, setCategoryId] = useState('other_exp');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  useEffect(() => {
+    if (initialFriend) {
+      setFriendName(initialFriend);
+    }
+  }, [initialFriend, visible]);
 
   const handleSave = () => {
     const numAmount = parseFloat(amount);
@@ -36,6 +48,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
       friendName: friendName.trim(),
       type,
       amount: numAmount,
+      categoryId,
       date,
       note: note.trim(),
     });
@@ -44,6 +57,10 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
     setNote('');
     onClose();
   };
+
+  const categoryList = type === 'lent'
+    ? (categories?.expense || EXPENSE_CATEGORIES)
+    : (categories?.income || INCOME_CATEGORIES);
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
@@ -55,151 +72,217 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <Text style={{ fontSize: 22 }}>🤝</Text>
-              <Text style={[styles.title, { color: theme.text }]}>Record Friend Loan / Debt</Text>
+              <View style={[styles.iconBadge, { backgroundColor: `${theme.primary}25` }]}>
+                <Ionicons name="swap-horizontal" size={20} color={theme.primaryLight} />
+              </View>
+              <View>
+                <Text style={[styles.title, { color: theme.text }]}>Record Friend Loan / Debt</Text>
+                <Text style={[styles.subText, { color: theme.textMuted }]}>
+                  Track money given or taken
+                </Text>
+              </View>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
             </TouchableOpacity>
           </View>
 
-          {/* Type Toggle: Lent vs Borrowed */}
-          <View style={[styles.typeTabs, { backgroundColor: theme.cardAlt }]}>
-            <TouchableOpacity
-              onPress={() => setType('lent')}
-              style={[
-                styles.typeTab,
-                type === 'lent' && { backgroundColor: theme.success },
-              ]}
-            >
-              <Ionicons
-                name="arrow-up-circle-outline"
-                size={16}
-                color={type === 'lent' ? '#FFF' : theme.textMuted}
-              />
-              <Text
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
+            {/* Type Toggle: Lent vs Borrowed */}
+            <View style={[styles.typeTabs, { backgroundColor: theme.cardAlt }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  setType('lent');
+                  setCategoryId('other_exp');
+                }}
                 style={[
-                  styles.typeTabText,
-                  { color: type === 'lent' ? '#FFF' : theme.textMuted },
+                  styles.typeTab,
+                  type === 'lent' && { backgroundColor: theme.success },
                 ]}
               >
-                I Lent Money (They Owe Me)
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="arrow-up-circle-outline"
+                  size={16}
+                  color={type === 'lent' ? '#FFF' : theme.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.typeTabText,
+                    { color: type === 'lent' ? '#FFF' : theme.textMuted },
+                  ]}
+                >
+                  I Lent (They Owe Me)
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => setType('borrowed')}
-              style={[
-                styles.typeTab,
-                type === 'borrowed' && { backgroundColor: theme.danger },
-              ]}
-            >
-              <Ionicons
-                name="arrow-down-circle-outline"
-                size={16}
-                color={type === 'borrowed' ? '#FFF' : theme.textMuted}
-              />
-              <Text
+              <TouchableOpacity
+                onPress={() => {
+                  setType('borrowed');
+                  setCategoryId('other_inc');
+                }}
                 style={[
-                  styles.typeTabText,
-                  { color: type === 'borrowed' ? '#FFF' : theme.textMuted },
+                  styles.typeTab,
+                  type === 'borrowed' && { backgroundColor: theme.danger },
                 ]}
               >
-                I Borrowed (I Owe Them)
+                <Ionicons
+                  name="arrow-down-circle-outline"
+                  size={16}
+                  color={type === 'borrowed' ? '#FFF' : theme.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.typeTabText,
+                    { color: type === 'borrowed' ? '#FFF' : theme.textMuted },
+                  ]}
+                >
+                  I Borrowed (I Owe)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Friend Name */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Friend / Contact Name</Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.inputBg,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                placeholder="e.g. Alex, Sarah, Michael"
+                placeholderTextColor={theme.textMuted}
+                value={friendName}
+                onChangeText={setFriendName}
+              />
+            </View>
+
+            {/* Amount */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Amount ({currency.symbol})</Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.inputBg,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={theme.textMuted}
+                value={amount}
+                onChangeText={setAmount}
+              />
+            </View>
+
+            {/* Category Selection from Main Categories */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                Category ({type === 'lent' ? 'Expense Reason' : 'Income Source'})
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+                {categoryList.map((cat) => {
+                  const isSelected = categoryId === cat.id;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      onPress={() => setCategoryId(cat.id)}
+                      style={[
+                        styles.catChip,
+                        {
+                          backgroundColor: isSelected ? `${cat.color}25` : theme.inputBg,
+                          borderColor: isSelected ? cat.color : theme.border,
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 16, marginRight: 4 }}>{cat.emoji || '🏷️'}</Text>
+                      <Text
+                        style={[
+                          styles.catChipText,
+                          { color: isSelected ? cat.color : theme.text },
+                        ]}
+                      >
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Interactive Calendar Date Picker */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Date (DD/MM/YY)</Text>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                style={[
+                  styles.dateTrigger,
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
+                ]}
+              >
+                <View style={styles.dateLeft}>
+                  <Ionicons name="calendar-outline" size={18} color={theme.primaryLight} />
+                  <Text style={[styles.dateText, { color: theme.text }]}>
+                    {formatDateDisplay(date)}
+                  </Text>
+                </View>
+                <View style={[styles.datePill, { backgroundColor: `${theme.primary}25` }]}>
+                  <Text style={[styles.datePillText, { color: theme.primaryLight }]}>
+                    Select Date
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color={theme.primaryLight} />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Note / Purpose */}
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Reason / Purpose (Optional)</Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.inputBg,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                placeholder="e.g. Dinner bill split, Emergency loan, Concert ticket"
+                placeholderTextColor={theme.textMuted}
+                value={note}
+                onChangeText={setNote}
+              />
+            </View>
+
+            {/* Submit */}
+            <TouchableOpacity
+              onPress={handleSave}
+              style={[
+                styles.submitBtn,
+                { backgroundColor: type === 'lent' ? theme.success : theme.danger },
+              ]}
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+              <Text style={styles.submitBtnText}>
+                {type === 'lent' ? 'Record Money Given' : 'Record Money Received'}
               </Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Friend Name */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Friend / Contact Name</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="e.g. Alex, Sarah, Michael"
-              placeholderTextColor={theme.textMuted}
-              value={friendName}
-              onChangeText={setFriendName}
-            />
-          </View>
-
-          {/* Amount */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Amount ({currency.symbol})</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={theme.textMuted}
-              value={amount}
-              onChangeText={setAmount}
-            />
-          </View>
-
-          {/* Date */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Transaction Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              value={date}
-              onChangeText={setDate}
-            />
-          </View>
-
-          {/* Note / Purpose */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Reason / Purpose (Optional)</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="e.g. Dinner bill split, Emergency loan, Concert ticket"
-              placeholderTextColor={theme.textMuted}
-              value={note}
-              onChangeText={setNote}
-            />
-          </View>
-
-          {/* Submit */}
-          <TouchableOpacity
-            onPress={handleSave}
-            style={[
-              styles.submitBtn,
-              { backgroundColor: type === 'lent' ? theme.success : theme.danger },
-            ]}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.submitBtnText}>
-              {type === 'lent' ? 'Record Money Given' : 'Record Money Received'}
-            </Text>
-          </TouchableOpacity>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Calendar Date Picker Modal */}
+      <CalendarDatePickerModal
+        visible={showDatePicker}
+        selectedDate={date}
+        onSelectDate={(newDate) => setDate(newDate)}
+        onClose={() => setShowDatePicker(false)}
+      />
     </Modal>
   );
 };
@@ -213,32 +296,51 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 20,
-    paddingBottom: 32,
-    gap: 14,
+    borderBottomWidth: 0,
+    maxHeight: '90%',
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  iconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 18,
     fontWeight: '800',
   },
+  subText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
   closeBtn: {
     padding: 4,
   },
+  scrollBody: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
   typeTabs: {
     flexDirection: 'row',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 4,
+    marginBottom: 16,
   },
   typeTab: {
     flex: 1,
@@ -250,23 +352,72 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   typeTabText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   group: {
-    gap: 6,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
+    marginBottom: 8,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   textInput: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
+  },
+  catRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  catChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  dateTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  dateLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dateText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  datePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 4,
+  },
+  datePillText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   submitBtn: {
     flexDirection: 'row',
@@ -275,7 +426,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 16,
     gap: 8,
-    marginTop: 6,
+    marginTop: 8,
   },
   submitBtnText: {
     color: '#FFF',

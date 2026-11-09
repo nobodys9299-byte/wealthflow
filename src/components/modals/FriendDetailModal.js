@@ -69,7 +69,7 @@ export const FriendDetailModal = ({
       : '';
 
     // WhatsApp Message
-    const message = `Hi ${friend.name}! 👋\n\nFriendly reminder regarding our pending balance on WealthFlow:\n💵 *Amount Due: ${currency.symbol}${amountToRequest}*\n\n${
+    const message = `Hi ${friend.name}! 👋\n\nfriendly reminder regarding our pending balance:\n💵 *Amount Due: ${currency.symbol}${amountToRequest}*\n\n${
       upiId ? `💳 *Pay via UPI ID:* ${upiId}\n📱 *Pay Directly:* ${upiLink}\n\n` : ''
     }Thank you!`;
 
@@ -85,6 +85,48 @@ export const FriendDetailModal = ({
     } catch (e) {
       console.warn(e);
       window.open && window.open(whatsappUrl, '_blank');
+    }
+
+    setShowRequestModal(false);
+  };
+
+  const handleSendDirectSMS = async () => {
+    let amountToRequest = absBalance;
+    if (requestAmountType === 'custom') {
+      const num = parseFloat(customAmount);
+      if (isNaN(num) || num <= 0) {
+        alert('Please enter a valid request amount');
+        return;
+      }
+      amountToRequest = num;
+    }
+
+    if (amountToRequest <= 0) {
+      alert('There is no unsettled balance to request');
+      return;
+    }
+
+    const upiId = userUpiSettings?.upiId || '';
+    const payeeName = userUpiSettings?.payeeName || 'WealthFlow User';
+    const upiLink = upiId
+      ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amountToRequest}&cu=INR`
+      : '';
+
+    const message = `Hi ${friend.name}, friendly reminder regarding our pending balance: ${currency.symbol}${amountToRequest}.${upiId ? ` Pay via UPI: ${upiId} (${upiLink})` : ''} Thank you!`;
+    const smsUrl = Platform.OS === 'ios'
+      ? `sms:&body=${encodeURIComponent(message)}`
+      : `sms:?body=${encodeURIComponent(message)}`;
+
+    try {
+      const supported = await Linking.canOpenURL(smsUrl);
+      if (supported || Platform.OS === 'web') {
+        await Linking.openURL(smsUrl);
+      } else {
+        alert('Could not launch SMS app.');
+      }
+    } catch (e) {
+      console.warn(e);
+      alert('Could not launch SMS app: ' + e.message);
     }
 
     setShowRequestModal(false);
@@ -135,15 +177,25 @@ export const FriendDetailModal = ({
 
           {/* Quick Action Buttons */}
           <View style={styles.actionsRow}>
-            {/* Request Money via WhatsApp (with UPI / QR) */}
+            {/* Request Money via WhatsApp & Direct SMS */}
             {isOwed && absBalance > 0 && (
-              <TouchableOpacity
-                onPress={() => setShowRequestModal(true)}
-                style={[styles.actionBtn, { backgroundColor: '#25D366' }]}
-              >
-                <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
-                <Text style={styles.actionBtnText}>Request via UPI / WhatsApp</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowRequestModal(true)}
+                  style={[styles.actionBtn, { backgroundColor: '#25D366' }]}
+                >
+                  <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
+                  <Text style={styles.actionBtnText}>WhatsApp</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowRequestModal(true)}
+                  style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={16} color="#FFF" />
+                  <Text style={styles.actionBtnText}>Direct SMS</Text>
+                </TouchableOpacity>
+              </>
             )}
 
             {/* Share PDF Statement */}
@@ -152,7 +204,7 @@ export const FriendDetailModal = ({
               style={[styles.actionBtn, { backgroundColor: theme.primary }]}
             >
               <Ionicons name="document-text-outline" size={16} color="#FFF" />
-              <Text style={styles.actionBtnText}>Share Statement PDF</Text>
+              <Text style={styles.actionBtnText}>PDF Statement</Text>
             </TouchableOpacity>
           </View>
 
@@ -312,13 +364,23 @@ export const FriendDetailModal = ({
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  onPress={handleSendWhatsAppRequest}
-                  style={[styles.sendReqBtn, { backgroundColor: '#25D366' }]}
-                >
-                  <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
-                  <Text style={styles.sendReqBtnText}>Send Request to WhatsApp</Text>
-                </TouchableOpacity>
+                <View style={styles.reqBtnRow}>
+                  <TouchableOpacity
+                    onPress={handleSendWhatsAppRequest}
+                    style={[styles.sendReqBtn, { backgroundColor: '#25D366' }]}
+                  >
+                    <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
+                    <Text style={styles.sendReqBtnText}>WhatsApp</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSendDirectSMS}
+                    style={[styles.sendReqBtn, { backgroundColor: '#3B82F6' }]}
+                  >
+                    <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFF" />
+                    <Text style={styles.sendReqBtnText}>Direct SMS</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </Modal>
@@ -531,13 +593,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2,
   },
+  reqBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   sendReqBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 14,
-    gap: 8,
+    gap: 6,
   },
   sendReqBtnText: {
     color: '#FFF',
