@@ -16,7 +16,19 @@ const STORAGE_KEYS = {
   SECURITY: '@spendpulse_security_v1',
   CATEGORIES: '@spendpulse_categories_v2',
   UPI_SETTINGS: '@spendpulse_upi_settings_v1',
+  FRIEND_CATEGORIES: '@wealthflow_friend_categories_v1',
 };
+
+export const DEFAULT_FRIEND_CATEGORIES = [
+  { id: 'fcat_dinner', name: 'Dinner & Food Split', emoji: '🍽️', color: '#F97316' },
+  { id: 'fcat_travel', name: 'Travel & Cab', emoji: '🚗', color: '#06B6D4' },
+  { id: 'fcat_outing', name: 'Movies & Outing', emoji: '🎬', color: '#8B5CF6' },
+  { id: 'fcat_grocery', name: 'Groceries & Supplies', emoji: '🛒', color: '#10B981' },
+  { id: 'fcat_rent', name: 'Rent & Bills', emoji: '⚡', color: '#EAB308' },
+  { id: 'fcat_cash', name: 'Cash Advance / Loan', emoji: '💵', color: '#3B82F6' },
+  { id: 'fcat_gift', name: 'Gifts & Treats', emoji: '🎁', color: '#EC4899' },
+  { id: 'fcat_other', name: 'Shared Expense', emoji: '🤝', color: '#64748B' },
+];
 
 const INITIAL_LENDING = [
   {
@@ -26,6 +38,8 @@ const INITIAL_LENDING = [
     amount: 150,
     date: new Date().toISOString().split('T')[0],
     note: 'Weekend group dinner bill split',
+    friendCategoryId: 'fcat_dinner',
+    friendCategoryName: 'Dinner & Food Split',
     status: 'pending',
   },
   {
@@ -35,6 +49,8 @@ const INITIAL_LENDING = [
     amount: 45,
     date: new Date().toISOString().split('T')[0],
     note: 'Concert ticket advance',
+    friendCategoryId: 'fcat_outing',
+    friendCategoryName: 'Movies & Outing',
     status: 'pending',
   },
 ];
@@ -50,6 +66,9 @@ export const FinanceProvider = ({ children }) => {
   const [currency, setCurrency] = useState(CURRENCIES[0]);
   const [themeId, setThemeId] = useState('dark');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Dedicated Friend Categories (specific only to the Friends tab)
+  const [friendCategories, setFriendCategories] = useState(DEFAULT_FRIEND_CATEGORIES);
 
   // Custom Categories
   const [categories, setCategories] = useState({
@@ -166,6 +185,13 @@ export const FinanceProvider = ({ children }) => {
 
         if (savedUpi) {
           setUserUpiSettings(JSON.parse(savedUpi));
+        }
+
+        const savedFriendCats = await AsyncStorage.getItem(STORAGE_KEYS.FRIEND_CATEGORIES);
+        if (savedFriendCats) {
+          setFriendCategories(JSON.parse(savedFriendCats));
+        } else {
+          setFriendCategories(DEFAULT_FRIEND_CATEGORIES);
         }
 
         if (savedSecurity) {
@@ -601,6 +627,34 @@ export const FinanceProvider = ({ children }) => {
     });
   };
 
+  // Friend Category Management (Specific only to Friends tab)
+  const addFriendCategory = async (cat) => {
+    const newCat = {
+      id: `fcat_${Date.now()}`,
+      name: cat.name.trim(),
+      emoji: cat.emoji || '🤝',
+      color: cat.color || '#3B82F6',
+    };
+    const updated = [...friendCategories, newCat];
+    setFriendCategories(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(updated));
+    } catch (e) {
+      console.warn(e);
+    }
+    return newCat;
+  };
+
+  const deleteFriendCategory = async (id) => {
+    const updated = friendCategories.filter((c) => c.id !== id);
+    setFriendCategories(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(updated));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   // Lending Summary & Friend Groups
   const lendingSummary = useMemo(() => {
     const pending = lendingRecords.filter((r) => r.status === 'pending');
@@ -873,6 +927,10 @@ export const FinanceProvider = ({ children }) => {
         settleFriendDebt,
         deleteFriendAccount,
         deleteLendingRecord: requestDeleteLendingRecord,
+        // Dedicated Friend Categories (Friends tab only)
+        friendCategories,
+        addFriendCategory,
+        deleteFriendCategory,
         // Categories Management
         categories,
         addCategory,

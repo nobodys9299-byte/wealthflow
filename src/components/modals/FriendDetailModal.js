@@ -12,9 +12,20 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFinance } from '../../context/FinanceContext';
+import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { ReceiptImageShareModal } from './ReceiptImageShareModal';
+
+const POPULAR_EMOJIS = [
+  '🍽️', '🚗', '🎬', '🛒', '⚡', '💵', '🎁', '🤝',
+  '☕', '🍻', '🍕', '✈️', '🎮', '🏠', '🍿', '🚴',
+  '🏥', '🎉', '🏖️', '🛍️'
+];
+
+const CATEGORY_COLORS = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+  '#8B5CF6', '#EC4899', '#06B6D4', '#64748B'
+];
 
 export const FriendDetailModal = ({
   visible,
@@ -29,6 +40,9 @@ export const FriendDetailModal = ({
     deleteFriendAccount,
     deleteLendingRecord,
     userUpiSettings,
+    friendCategories = DEFAULT_FRIEND_CATEGORIES,
+    addFriendCategory,
+    deleteFriendCategory,
   } = useFinance();
 
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -36,8 +50,15 @@ export const FriendDetailModal = ({
   const [customAmount, setCustomAmount] = useState('');
   const [isExpandedPopup, setIsExpandedPopup] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
+  const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
   const [showImageShare, setShowImageShare] = useState(false);
   const [selectedTxForImage, setSelectedTxForImage] = useState(null);
+
+  // Custom Friend Category Creator state (Friends tab only)
+  const [showAddCatModal, setShowAddCatModal] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatEmoji, setNewCatEmoji] = useState('🍽️');
+  const [newCatColor, setNewCatColor] = useState('#3B82F6');
 
   if (!friend) return null;
 
@@ -130,16 +151,63 @@ export const FriendDetailModal = ({
     setShowRequestModal(false);
   };
 
+  const handleCreateCategory = async () => {
+    if (!newCatName.trim()) {
+      alert('Please enter a category name (e.g. Goa Trip, Chai Split)');
+      return;
+    }
+
+    try {
+      const created = await addFriendCategory({
+        name: newCatName.trim(),
+        emoji: newCatEmoji || '🤝',
+        color: newCatColor || '#3B82F6',
+      });
+      if (created?.id) {
+        setSelectedCatFilter(created.id);
+      }
+      setNewCatName('');
+      setShowAddCatModal(false);
+    } catch (e) {
+      alert('Could not add category: ' + e.message);
+    }
+  };
+
+  const friendCategoriesInUse = useMemo(() => {
+    const map = new Map();
+    (friend.transactions || []).forEach((t) => {
+      const id = t.friendCategoryId || t.categoryId;
+      const name = t.friendCategoryName || t.categoryName || 'General';
+      const emoji = t.friendCategoryEmoji || t.categoryEmoji || '🤝';
+      if (id && !map.has(id)) {
+        map.set(id, { id, name, emoji });
+      }
+    });
+    return Array.from(map.values());
+  }, [friend.transactions]);
+
   const filteredTransactions = useMemo(() => {
-    if (!searchFilter.trim()) return friend.transactions;
-    const q = searchFilter.toLowerCase().trim();
-    return friend.transactions.filter(
-      (t) =>
-        (t.note && t.note.toLowerCase().includes(q)) ||
-        String(t.amount).includes(q) ||
-        (t.date && t.date.includes(q))
-    );
-  }, [friend.transactions, searchFilter]);
+    let list = friend.transactions || [];
+    if (selectedCatFilter !== 'ALL') {
+      list = list.filter(
+        (t) =>
+          t.friendCategoryId === selectedCatFilter ||
+          t.categoryId === selectedCatFilter ||
+          t.friendCategoryName === selectedCatFilter
+      );
+    }
+    if (searchFilter.trim()) {
+      const q = searchFilter.toLowerCase().trim();
+      list = list.filter(
+        (t) =>
+          (t.note && t.note.toLowerCase().includes(q)) ||
+          (t.friendCategoryName && t.friendCategoryName.toLowerCase().includes(q)) ||
+          String(t.amount).includes(q) ||
+          (t.date && t.date.includes(q))
+      );
+    }
+    return list;
+  }, [friend.transactions, selectedCatFilter, searchFilter]);
 
   return (
     <>
@@ -296,7 +364,7 @@ export const FriendDetailModal = ({
               </View>
             )}
 
-            {/* Transaction History Section */}
+            {/* Transaction History Section Header */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 Transaction History ({filteredTransactions.length})
@@ -312,10 +380,74 @@ export const FriendDetailModal = ({
               </TouchableOpacity>
             </View>
 
+            {/* Isolated Friend Custom Categories Filter Pills (Friends tab only) */}
+            <View style={{ marginBottom: 10 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fCatFilterScroll}>
+                <TouchableOpacity
+                  onPress={() => setSelectedCatFilter('ALL')}
+                  style={[
+                    styles.fCatFilterChip,
+                    {
+                      backgroundColor: selectedCatFilter === 'ALL' ? theme.primary : theme.cardAlt,
+                      borderColor: selectedCatFilter === 'ALL' ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.fCatFilterText, { color: selectedCatFilter === 'ALL' ? '#FFF' : theme.text }]}>
+                    All ({friend.transactions?.length || 0})
+                  </Text>
+                </TouchableOpacity>
+
+                {friendCategories.map((c) => {
+                  const isSelected = selectedCatFilter === c.id;
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      onPress={() => setSelectedCatFilter(isSelected ? 'ALL' : c.id)}
+                      style={[
+                        styles.fCatFilterChip,
+                        {
+                          backgroundColor: isSelected ? `${c.color || theme.primary}30` : theme.cardAlt,
+                          borderColor: isSelected ? (c.color || theme.primary) : theme.border,
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 12, marginRight: 4 }}>{c.emoji || '🤝'}</Text>
+                      <Text
+                        style={[
+                          styles.fCatFilterText,
+                          { color: isSelected ? (c.color || theme.primaryLight) : theme.text },
+                        ]}
+                      >
+                        {c.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <TouchableOpacity
+                  onPress={() => setShowAddCatModal(true)}
+                  style={[
+                    styles.fCatFilterChip,
+                    {
+                      backgroundColor: `${theme.primary}18`,
+                      borderColor: `${theme.primary}50`,
+                      borderStyle: 'dashed',
+                    },
+                  ]}
+                >
+                  <Ionicons name="add" size={14} color={theme.primaryLight} />
+                  <Text style={[styles.fCatFilterText, { color: theme.primaryLight }]}>
+                    New Category
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
             <ScrollView style={styles.txList} showsVerticalScrollIndicator={false}>
               {filteredTransactions.length === 0 ? (
                 <View style={{ padding: 20, alignItems: 'center' }}>
-                  <Text style={{ color: theme.textMuted, fontSize: 12 }}>No transactions found.</Text>
+                  <Text style={{ color: theme.textMuted, fontSize: 12 }}>No transactions found for this filter.</Text>
                 </View>
               ) : (
                 filteredTransactions.map((t) => {
@@ -336,13 +468,23 @@ export const FriendDetailModal = ({
                             color={isLent ? theme.success : theme.danger}
                           />
                         </View>
-                        <View style={{ flex: 1 }}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={[styles.txTitle, { color: theme.text }]} numberOfLines={1}>
                             {t.note || (isLent ? 'Money Lent' : 'Money Borrowed')}
                           </Text>
-                          <Text style={[styles.txDate, { color: theme.textMuted }]}>
-                            {formatDateDisplay(t.date)} • {t.status?.toUpperCase() || 'PENDING'}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                            <Text style={[styles.txDate, { color: theme.textMuted }]}>
+                              {formatDateDisplay(t.date)} • {t.status?.toUpperCase() || 'PENDING'}
+                            </Text>
+                            {(t.friendCategoryName || t.categoryName) && (
+                              <View style={[styles.fCatBadge, { backgroundColor: `${theme.primary}20` }]}>
+                                <Text style={{ fontSize: 10 }}>{t.friendCategoryEmoji || '🤝'}</Text>
+                                <Text style={[styles.fCatBadgeText, { color: theme.primaryLight }]}>
+                                  {t.friendCategoryName || t.categoryName}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                       </View>
 
@@ -458,6 +600,102 @@ export const FriendDetailModal = ({
                 >
                   <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFF" />
                   <Text style={styles.sendBtnText}>Send Direct SMS</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal to Create Dedicated Custom Category for Friends Tab */}
+        <Modal
+          visible={showAddCatModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAddCatModal(false)}
+        >
+          <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+            <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.subModalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.primary}25` }]}>
+                    <Ionicons name="pricetag" size={16} color={theme.primaryLight} />
+                  </View>
+                  <View>
+                    <Text style={[styles.subModalTitle, { color: theme.text }]}>New Friend Category</Text>
+                    <Text style={[styles.subModalSub, { color: theme.textMuted }]}>Friends Tab Only</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setShowAddCatModal(false)}>
+                  <Ionicons name="close" size={20} color={theme.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ marginVertical: 12 }}>
+                <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Category Name</Text>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+                  ]}
+                  placeholder="e.g. Goa Trip, Weekend Party, Chai Split"
+                  placeholderTextColor={theme.textMuted}
+                  value={newCatName}
+                  onChangeText={setNewCatName}
+                  autoFocus
+                />
+              </View>
+
+              {/* Choose Emoji */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Choose Emoji</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiRow}>
+                  {POPULAR_EMOJIS.map((emoji, idx) => (
+                    <TouchableOpacity
+                      key={`emoji_${idx}`}
+                      onPress={() => setNewCatEmoji(emoji)}
+                      style={[
+                        styles.emojiChip,
+                        newCatEmoji === emoji && { backgroundColor: `${theme.primary}30`, borderColor: theme.primary },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Choose Color */}
+              <View style={{ marginBottom: 16 }}>
+                <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Choose Badge Color</Text>
+                <View style={styles.colorRow}>
+                  {CATEGORY_COLORS.map((color, idx) => (
+                    <TouchableOpacity
+                      key={`col_${idx}`}
+                      onPress={() => setNewCatColor(color)}
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: color },
+                        newCatColor === color && styles.colorCircleSelected,
+                      ]}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              {/* Buttons */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => setShowAddCatModal(false)}
+                  style={[styles.cancelBtn, { borderColor: theme.border }]}
+                >
+                  <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCreateCategory}
+                  style={[styles.saveCatBtn, { backgroundColor: theme.primary }]}
+                >
+                  <Ionicons name="checkmark" size={16} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontWeight: '800' }}>Create Category</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -722,5 +960,122 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 13,
     fontWeight: '800',
+  },
+  fCatFilterScroll: {
+    gap: 8,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  fCatFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  fCatFilterText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  fCatBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+  },
+  fCatBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  // Sub Modal for Creating Friend Category
+  subModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  subModalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 20,
+  },
+  subModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  iconBadgeSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  subModalSub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  emojiRow: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  emojiChip: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  colorRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+  colorCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  colorCircleSelected: {
+    borderWidth: 3,
+    borderColor: '#FFF',
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveCatBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
   },
 });

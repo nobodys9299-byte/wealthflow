@@ -236,12 +236,12 @@ export const ReceiptImageShareModal = ({
                   </Text>
                   {(data.transactions || []).slice(0, 4).map((tx, idx) => (
                     <View key={`tx_${idx}`} style={styles.ledgerRow}>
-                      <View style={{ flex: 1 }}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
                         <Text style={styles.ledgerNote} numberOfLines={1}>
-                          {tx.note || (tx.type === 'lent' ? 'Money Lent' : 'Money Borrowed')}
+                          {tx.friendCategoryEmoji ? `${tx.friendCategoryEmoji} ` : ''}{tx.note || (tx.type === 'lent' ? 'Money Lent' : 'Money Borrowed')}
                         </Text>
                         <Text style={styles.ledgerDate}>
-                          {formatDateDisplay(tx.date)} • {tx.type?.toUpperCase()}
+                          {formatDateDisplay(tx.date)} • {tx.friendCategoryName ? `${tx.friendCategoryName} • ` : ''}{tx.type?.toUpperCase()}
                         </Text>
                       </View>
                       <Text
