@@ -678,7 +678,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
               </View>
 
               <TouchableOpacity
-                onPress={handleExportCSVFile}
+                onPress={handleExportCSV}
                 style={[styles.fileActionBtn, { backgroundColor: theme.primary }]}
               >
                 <Ionicons name="download-outline" size={18} color="#FFF" />

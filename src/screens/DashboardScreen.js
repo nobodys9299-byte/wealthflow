@@ -12,11 +12,13 @@ import { useFinance } from '../context/FinanceContext';
 import { SummaryCards } from '../components/SummaryCards';
 import { AccountCard } from '../components/AccountCard';
 import { TransactionItem } from '../components/TransactionItem';
+import { formatCurrency } from '../utils/formatters';
 
 export const DashboardScreen = ({
   onOpenAddTransaction,
   onOpenTransfer,
   onOpenAddAccount,
+  onOpenAddRecurring,
   onOpenSmartInbox,
   onOpenSettings,
   onEditTransaction,
@@ -28,6 +30,8 @@ export const DashboardScreen = ({
     transactions,
     budgetStatusList,
     deleteTransaction,
+    recurring = [],
+    currency,
   } = useFinance();
 
   const [showSearch, setShowSearch] = useState(false);
@@ -226,6 +230,14 @@ export const DashboardScreen = ({
           <Ionicons name="swap-horizontal" size={18} color="#FFF" />
           <Text style={styles.actionBtnText}>Transfer</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onOpenAddRecurring}
+          style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
+        >
+          <Ionicons name="repeat-outline" size={18} color="#FFF" />
+          <Text style={styles.actionBtnText}>Recurring</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Budget Alerts Banner */}
@@ -270,6 +282,66 @@ export const DashboardScreen = ({
           <AccountCard key={acc.id} account={acc} compact />
         ))}
       </ScrollView>
+
+      {/* Recurring Bills & Auto-Pay Section */}
+      <View style={[styles.sectionHeader, { marginTop: 20 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recurring Pay & Bills</Text>
+          <View style={[styles.recBadge, { backgroundColor: '#8B5CF625' }]}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#8B5CF6' }}>
+              {recurring.length}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          onPress={onOpenAddRecurring}
+          style={[styles.addRecHeaderBtn, { backgroundColor: '#8B5CF618', borderColor: '#8B5CF640' }]}
+        >
+          <Ionicons name="add" size={14} color="#8B5CF6" />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B5CF6' }}>Add Recurring</Text>
+        </TouchableOpacity>
+      </View>
+
+      {recurring.length === 0 ? (
+        <TouchableOpacity
+          onPress={onOpenAddRecurring}
+          style={[styles.emptyRecBox, { backgroundColor: theme.card, borderColor: theme.border }]}
+        >
+          <Ionicons name="repeat-outline" size={24} color="#8B5CF6" />
+          <View style={{ flex: 1, marginHorizontal: 10 }}>
+            <Text style={[styles.emptyRecTitle, { color: theme.text }]}>No recurring bills yet</Text>
+            <Text style={[styles.emptyRecSub, { color: theme.textMuted }]}>
+              Schedule subscriptions, rent & utility bills directly from Home
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+        </TouchableOpacity>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recScroll}>
+          {recurring.map((rec) => (
+            <TouchableOpacity
+              key={rec.id}
+              onPress={onOpenAddRecurring}
+              style={[styles.recCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            >
+              <View style={styles.recCardTop}>
+                <View style={[styles.recIconWrap, { backgroundColor: '#8B5CF620' }]}>
+                  <Ionicons name="repeat" size={16} color="#8B5CF6" />
+                </View>
+                <Text style={[styles.recDayTag, { color: theme.textMuted }]}>
+                  Day {rec.dayOfMonth || 1}
+                </Text>
+              </View>
+              <Text style={[styles.recTitle, { color: theme.text }]} numberOfLines={1}>
+                {rec.title}
+              </Text>
+              <Text style={[styles.recAmount, { color: '#8B5CF6' }]}>
+                {formatCurrency(rec.amount, currency.symbol)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Transactions Section: Filtered Search Results OR Recent Activity */}
       <View style={[styles.sectionHeader, { marginTop: 22 }]}>
@@ -434,7 +506,7 @@ const styles = StyleSheet.create({
   },
   quickActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginVertical: 14,
   },
   actionBtn: {
@@ -442,13 +514,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderRadius: 14,
-    gap: 6,
+    gap: 4,
   },
   actionBtnText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
   },
   alertBanner: {
@@ -503,5 +575,73 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  // Recurring Section Styles on Home Tab
+  recBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  addRecHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 4,
+  },
+  emptyRecBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  emptyRecTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emptyRecSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  recScroll: {
+    gap: 10,
+    paddingVertical: 4,
+    marginBottom: 14,
+  },
+  recCard: {
+    width: 140,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  recCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recDayTag: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  recTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  recAmount: {
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

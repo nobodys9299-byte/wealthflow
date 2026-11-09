@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -45,11 +46,12 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [timeframe, setTimeframe] = useState('month'); // 'month' | '30days' | 'year' | 'all'
 
-  // Search & Filter state for transactions inside each view
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAccountId, setSelectedAccountId] = useState('all');
-  const [selectedExpenseCat, setSelectedExpenseCat] = useState('all');
-  const [selectedIncomeCat, setSelectedIncomeCat] = useState('all');
+  // Dedicated Detail Screen for tapped card/head (opens in new screen, not below)
+  const [selectedDetail, setSelectedDetail] = useState(null);
+  const [detailSearch, setDetailSearch] = useState('');
+  const [shareImageModalData, setShareImageModalData] = useState(null);
+
+  // Search & Filter state for individual transaction receipts
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   const currentViewObj = ANALYSIS_VIEWS.find((v) => v.id === activeView) || ANALYSIS_VIEWS[0];
@@ -76,6 +78,20 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       return true; // 'all'
     });
   }, [transactions, timeframe]);
+
+  // Search filtered transactions inside the tapped Head / Card Modal
+  const filteredDetailTransactions = useMemo(() => {
+    if (!selectedDetail?.transactions) return [];
+    if (!detailSearch.trim()) return selectedDetail.transactions;
+    const q = detailSearch.toLowerCase().trim();
+    return selectedDetail.transactions.filter(
+      (t) =>
+        (t.title && t.title.toLowerCase().includes(q)) ||
+        (t.note && t.note.toLowerCase().includes(q)) ||
+        String(t.amount).includes(q) ||
+        (t.date && t.date.includes(q))
+    );
+  }, [selectedDetail?.transactions, detailSearch]);
 
   // Aggregate expenses by category
   const expenseBreakdown = useMemo(() => {
@@ -379,16 +395,25 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
 
           {accountMetrics.map((acc) => {
             const isNegative = acc.currentBalance < 0;
-            const isFilterActive = selectedAccountId === acc.id;
+            const accTxs = transactions.filter((t) => t.accountId === acc.id);
 
             return (
               <TouchableOpacity
                 key={acc.id}
                 activeOpacity={0.8}
-                onPress={() => setSelectedAccountId(isFilterActive ? 'all' : acc.id)}
+                onPress={() => {
+                  setSelectedDetail({
+                    type: 'account',
+                    data: acc,
+                    title: acc.name,
+                    emoji: acc.emoji || '🏦',
+                    amount: acc.currentBalance,
+                    transactions: accTxs,
+                  });
+                }}
                 style={[
                   styles.accountCard,
-                  { backgroundColor: theme.card, borderColor: isFilterActive ? theme.primary : theme.border },
+                  { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
               >
                 <View style={styles.accCardTop}>
@@ -401,7 +426,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                       {acc.name}
                     </Text>
                     <Text style={[styles.accSub, { color: theme.textMuted }]}>
-                      {acc.type?.toUpperCase()} • {acc.txCount} txs • Tap to filter
+                      {acc.type?.toUpperCase()} • {acc.txCount} txs
                     </Text>
                   </View>
 
@@ -435,129 +460,21 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                   />
                 </View>
 
-                {/* Mini cashflow stats row */}
-                <View style={[styles.accBottomRow, { borderTopColor: theme.border }]}>
+                {/* Mini cashflow stats row with tap to open full ledger hint */}
+                <View style={[styles.accBottomRow, { borderTopColor: theme.border, justifyContent: 'space-between' }]}>
                   <Text style={[styles.accMiniLabel, { color: theme.textMuted }]}>
-                    In: <Text style={{ color: theme.success, fontWeight: '700' }}>+{formatCurrency(acc.inflows, currency.symbol)}</Text>
+                    In: <Text style={{ color: theme.success, fontWeight: '700' }}>+{formatCurrency(acc.inflows, currency.symbol)}</Text> • Out: <Text style={{ color: theme.danger, fontWeight: '700' }}>-{formatCurrency(acc.outflows, currency.symbol)}</Text>
                   </Text>
-                  <Text style={[styles.accMiniLabel, { color: theme.textMuted }]}>
-                    Out: <Text style={{ color: theme.danger, fontWeight: '700' }}>-{formatCurrency(acc.outflows, currency.symbol)}</Text>
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight }}>
+                      Open Ledger
+                    </Text>
+                    <Ionicons name="chevron-forward" size={13} color={theme.primaryLight} />
+                  </View>
                 </View>
               </TouchableOpacity>
             );
           })}
-
-          {/* ======================================================== */}
-          {/* ACCOUNT TRANSACTIONS LIST                                */}
-          {/* ======================================================== */}
-          <View style={[styles.txSectionHeader, { marginTop: 14 }]}>
-            <View>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Account Transactions
-              </Text>
-              <Text style={[styles.subText, { color: theme.textMuted }]}>
-                {accountTransactionsList.length} records • {selectedAccountId === 'all' ? 'All Accounts' : accounts.find(a => a.id === selectedAccountId)?.name}
-              </Text>
-            </View>
-
-            {onOpenAddTransaction && (
-              <TouchableOpacity
-                onPress={() => onOpenAddTransaction('expense')}
-                style={[styles.smallAddBtn, { backgroundColor: theme.primary }]}
-              >
-                <Ionicons name="add" size={16} color="#FFF" />
-                <Text style={styles.smallAddBtnText}>Add</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Account Filter Pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsScroll}>
-            <TouchableOpacity
-              onPress={() => setSelectedAccountId('all')}
-              style={[
-                styles.filterPill,
-                {
-                  backgroundColor: selectedAccountId === 'all' ? theme.primary : theme.cardAlt,
-                  borderColor: selectedAccountId === 'all' ? theme.primaryLight : theme.border,
-                },
-              ]}
-            >
-              <Text style={[styles.filterPillText, { color: selectedAccountId === 'all' ? '#FFF' : theme.text }]}>
-                All Accounts
-              </Text>
-            </TouchableOpacity>
-
-            {accounts.map((acc) => {
-              const isSelected = selectedAccountId === acc.id;
-              return (
-                <TouchableOpacity
-                  key={`pill_acc_${acc.id}`}
-                  onPress={() => setSelectedAccountId(acc.id)}
-                  style={[
-                    styles.filterPill,
-                    {
-                      backgroundColor: isSelected ? theme.primary : theme.cardAlt,
-                      borderColor: isSelected ? theme.primaryLight : theme.border,
-                    },
-                  ]}
-                >
-                  <Text style={{ fontSize: 13, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
-                  <Text style={[styles.filterPillText, { color: isSelected ? '#FFF' : theme.text }]}>
-                    {acc.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Search Box */}
-          <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Ionicons name="search-outline" size={16} color={theme.textMuted} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search account transactions..."
-              placeholderTextColor={theme.textMuted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Transaction items */}
-          {accountTransactionsList.length === 0 ? (
-            <View style={[styles.emptyBox, { borderColor: theme.border }]}>
-              <Ionicons name="receipt-outline" size={32} color={theme.textMuted} />
-              <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 4 }}>
-                No transactions found for this account.
-              </Text>
-            </View>
-          ) : (
-            accountTransactionsList.map((item) => (
-              <View key={`tx_acc_${item.id}`} style={{ marginBottom: 6 }}>
-                <TransactionItem
-                  transaction={item}
-                  onPress={() => onEditTransaction && onEditTransaction(item)}
-                  onEdit={onEditTransaction}
-                  onDelete={deleteTransaction}
-                />
-                <TouchableOpacity
-                  onPress={() => setSelectedReceipt(item)}
-                  style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
-                >
-                  <Ionicons name="image-outline" size={13} color="#25D366" />
-                  <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
-                    Share Receipt Image
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
         </View>
       )}
 
@@ -621,19 +538,28 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             expenseBreakdown.map((item, index) => {
               const cat = getCategoryById(item.categoryId, 'expense');
               const percent = totalExpense > 0 ? Math.round((item.amount / totalExpense) * 100) : 0;
-              const isSelected = selectedExpenseCat === item.categoryId;
+              const catTxs = filteredTransactions.filter((t) => t.categoryId === item.categoryId && t.type === 'expense');
 
               return (
                 <TouchableOpacity
                   key={item.categoryId}
                   activeOpacity={0.8}
-                  onPress={() => setSelectedExpenseCat(isSelected ? 'all' : item.categoryId)}
+                  onPress={() => {
+                    setSelectedDetail({
+                      type: 'category',
+                      data: { ...cat, totalAmount: item.amount, type: 'expense' },
+                      title: cat.name,
+                      emoji: cat.emoji || '🏷️',
+                      amount: item.amount,
+                      categoryType: 'expense',
+                      transactions: catTxs,
+                    });
+                  }}
                   style={[
                     styles.breakdownRowCard,
                     {
                       backgroundColor: theme.card,
-                      borderColor: isSelected ? cat.color : theme.border,
-                      borderWidth: isSelected ? 2 : 1,
+                      borderColor: theme.border,
                     },
                   ]}
                 >
@@ -647,13 +573,16 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                         #{index + 1} {cat.name}
                       </Text>
                       <Text style={[styles.catRowPercent, { color: theme.textMuted }]}>
-                        {percent}% of total spend • Tap to filter transactions
+                        {percent}% of spend • Tap to open ledger ({catTxs.length} txs) →
                       </Text>
                     </View>
 
-                    <Text style={[styles.catRowAmount, { color: theme.danger }]}>
-                      -{formatCurrency(item.amount, currency.symbol)}
-                    </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.catRowAmount, { color: theme.danger }]}>
+                        -{formatCurrency(item.amount, currency.symbol)}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={14} color={theme.primaryLight} style={{ marginTop: 2 }} />
+                    </View>
                   </View>
 
                   {/* Progress Fill */}
@@ -677,118 +606,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             </View>
             <CashflowBarChart monthlyData={monthlyBarData} />
           </View>
-
-          {/* ======================================================== */}
-          {/* EXPENSE TRANSACTIONS LIST                                */}
-          {/* ======================================================== */}
-          <View style={[styles.txSectionHeader, { marginTop: 18 }]}>
-            <View>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Expense Transactions
-              </Text>
-              <Text style={[styles.subText, { color: theme.textMuted }]}>
-                {expenseTransactionsList.length} records • {selectedExpenseCat === 'all' ? 'All Categories' : getCategoryById(selectedExpenseCat, 'expense')?.name}
-              </Text>
-            </View>
-
-            {onOpenAddTransaction && (
-              <TouchableOpacity
-                onPress={() => onOpenAddTransaction('expense')}
-                style={[styles.smallAddBtn, { backgroundColor: theme.danger }]}
-              >
-                <Ionicons name="add" size={16} color="#FFF" />
-                <Text style={styles.smallAddBtnText}>Add Expense</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Category Filter Pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsScroll}>
-            <TouchableOpacity
-              onPress={() => setSelectedExpenseCat('all')}
-              style={[
-                styles.filterPill,
-                {
-                  backgroundColor: selectedExpenseCat === 'all' ? theme.primary : theme.cardAlt,
-                  borderColor: selectedExpenseCat === 'all' ? theme.primaryLight : theme.border,
-                },
-              ]}
-            >
-              <Text style={[styles.filterPillText, { color: selectedExpenseCat === 'all' ? '#FFF' : theme.text }]}>
-                All Categories
-              </Text>
-            </TouchableOpacity>
-
-            {expenseBreakdown.map((item) => {
-              const cat = getCategoryById(item.categoryId, 'expense');
-              const isSelected = selectedExpenseCat === item.categoryId;
-              return (
-                <TouchableOpacity
-                  key={`pill_exp_${item.categoryId}`}
-                  onPress={() => setSelectedExpenseCat(item.categoryId)}
-                  style={[
-                    styles.filterPill,
-                    {
-                      backgroundColor: isSelected ? theme.primary : theme.cardAlt,
-                      borderColor: isSelected ? theme.primaryLight : theme.border,
-                    },
-                  ]}
-                >
-                  <Text style={{ fontSize: 13, marginRight: 4 }}>{cat.emoji || '🏷️'}</Text>
-                  <Text style={[styles.filterPillText, { color: isSelected ? '#FFF' : theme.text }]}>
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Search Box */}
-          <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Ionicons name="search-outline" size={16} color={theme.textMuted} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search expenses by title, merchant, note..."
-              placeholderTextColor={theme.textMuted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Expense Transaction Items */}
-          {expenseTransactionsList.length === 0 ? (
-            <View style={[styles.emptyBox, { borderColor: theme.border }]}>
-              <Ionicons name="receipt-outline" size={32} color={theme.textMuted} />
-              <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 4 }}>
-                No expenses found matching your filter.
-              </Text>
-            </View>
-          ) : (
-            expenseTransactionsList.map((item) => (
-              <View key={`tx_exp_${item.id}`} style={{ marginBottom: 6 }}>
-                <TransactionItem
-                  transaction={item}
-                  onPress={() => onEditTransaction && onEditTransaction(item)}
-                  onEdit={onEditTransaction}
-                  onDelete={deleteTransaction}
-                />
-                <TouchableOpacity
-                  onPress={() => setSelectedReceipt(item)}
-                  style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
-                >
-                  <Ionicons name="image-outline" size={13} color="#25D366" />
-                  <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
-                    Share Receipt Image
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
         </View>
       )}
 
@@ -852,19 +669,28 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             incomeBreakdown.map((item, index) => {
               const cat = getCategoryById(item.categoryId, 'income');
               const percent = totalIncome > 0 ? Math.round((item.amount / totalIncome) * 100) : 0;
-              const isSelected = selectedIncomeCat === item.categoryId;
+              const catTxs = filteredTransactions.filter((t) => t.categoryId === item.categoryId && t.type === 'income');
 
               return (
                 <TouchableOpacity
                   key={item.categoryId}
                   activeOpacity={0.8}
-                  onPress={() => setSelectedIncomeCat(isSelected ? 'all' : item.categoryId)}
+                  onPress={() => {
+                    setSelectedDetail({
+                      type: 'category',
+                      data: { ...cat, totalAmount: item.amount, type: 'income' },
+                      title: cat.name,
+                      emoji: cat.emoji || '💰',
+                      amount: item.amount,
+                      categoryType: 'income',
+                      transactions: catTxs,
+                    });
+                  }}
                   style={[
                     styles.breakdownRowCard,
                     {
                       backgroundColor: theme.card,
-                      borderColor: isSelected ? cat.color : theme.border,
-                      borderWidth: isSelected ? 2 : 1,
+                      borderColor: theme.border,
                     },
                   ]}
                 >
@@ -878,13 +704,16 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                         #{index + 1} {cat.name}
                       </Text>
                       <Text style={[styles.catRowPercent, { color: theme.textMuted }]}>
-                        {percent}% of total income • Tap to filter transactions
+                        {percent}% of income • Tap to open ledger ({catTxs.length} txs) →
                       </Text>
                     </View>
 
-                    <Text style={[styles.catRowAmount, { color: theme.success }]}>
-                      +{formatCurrency(item.amount, currency.symbol)}
-                    </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.catRowAmount, { color: theme.success }]}>
+                        +{formatCurrency(item.amount, currency.symbol)}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={14} color={theme.primaryLight} style={{ marginTop: 2 }} />
+                    </View>
                   </View>
 
                   <View style={[styles.catProgressTrack, { backgroundColor: theme.cardAlt }]}>
@@ -907,118 +736,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             </View>
             <CashflowBarChart monthlyData={monthlyBarData} />
           </View>
-
-          {/* ======================================================== */}
-          {/* INCOME TRANSACTIONS LIST                                 */}
-          {/* ======================================================== */}
-          <View style={[styles.txSectionHeader, { marginTop: 18 }]}>
-            <View>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Income Transactions
-              </Text>
-              <Text style={[styles.subText, { color: theme.textMuted }]}>
-                {incomeTransactionsList.length} records • {selectedIncomeCat === 'all' ? 'All Income Streams' : getCategoryById(selectedIncomeCat, 'income')?.name}
-              </Text>
-            </View>
-
-            {onOpenAddTransaction && (
-              <TouchableOpacity
-                onPress={() => onOpenAddTransaction('income')}
-                style={[styles.smallAddBtn, { backgroundColor: theme.success }]}
-              >
-                <Ionicons name="add" size={16} color="#FFF" />
-                <Text style={styles.smallAddBtnText}>Add Income</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Income Category Filter Pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsScroll}>
-            <TouchableOpacity
-              onPress={() => setSelectedIncomeCat('all')}
-              style={[
-                styles.filterPill,
-                {
-                  backgroundColor: selectedIncomeCat === 'all' ? theme.primary : theme.cardAlt,
-                  borderColor: selectedIncomeCat === 'all' ? theme.primaryLight : theme.border,
-                },
-              ]}
-            >
-              <Text style={[styles.filterPillText, { color: selectedIncomeCat === 'all' ? '#FFF' : theme.text }]}>
-                All Streams
-              </Text>
-            </TouchableOpacity>
-
-            {incomeBreakdown.map((item) => {
-              const cat = getCategoryById(item.categoryId, 'income');
-              const isSelected = selectedIncomeCat === item.categoryId;
-              return (
-                <TouchableOpacity
-                  key={`pill_inc_${item.categoryId}`}
-                  onPress={() => setSelectedIncomeCat(item.categoryId)}
-                  style={[
-                    styles.filterPill,
-                    {
-                      backgroundColor: isSelected ? theme.primary : theme.cardAlt,
-                      borderColor: isSelected ? theme.primaryLight : theme.border,
-                    },
-                  ]}
-                >
-                  <Text style={{ fontSize: 13, marginRight: 4 }}>{cat.emoji || '💰'}</Text>
-                  <Text style={[styles.filterPillText, { color: isSelected ? '#FFF' : theme.text }]}>
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Search Box */}
-          <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Ionicons name="search-outline" size={16} color={theme.textMuted} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search income by title, payer, note..."
-              placeholderTextColor={theme.textMuted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Income Transaction Items */}
-          {incomeTransactionsList.length === 0 ? (
-            <View style={[styles.emptyBox, { borderColor: theme.border }]}>
-              <Ionicons name="receipt-outline" size={32} color={theme.textMuted} />
-              <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 4 }}>
-                No income found matching your filter.
-              </Text>
-            </View>
-          ) : (
-            incomeTransactionsList.map((item) => (
-              <View key={`tx_inc_${item.id}`} style={{ marginBottom: 6 }}>
-                <TransactionItem
-                  transaction={item}
-                  onPress={() => onEditTransaction && onEditTransaction(item)}
-                  onEdit={onEditTransaction}
-                  onDelete={deleteTransaction}
-                />
-                <TouchableOpacity
-                  onPress={() => setSelectedReceipt(item)}
-                  style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
-                >
-                  <Ionicons name="image-outline" size={13} color="#25D366" />
-                  <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
-                    Share Receipt Image
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
         </View>
       )}
 
@@ -1091,6 +808,130 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         onClose={() => setSelectedReceipt(null)}
         type="transaction"
         data={selectedReceipt}
+      />
+
+      {/* ======================================================== */}
+      {/* DEDICATED NEW SCREEN MODAL FOR TAPPED CARD / HEAD        */}
+      {/* ======================================================== */}
+      <Modal
+        visible={!!selectedDetail}
+        animationType="slide"
+        onRequestClose={() => {
+          setSelectedDetail(null);
+          setDetailSearch('');
+        }}
+      >
+        <SafeAreaView style={[styles.detailModalContainer, { backgroundColor: theme.bg }]}>
+          {/* Top Detail Header */}
+          <View style={[styles.detailHeader, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedDetail(null);
+                setDetailSearch('');
+              }}
+              style={[styles.backIconBtn, { backgroundColor: theme.cardAlt }]}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.text} />
+            </TouchableOpacity>
+
+            <View style={{ flex: 1, marginHorizontal: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 18 }}>{selectedDetail?.emoji || '📋'}</Text>
+                <Text style={[styles.detailTitle, { color: theme.text }]} numberOfLines={1}>
+                  {selectedDetail?.title}
+                </Text>
+              </View>
+              <Text style={[styles.detailSub, { color: theme.textMuted }]}>
+                {selectedDetail?.type === 'account'
+                  ? `${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} Balance • ${selectedDetail?.transactions?.length || 0} Records`
+                  : `${selectedDetail?.categoryType === 'income' ? '+' : '-'}${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} • ${selectedDetail?.transactions?.length || 0} Records`}
+              </Text>
+            </View>
+
+            {/* Share entire account or category as single WhatsApp image */}
+            <TouchableOpacity
+              onPress={() => {
+                setShareImageModalData({
+                  type: selectedDetail.type,
+                  data: {
+                    ...selectedDetail.data,
+                    name: selectedDetail.title,
+                    emoji: selectedDetail.emoji,
+                    currentBalance: selectedDetail.amount,
+                    totalAmount: selectedDetail.amount,
+                    type: selectedDetail.categoryType || selectedDetail.data?.type || 'account',
+                    transactions: selectedDetail.transactions || [],
+                  },
+                });
+              }}
+              style={styles.shareAllImageBtn}
+            >
+              <Ionicons name="image-outline" size={15} color="#FFF" />
+              <Text style={styles.shareAllImageBtnText}>Share All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Bar inside Detail Screen */}
+          <View style={[styles.detailSearchRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Ionicons name="search-outline" size={16} color={theme.textMuted} />
+            <TextInput
+              style={[styles.detailSearchInput, { color: theme.text }]}
+              placeholder={`Search ${selectedDetail?.title} transactions...`}
+              placeholderTextColor={theme.textMuted}
+              value={detailSearch}
+              onChangeText={setDetailSearch}
+            />
+            {detailSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setDetailSearch('')}>
+                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Scrollable List of Transactions */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {filteredDetailTransactions.length === 0 ? (
+              <View style={[styles.emptyBox, { borderColor: theme.border }]}>
+                <Ionicons name="receipt-outline" size={36} color={theme.textMuted} />
+                <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 8 }}>
+                  No transactions found for {selectedDetail?.title}.
+                </Text>
+              </View>
+            ) : (
+              filteredDetailTransactions.map((item) => (
+                <View key={`detail_item_${item.id}`} style={{ marginBottom: 8 }}>
+                  <TransactionItem
+                    transaction={item}
+                    onPress={() => onEditTransaction && onEditTransaction(item)}
+                    onEdit={onEditTransaction}
+                    onDelete={deleteTransaction}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setSelectedReceipt(item)}
+                    style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
+                  >
+                    <Ionicons name="image-outline" size={13} color="#25D366" />
+                    <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
+                      Share Single Receipt Image
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* WhatsApp Full Image Statement Modal (Entire Account or Entire Category at once) */}
+      <ReceiptImageShareModal
+        visible={!!shareImageModalData}
+        onClose={() => setShareImageModalData(null)}
+        type={shareImageModalData?.type || 'account'}
+        data={shareImageModalData?.data}
       />
     </ScrollView>
   );
@@ -1506,5 +1347,63 @@ const styles = StyleSheet.create({
   menuItemSub: {
     fontSize: 11,
     marginTop: 2,
+  },
+  // Dedicated Detail Screen Modal styles
+  detailModalContainer: {
+    flex: 1,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  backIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  detailSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  shareAllImageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#25D366',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  shareAllImageBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  detailSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  detailSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    padding: 0,
   },
 });

@@ -60,10 +60,48 @@ export const FriendDetailModal = ({
   const [newCatEmoji, setNewCatEmoji] = useState('🍽️');
   const [newCatColor, setNewCatColor] = useState('#3B82F6');
 
-  if (!friend) return null;
+  const isOwed = (friend?.balance || 0) >= 0;
+  const absBalance = Math.abs(friend?.balance || 0);
 
-  const isOwed = friend.balance >= 0;
-  const absBalance = Math.abs(friend.balance);
+  const friendCategoriesInUse = useMemo(() => {
+    if (!friend?.transactions) return [];
+    const map = new Map();
+    (friend.transactions || []).forEach((t) => {
+      const id = t.friendCategoryId || t.categoryId;
+      const name = t.friendCategoryName || t.categoryName || 'General';
+      const emoji = t.friendCategoryEmoji || t.categoryEmoji || '🤝';
+      if (id && !map.has(id)) {
+        map.set(id, { id, name, emoji });
+      }
+    });
+    return Array.from(map.values());
+  }, [friend?.transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    if (!friend?.transactions) return [];
+    let list = friend.transactions || [];
+    if (selectedCatFilter !== 'ALL') {
+      list = list.filter(
+        (t) =>
+          t.friendCategoryId === selectedCatFilter ||
+          t.categoryId === selectedCatFilter ||
+          t.friendCategoryName === selectedCatFilter
+      );
+    }
+    if (searchFilter.trim()) {
+      const q = searchFilter.toLowerCase().trim();
+      list = list.filter(
+        (t) =>
+          (t.note && t.note.toLowerCase().includes(q)) ||
+          (t.friendCategoryName && t.friendCategoryName.toLowerCase().includes(q)) ||
+          String(t.amount).includes(q) ||
+          (t.date && t.date.includes(q))
+      );
+    }
+    return list;
+  }, [friend?.transactions, selectedCatFilter, searchFilter]);
+
+  if (!visible || !friend) return null;
 
   const handleSendWhatsAppRequest = async () => {
     const upiId = userUpiSettings?.upiId || '';
@@ -172,42 +210,6 @@ export const FriendDetailModal = ({
       alert('Could not add category: ' + e.message);
     }
   };
-
-  const friendCategoriesInUse = useMemo(() => {
-    const map = new Map();
-    (friend.transactions || []).forEach((t) => {
-      const id = t.friendCategoryId || t.categoryId;
-      const name = t.friendCategoryName || t.categoryName || 'General';
-      const emoji = t.friendCategoryEmoji || t.categoryEmoji || '🤝';
-      if (id && !map.has(id)) {
-        map.set(id, { id, name, emoji });
-      }
-    });
-    return Array.from(map.values());
-  }, [friend.transactions]);
-
-  const filteredTransactions = useMemo(() => {
-    let list = friend.transactions || [];
-    if (selectedCatFilter !== 'ALL') {
-      list = list.filter(
-        (t) =>
-          t.friendCategoryId === selectedCatFilter ||
-          t.categoryId === selectedCatFilter ||
-          t.friendCategoryName === selectedCatFilter
-      );
-    }
-    if (searchFilter.trim()) {
-      const q = searchFilter.toLowerCase().trim();
-      list = list.filter(
-        (t) =>
-          (t.note && t.note.toLowerCase().includes(q)) ||
-          (t.friendCategoryName && t.friendCategoryName.toLowerCase().includes(q)) ||
-          String(t.amount).includes(q) ||
-          (t.date && t.date.includes(q))
-      );
-    }
-    return list;
-  }, [friend.transactions, selectedCatFilter, searchFilter]);
 
   return (
     <>
@@ -520,9 +522,9 @@ export const FriendDetailModal = ({
           </View>
         </View>
 
-        {/* UPI Request Config Modal */}
-        <Modal visible={showRequestModal} transparent animationType="fade" onRequestClose={() => setShowRequestModal(false)}>
-          <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+        {/* UPI Request Config Overlay (View-based to prevent Android nested modal white screens) */}
+        {showRequestModal && (
+          <View style={[StyleSheet.absoluteFillObject, styles.subModalOverlay, { backgroundColor: theme.modalOverlay, zIndex: 100 }]}>
             <View style={[styles.requestCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: theme.text }]}>Send Payment Request</Text>
@@ -604,16 +606,11 @@ export const FriendDetailModal = ({
               </View>
             </View>
           </View>
-        </Modal>
+        )}
 
-        {/* Modal to Create Dedicated Custom Category for Friends Tab */}
-        <Modal
-          visible={showAddCatModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowAddCatModal(false)}
-        >
-          <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        {/* Dedicated Custom Category Creator Overlay for Friends Tab */}
+        {showAddCatModal && (
+          <View style={[StyleSheet.absoluteFillObject, styles.subModalOverlay, { backgroundColor: theme.modalOverlay, zIndex: 101 }]}>
             <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.subModalHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -700,7 +697,7 @@ export const FriendDetailModal = ({
               </View>
             </View>
           </View>
-        </Modal>
+        )}
       </Modal>
 
       {/* WhatsApp Image Statement Preview Modal */}

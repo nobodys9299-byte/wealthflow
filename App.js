@@ -38,6 +38,7 @@ function MainApp() {
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Modals state
   const [txModalVisible, setTxModalVisible] = useState(false);
@@ -117,8 +118,9 @@ function MainApp() {
             onOpenAddTransaction={openAddTransaction}
             onOpenTransfer={() => setTransferModalVisible(true)}
             onOpenAddAccount={openAddAccount}
+            onOpenAddRecurring={openAddRecurring}
             onOpenSmartInbox={() => setSmartInboxVisible(true)}
-            onOpenSettings={() => setActiveTab('settings')}
+            onOpenSettings={() => setDrawerOpen(true)}
             onEditTransaction={openEditTransaction}
             onNavigateTab={setActiveTab}
           />
@@ -292,6 +294,167 @@ function MainApp() {
         }}
         initialData={editingRecurring}
       />
+
+      {/* Slide-out Navigation Drawer from Top-Left 3-Bar Menu */}
+      <Modal
+        visible={drawerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDrawerOpen(false)}
+      >
+        <View style={styles.drawerBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setDrawerOpen(false)}
+          />
+
+          <View style={[styles.drawerContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {/* Drawer Header */}
+            <View style={[styles.drawerHeader, { borderBottomColor: theme.border }]}>
+              <View style={[styles.drawerBrandIcon, { backgroundColor: `${theme.primary}25` }]}>
+                <Ionicons name="wallet" size={24} color={theme.primaryLight} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.drawerBrandTitle, { color: theme.text }]}>WealthFlow</Text>
+                <Text style={[styles.drawerBrandSub, { color: theme.textMuted }]}>Smart Finance Tracker</Text>
+              </View>
+              <TouchableOpacity onPress={() => setDrawerOpen(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Navigation Items */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 12 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setActiveTab('dashboard');
+                  setDrawerOpen(false);
+                }}
+                style={[styles.drawerItem, activeTab === 'dashboard' && { backgroundColor: `${theme.primary}18` }]}
+              >
+                <Ionicons name="home-outline" size={20} color={activeTab === 'dashboard' ? theme.primaryLight : theme.text} />
+                <Text style={[styles.drawerItemText, { color: activeTab === 'dashboard' ? theme.primaryLight : theme.text }]}>
+                  Home Dashboard
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setActiveTab('analytics');
+                  setDrawerOpen(false);
+                }}
+                style={[styles.drawerItem, activeTab === 'analytics' && { backgroundColor: `${theme.primary}18` }]}
+              >
+                <Ionicons name="stats-chart-outline" size={20} color={activeTab === 'analytics' ? theme.primaryLight : theme.text} />
+                <Text style={[styles.drawerItemText, { color: activeTab === 'analytics' ? theme.primaryLight : theme.text }]}>
+                  Analysis & Breakdown
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setActiveTab('lending');
+                  setDrawerOpen(false);
+                }}
+                style={[styles.drawerItem, activeTab === 'lending' && { backgroundColor: `${theme.primary}18` }]}
+              >
+                <Ionicons name="swap-horizontal-outline" size={20} color={activeTab === 'lending' ? theme.primaryLight : theme.text} />
+                <Text style={[styles.drawerItemText, { color: activeTab === 'lending' ? theme.primaryLight : theme.text }]}>
+                  Friends & Loans
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setActiveTab('budgets');
+                  setDrawerOpen(false);
+                }}
+                style={[styles.drawerItem, activeTab === 'budgets' && { backgroundColor: `${theme.primary}18` }]}
+              >
+                <Ionicons name="shield-outline" size={20} color={activeTab === 'budgets' ? theme.primaryLight : theme.text} />
+                <Text style={[styles.drawerItemText, { color: activeTab === 'budgets' ? theme.primaryLight : theme.text }]}>
+                  Budgets & Goals
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setActiveTab('accounts');
+                  setDrawerOpen(false);
+                }}
+                style={[styles.drawerItem, activeTab === 'accounts' && { backgroundColor: `${theme.primary}18` }]}
+              >
+                <Ionicons name="wallet-outline" size={20} color={activeTab === 'accounts' ? theme.primaryLight : theme.text} />
+                <Text style={[styles.drawerItemText, { color: activeTab === 'accounts' ? theme.primaryLight : theme.text }]}>
+                  Wallets & Accounts
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setDrawerOpen(false);
+                  openAddRecurring();
+                }}
+                style={styles.drawerItem}
+              >
+                <Ionicons name="repeat-outline" size={20} color="#8B5CF6" />
+                <Text style={[styles.drawerItemText, { color: theme.text }]}>
+                  Recurring Bills & Pay
+                </Text>
+              </TouchableOpacity>
+
+              <View style={[styles.drawerDivider, { backgroundColor: theme.border }]} />
+
+              <TouchableOpacity
+                onPress={() => {
+                  setActiveTab('settings');
+                  setDrawerOpen(false);
+                }}
+                style={[styles.drawerItem, activeTab === 'settings' && { backgroundColor: `${theme.primary}18` }]}
+              >
+                <Ionicons name="settings-outline" size={20} color={activeTab === 'settings' ? theme.primaryLight : theme.text} />
+                <Text style={[styles.drawerItemText, { color: activeTab === 'settings' ? theme.primaryLight : theme.text }]}>
+                  Settings & Security
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setDrawerOpen(false);
+                  setSmartInboxVisible(true);
+                }}
+                style={styles.drawerItem}
+              >
+                <Ionicons name="mail-unread-outline" size={20} color={theme.text} />
+                <Text style={[styles.drawerItemText, { color: theme.text }]}>
+                  SMS & Bank Auto Sync
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setDrawerOpen(false);
+                  setIsAppUnlocked(false);
+                }}
+                style={styles.drawerItem}
+              >
+                <Ionicons name="lock-closed-outline" size={20} color={theme.danger} />
+                <Text style={[styles.drawerItemText, { color: theme.danger }]}>
+                  Lock App Now
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* Drawer Footer */}
+            <View style={[styles.drawerFooter, { borderTopColor: theme.border }]}>
+              <Text style={[styles.drawerFooterText, { color: theme.textMuted }]}>
+                WealthFlow v2.2.0 • Offline Ready
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -350,5 +513,75 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     marginTop: 3,
+  },
+  // Slide-out Drawer Styles
+  drawerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    flexDirection: 'row',
+  },
+  drawerContent: {
+    width: '80%',
+    maxWidth: 320,
+    height: '100%',
+    borderRightWidth: 1,
+    paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight || 24) + 8 : 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  drawerBrandIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerBrandTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  drawerBrandSub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    marginHorizontal: 10,
+    borderRadius: 12,
+    gap: 14,
+    marginBottom: 2,
+  },
+  drawerItemText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  drawerDivider: {
+    height: 1,
+    marginHorizontal: 18,
+    marginVertical: 8,
+  },
+  drawerFooter: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    alignItems: 'center',
+  },
+  drawerFooterText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

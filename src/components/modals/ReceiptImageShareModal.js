@@ -102,6 +102,8 @@ export const ReceiptImageShareModal = ({
                     ? 'RECEIPT'
                     : type === 'friend'
                     ? 'LENDING STATEMENT'
+                    : type === 'category'
+                    ? 'CATEGORY STATEMENT'
                     : 'ACCOUNT STATEMENT'}
                 </Text>
               </View>
@@ -258,39 +260,131 @@ export const ReceiptImageShareModal = ({
                 </View>
               )}
 
-              {/* 3. Account Statement Layout */}
+              {/* 3. Account Statement Layout with Full Transaction Ledger */}
               {type === 'account' && (
                 <View style={styles.receiptBody}>
                   <Text style={styles.receiptLabel}>WALLET / ACCOUNT STATEMENT</Text>
-                  <Text style={styles.friendName}>{data.name}</Text>
+                  <Text style={styles.friendName}>
+                    {data.emoji ? `${data.emoji} ` : ''}{data.name}
+                  </Text>
                   <Text style={[styles.amountText, { color: '#38BDF8', marginTop: 4 }]}>
-                    {formatCurrency(data.currentBalance, currency.symbol)}
+                    {formatCurrency(data.currentBalance !== undefined ? data.currentBalance : data.balance || 0, currency.symbol)}
                   </Text>
 
                   <View style={styles.metaGrid}>
                     <View style={styles.metaRow}>
                       <Text style={styles.metaKey}>Account Type</Text>
-                      <Text style={styles.metaVal}>{data.type?.toUpperCase()}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={styles.metaKey}>Starting Balance</Text>
-                      <Text style={styles.metaVal}>
-                        {formatCurrency(data.initialBalance, currency.symbol)}
-                      </Text>
+                      <Text style={styles.metaVal}>{data.type?.toUpperCase() || 'WALLET'}</Text>
                     </View>
                     <View style={styles.metaRow}>
                       <Text style={styles.metaKey}>Total Inflows</Text>
                       <Text style={[styles.metaVal, { color: '#34D399' }]}>
-                        +{formatCurrency(data.totalIncome || 0, currency.symbol)}
+                        +{formatCurrency(data.totalIncome || data.inflows || 0, currency.symbol)}
                       </Text>
                     </View>
                     <View style={styles.metaRow}>
                       <Text style={styles.metaKey}>Total Outflows</Text>
                       <Text style={[styles.metaVal, { color: '#F87171' }]}>
-                        -{formatCurrency(data.totalExpense || 0, currency.symbol)}
+                        -{formatCurrency(data.totalExpense || data.outflows || 0, currency.symbol)}
                       </Text>
                     </View>
                   </View>
+
+                  {/* Account Transactions Ledger */}
+                  <Text style={styles.recentTxHeading}>
+                    ACCOUNT TRANSACTIONS ({data.transactions?.length || 0} RECORDS)
+                  </Text>
+                  {(data.transactions || []).length === 0 ? (
+                    <Text style={{ color: '#94A3B8', fontSize: 11, fontStyle: 'italic', marginVertical: 4 }}>
+                      No transactions recorded in this account yet.
+                    </Text>
+                  ) : (
+                    (data.transactions || []).slice(0, 15).map((tx, idx) => (
+                      <View key={`acc_tx_${idx}`} style={styles.ledgerRow}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.ledgerNote} numberOfLines={1}>
+                            {tx.title || tx.note || 'Transaction'}
+                          </Text>
+                          <Text style={styles.ledgerDate}>
+                            {formatDateDisplay(tx.date)} • {tx.type?.toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.ledgerAmt,
+                            { color: tx.type === 'income' ? '#34D399' : '#F87171' },
+                          ]}
+                        >
+                          {tx.type === 'income' ? '+' : '-'}
+                          {formatCurrency(tx.amount, currency.symbol)}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              )}
+
+              {/* 4. Category Statement Layout with Full Transaction Ledger */}
+              {type === 'category' && (
+                <View style={styles.receiptBody}>
+                  <Text style={styles.receiptLabel}>CATEGORY STATEMENT</Text>
+                  <Text style={styles.friendName}>
+                    {data.emoji ? `${data.emoji} ` : ''}{data.name || data.categoryId}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.amountText,
+                      { color: data.type === 'income' ? '#34D399' : '#F87171', marginTop: 4 },
+                    ]}
+                  >
+                    {data.type === 'income' ? '+' : '-'}
+                    {formatCurrency(data.totalAmount || data.amount || 0, currency.symbol)}
+                  </Text>
+
+                  <View style={styles.metaGrid}>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaKey}>Category Type</Text>
+                      <Text style={styles.metaVal}>
+                        {data.type === 'income' ? 'Income Stream' : 'Expense Category'}
+                      </Text>
+                    </View>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaKey}>Total Records</Text>
+                      <Text style={styles.metaVal}>{data.transactions?.length || 0} Transactions</Text>
+                    </View>
+                  </View>
+
+                  {/* Category Transactions Ledger */}
+                  <Text style={styles.recentTxHeading}>
+                    ALL CATEGORY TRANSACTIONS ({data.transactions?.length || 0} RECORDS)
+                  </Text>
+                  {(data.transactions || []).length === 0 ? (
+                    <Text style={{ color: '#94A3B8', fontSize: 11, fontStyle: 'italic', marginVertical: 4 }}>
+                      No transactions recorded in this category yet.
+                    </Text>
+                  ) : (
+                    (data.transactions || []).slice(0, 15).map((tx, idx) => (
+                      <View key={`cat_tx_${idx}`} style={styles.ledgerRow}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.ledgerNote} numberOfLines={1}>
+                            {tx.title || tx.note || 'Record'}
+                          </Text>
+                          <Text style={styles.ledgerDate}>
+                            {formatDateDisplay(tx.date)} • {accounts.find((a) => a.id === tx.accountId)?.name || 'Wallet'}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.ledgerAmt,
+                            { color: tx.type === 'income' ? '#34D399' : '#F87171' },
+                          ]}
+                        >
+                          {tx.type === 'income' ? '+' : '-'}
+                          {formatCurrency(tx.amount, currency.symbol)}
+                        </Text>
+                      </View>
+                    ))
+                  )}
                 </View>
               )}
 
