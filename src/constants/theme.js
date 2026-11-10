@@ -66,32 +66,6 @@ export const THEMES = {
     heroBorder: '#4F46E5',
     modalOverlay: 'rgba(15, 23, 42, 0.5)',
   },
-  emerald: {
-    id: 'emerald',
-    name: 'Forest Wealth',
-    isDark: true,
-    bg: '#061E16',         // Deep Emerald
-    card: '#0D3327',       // Dark Teal Card
-    cardAlt: '#144636',
-    cardHover: '#1B5A46',
-    text: '#ECFDF5',       // Mint text
-    textMuted: '#6EE7B7',  // Light emerald
-    border: '#144636',
-    inputBg: '#04140E',
-    primary: '#10B981',    // Emerald green
-    primaryLight: '#34D399',
-    primaryBg: 'rgba(16, 185, 129, 0.25)',
-    success: '#10B981',
-    successBg: 'rgba(16, 185, 129, 0.2)',
-    danger: '#FB7185',
-    dangerBg: 'rgba(251, 113, 133, 0.2)',
-    warning: '#FBBF24',
-    warningBg: 'rgba(251, 191, 36, 0.2)',
-    info: '#2DD4BF',
-    heroBg: '#093A2A',     // Rich Forest Emerald
-    heroBorder: '#10B981',
-    modalOverlay: 'rgba(2, 18, 12, 0.85)',
-  },
   cyberpunk: {
     id: 'cyberpunk',
     name: 'OLED Cyberpunk',
@@ -143,32 +117,6 @@ export const THEMES = {
     heroBg: '#3A1C12',     // Sunset Amber Bronze
     heroBorder: '#F97316',
     modalOverlay: 'rgba(28, 25, 23, 0.85)',
-  },
-  ocean: {
-    id: 'ocean',
-    name: 'Deep Oceanic',
-    isDark: true,
-    bg: '#0A192F',         // Deep Navy Blue
-    card: '#112240',       // Navy Blue Card
-    cardAlt: '#1E3A5F',
-    cardHover: '#233554',
-    text: '#CCD6F6',       // Light Slate
-    textMuted: '#8892B0',  // Muted Slate
-    border: '#1E3A5F',
-    inputBg: '#060D17',
-    primary: '#38BDF8',    // Sky Blue
-    primaryLight: '#7DD3FC',
-    primaryBg: 'rgba(56, 189, 248, 0.2)',
-    success: '#4ADE80',
-    successBg: 'rgba(74, 222, 128, 0.15)',
-    danger: '#FB7185',
-    dangerBg: 'rgba(251, 113, 133, 0.2)',
-    warning: '#FBBF24',
-    warningBg: 'rgba(251, 191, 36, 0.2)',
-    info: '#60A5FA',
-    heroBg: '#0E2E4E',     // Deep Oceanic Navy
-    heroBorder: '#38BDF8',
-    modalOverlay: 'rgba(10, 25, 47, 0.85)',
   },
   amberGold: {
     id: 'amberGold',
@@ -273,30 +221,5 @@ export const THEMES = {
     heroBg: '#351424',     // Deep Velvet Rose Gold
     heroBorder: '#E11D48',
     modalOverlay: 'rgba(26, 17, 21, 0.88)',
-  },
-  autumnGlow: {
-    id: 'autumnGlow',
-    name: 'Autumn Harvest',
-    isDark: true,
-    bg: '#191209',         // Deep Maple Night
-    card: '#271C0F',       // Spiced Pumpkin Card
-    cardAlt: '#3D2D1A',    // Toasted Amber
-    cardHover: '#4D3922',
-    text: '#FEF3C7',       // Warm Candle Glow
-    textMuted: '#F59E0B',  // Autumn Orange
-    border: '#483520',
-    inputBg: '#110C05',
-    primary: '#D97706',    // Warm Amber Orange
-    primaryLight: '#FBBF24',
-    primaryBg: 'rgba(217, 119, 6, 0.25)',
-    success: '#10B981',
-    successBg: 'rgba(16, 185, 129, 0.2)',
-    danger: '#E11D48',
-    dangerBg: 'rgba(225, 29, 72, 0.2)',
-    warning: '#F59E0B',
-    warningBg: 'rgba(245, 158, 11, 0.2)',
-    info: '#06B6D4',
-    heroBg: '#361E0A',     // Deep Spiced Autumn Glow
-    heroBorder: '#D97706',
   },
 };

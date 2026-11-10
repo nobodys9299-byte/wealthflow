@@ -41,7 +41,6 @@ export const DashboardScreen = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
   const [filterAccountId, setFilterAccountId] = useState('all');
-  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
 
   const selectedAccountObj = accounts.find((a) => a.id === filterAccountId);
 
@@ -270,43 +269,9 @@ export const DashboardScreen = ({
         </TouchableOpacity>
       )}
 
-      {/* Accounts Section with Dropdown */}
+      {/* Accounts Section */}
       <View style={styles.sectionHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Accounts</Text>
-
-          {/* Accounts Dropdown Selector */}
-          <TouchableOpacity
-            onPress={() => setAccountDropdownOpen(true)}
-            style={[
-              styles.accountDropdownBtn,
-              {
-                backgroundColor: theme.cardAlt,
-                borderColor: selectedAccountObj ? theme.primary : theme.border,
-              },
-            ]}
-          >
-            <Text style={{ fontSize: 13, marginRight: 4 }}>
-              {selectedAccountObj ? (selectedAccountObj.emoji || '🏦') : '💳'}
-            </Text>
-            <Text
-              style={[
-                styles.accountDropdownText,
-                { color: selectedAccountObj ? theme.primaryLight : theme.text },
-              ]}
-              numberOfLines={1}
-            >
-              {selectedAccountObj ? selectedAccountObj.name : 'All Accounts'}
-            </Text>
-            <Ionicons
-              name="chevron-down"
-              size={12}
-              color={selectedAccountObj ? theme.primaryLight : theme.textMuted}
-              style={{ marginLeft: 3 }}
-            />
-          </TouchableOpacity>
-        </View>
-
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Accounts</Text>
         <TouchableOpacity
           onPress={onOpenAddAccount}
           style={styles.seeAllBtn}
@@ -490,170 +455,6 @@ export const DashboardScreen = ({
         ))
       )}
       </ScrollView>
-
-      {/* Accounts Selection Dropdown Bottom Sheet */}
-      <Modal
-        visible={accountDropdownOpen}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setAccountDropdownOpen(false)}
-      >
-        <TouchableOpacity
-          style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}
-          activeOpacity={1}
-          onPress={() => setAccountDropdownOpen(false)}
-        >
-          <View
-            style={[
-              styles.dropdownSheet,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-            onStartShouldSetResponder={() => true}
-          >
-            {/* Grab Drag Bar */}
-            <View style={styles.sheetDragBarWrap}>
-              <View style={[styles.sheetDragBar, { backgroundColor: theme.border }]} />
-            </View>
-
-            {/* Header */}
-            <View style={styles.sheetHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                <View style={[styles.sheetIconBadge, { backgroundColor: `${theme.primary}20` }]}>
-                  <Ionicons name="wallet-outline" size={18} color={theme.primaryLight} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.sheetTitle, { color: theme.text }]} numberOfLines={1}>
-                    Select Account
-                  </Text>
-                  <Text style={[styles.sheetSub, { color: theme.textMuted }]} numberOfLines={1}>
-                    Filter transactions or view balances
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => setAccountDropdownOpen(false)}
-                style={styles.sheetCloseBtn}
-              >
-                <Ionicons name="close" size={20} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-              {/* Option 1: All Accounts */}
-              <TouchableOpacity
-                onPress={() => {
-                  setFilterAccountId('all');
-                  setAccountDropdownOpen(false);
-                }}
-                style={[
-                  styles.dropdownOption,
-                  {
-                    backgroundColor: filterAccountId === 'all' ? `${theme.primary}18` : theme.cardAlt,
-                    borderColor: filterAccountId === 'all' ? theme.primary : theme.border,
-                  },
-                ]}
-              >
-                <View style={[styles.optIconBox, { backgroundColor: `${theme.primary}25` }]}>
-                  <Text style={{ fontSize: 16 }}>💳</Text>
-                </View>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text
-                    style={[
-                      styles.optName,
-                      { color: filterAccountId === 'all' ? theme.primaryLight : theme.text },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    All Accounts
-                  </Text>
-                  <Text style={[styles.optSub, { color: theme.textMuted }]} numberOfLines={1}>
-                    Combined balance • {accounts.length} Accounts
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <Text style={[styles.optBal, { color: theme.text }]} numberOfLines={1}>
-                    {formatCurrency(netWorth, currency.symbol)}
-                  </Text>
-                  {filterAccountId === 'all' && (
-                    <Ionicons name="checkmark-circle" size={18} color={theme.primaryLight} />
-                  )}
-                </View>
-              </TouchableOpacity>
-
-              {/* Option List: Individual Accounts */}
-              {accounts.map((acc) => {
-                const isSelected = filterAccountId === acc.id;
-                const isNeg = acc.currentBalance < 0;
-                return (
-                  <TouchableOpacity
-                    key={acc.id}
-                    onPress={() => {
-                      setFilterAccountId(acc.id);
-                      setAccountDropdownOpen(false);
-                    }}
-                    style={[
-                      styles.dropdownOption,
-                      {
-                        backgroundColor: isSelected ? `${theme.primary}18` : theme.cardAlt,
-                        borderColor: isSelected ? theme.primary : theme.border,
-                      },
-                    ]}
-                  >
-                    <View style={[styles.optIconBox, { backgroundColor: `${acc.color || theme.primary}25` }]}>
-                      <Text style={{ fontSize: 16 }}>{acc.emoji || '🏦'}</Text>
-                    </View>
-                    <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text
-                        style={[
-                          styles.optName,
-                          { color: isSelected ? theme.primaryLight : theme.text },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {acc.name}
-                      </Text>
-                      <Text style={[styles.optSub, { color: theme.textMuted }]} numberOfLines={1}>
-                        {acc.type?.toUpperCase()} ACCOUNT
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <Text
-                        style={[
-                          styles.optBal,
-                          { color: isNeg ? theme.danger : theme.text },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {formatCurrency(acc.currentBalance, currency.symbol)}
-                      </Text>
-                      {isSelected && (
-                        <Ionicons name="checkmark-circle" size={18} color={theme.primaryLight} />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* Quick Add New Account in Dropdown */}
-            <TouchableOpacity
-              onPress={() => {
-                setAccountDropdownOpen(false);
-                onOpenAddAccount();
-              }}
-              style={[
-                styles.dropdownAddBtn,
-                { backgroundColor: `${theme.primary}15`, borderColor: `${theme.primary}40` },
-              ]}
-            >
-              <Ionicons name="add-circle-outline" size={18} color={theme.primaryLight} />
-              <Text style={[styles.dropdownAddBtnText, { color: theme.primaryLight }]}>
-                Add New Account
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 };
@@ -969,20 +770,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  accountDropdownBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    maxWidth: 160,
-  },
-  accountDropdownText: {
-    fontSize: 12,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
   clearFilterPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -990,100 +777,5 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  dropdownSheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  sheetDragBarWrap: {
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  sheetDragBar: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sheetIconBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  sheetSub: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  sheetCloseBtn: {
-    padding: 4,
-  },
-  dropdownOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  optIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  optName: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  optSub: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  optBal: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  dropdownAddBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 8,
-    gap: 6,
-  },
-  dropdownAddBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
   },
 });

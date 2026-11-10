@@ -13,6 +13,7 @@ import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { generateLendingStatementPDF } from '../utils/pdfGenerator';
 import { LendingModal } from '../components/modals/LendingModal';
 import { FriendDetailModal } from '../components/modals/FriendDetailModal';
+import { FriendReminderModal } from '../components/modals/FriendReminderModal';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
 export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
@@ -27,12 +28,16 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [activeFriend, setActiveFriend] = useState('');
   const [selectedFriendDetails, setSelectedFriendDetails] = useState(null);
-  const [openReminderDirectly, setOpenReminderDirectly] = useState(false);
+  const [selectedReminderFriend, setSelectedReminderFriend] = useState(null);
   const [selectedShareFriend, setSelectedShareFriend] = useState(null);
 
   // Hardware back handler
   useEffect(() => {
     const handleBack = () => {
+      if (selectedReminderFriend) {
+        setSelectedReminderFriend(null);
+        return true;
+      }
       if (selectedShareFriend) {
         setSelectedShareFriend(null);
         return true;
@@ -58,7 +63,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
 
     const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
     return () => sub.remove();
-  }, [selectedShareFriend, selectedFriendDetails, modalVisible, onBack, onNavigateTab]);
+  }, [selectedReminderFriend, selectedShareFriend, selectedFriendDetails, modalVisible, onBack, onNavigateTab]);
 
   const handleOpenAddForFriend = (friendName) => {
     setActiveFriend(friendName);
@@ -192,10 +197,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
             <TouchableOpacity
               key={friend.name}
               activeOpacity={0.8}
-              onPress={() => {
-                setSelectedFriendDetails(friend);
-                setOpenReminderDirectly(false);
-              }}
+              onPress={() => setSelectedFriendDetails(friend)}
               style={[
                 styles.friendCard,
                 { backgroundColor: theme.card, borderColor: theme.border },
@@ -242,20 +244,8 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
                 </View>
               </View>
 
-              {/* Action Buttons: Details, WhatsApp Share & Settle */}
+              {/* Action Buttons: WhatsApp Share, Entry & Settle */}
               <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
-                {/* View Details / Reminder */}
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedFriendDetails(friend);
-                    setOpenReminderDirectly(true);
-                  }}
-                  style={[styles.shareBtn, { backgroundColor: `${theme.primary}18`, borderColor: `${theme.primary}35` }]}
-                >
-                  <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.primaryLight} />
-                  <Text style={[styles.shareBtnText, { color: theme.primaryLight }]}>Reminder</Text>
-                </TouchableOpacity>
-
                 {/* Share Statement via WhatsApp */}
                 <TouchableOpacity
                   onPress={() => setSelectedShareFriend(friend)}
@@ -305,16 +295,24 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
         initialFriend={activeFriend}
       />
 
-      {/* Friend Detail & WhatsApp UPI Request Modal */}
+      {/* Friend Detail Dialogue Box */}
       <FriendDetailModal
         visible={!!selectedFriendDetails}
         friend={selectedFriendDetails}
-        initialOpenReminder={openReminderDirectly}
-        onClose={() => {
-          setSelectedFriendDetails(null);
-          setOpenReminderDirectly(false);
-        }}
+        onClose={() => setSelectedFriendDetails(null)}
         onOpenAddEntry={handleOpenAddForFriend}
+        onOpenReminder={(friend) => setSelectedReminderFriend(friend)}
+      />
+
+      {/* Dedicated Friend Payment Reminder Dialogue Box */}
+      <FriendReminderModal
+        visible={!!selectedReminderFriend}
+        friend={selectedReminderFriend}
+        onClose={() => setSelectedReminderFriend(null)}
+        onBackToDetails={(friend) => {
+          setSelectedReminderFriend(null);
+          setSelectedFriendDetails(friend);
+        }}
       />
 
       {/* WhatsApp Image Statement Preview Modal */}
