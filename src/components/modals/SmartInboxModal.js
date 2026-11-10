@@ -172,6 +172,11 @@ export const SmartInboxModal = ({ visible, onClose }) => {
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
+          <View style={styles.dragPillWrap}>
+            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+          </View>
+
           {/* Header */}
           <View style={styles.header}>
             <View>
@@ -387,6 +392,16 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
     padding: 20,
     paddingBottom: 28,
+  },
+  dragPillWrap: {
+    alignItems: 'center',
+    paddingTop: 0,
+    paddingBottom: 4,
+  },
+  dragPill: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',

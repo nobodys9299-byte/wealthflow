@@ -64,12 +64,38 @@ function MainApp() {
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {
     const handleHardwareBack = () => {
+      // 1. Close open modals first
+      if (txModalVisible) {
+        setTxModalVisible(false);
+        return true;
+      }
+      if (transferModalVisible) {
+        setTransferModalVisible(false);
+        return true;
+      }
+      if (budgetModalVisible) {
+        setBudgetModalVisible(false);
+        return true;
+      }
+      if (accountModalVisible) {
+        setAccountModalVisible(false);
+        return true;
+      }
+      if (recurringModalVisible) {
+        setRecurringModalVisible(false);
+        return true;
+      }
+      if (smartInboxVisible) {
+        setSmartInboxVisible(false);
+        return true;
+      }
       if (drawerOpen) {
         setDrawerOpen(false);
         return true;
       }
-      if (activeTab !== 'home') {
-        setActiveTab('home');
+      // 2. If on secondary tab, return to dashboard
+      if (activeTab !== 'dashboard' && activeTab !== 'home') {
+        setActiveTab('dashboard');
         return true;
       }
       return false; // let Android minimize/exit if already on home
@@ -77,7 +103,16 @@ function MainApp() {
 
     const backSub = BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
     return () => backSub.remove();
-  }, [drawerOpen, activeTab]);
+  }, [
+    txModalVisible,
+    transferModalVisible,
+    budgetModalVisible,
+    accountModalVisible,
+    recurringModalVisible,
+    smartInboxVisible,
+    drawerOpen,
+    activeTab,
+  ]);
 
   // If security is enabled and app is locked, present LockScreen
   if (securitySettings.enabled && !isAppUnlocked) {
@@ -135,6 +170,7 @@ function MainApp() {
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'dashboard':
+      case 'home':
         return (
           <DashboardScreen
             onOpenAddTransaction={openAddTransaction}
@@ -152,6 +188,8 @@ function MainApp() {
           <TransactionsScreen
             onEditTransaction={openEditTransaction}
             onOpenAddTransaction={openAddTransaction}
+            onNavigateTab={setActiveTab}
+            onBack={() => setActiveTab('dashboard')}
           />
         );
       case 'analytics':
@@ -160,6 +198,7 @@ function MainApp() {
             onEditTransaction={openEditTransaction}
             onOpenAddTransaction={openAddTransaction}
             onNavigateTab={setActiveTab}
+            onBack={() => setActiveTab('dashboard')}
           />
         );
       case 'budgets':
@@ -169,6 +208,8 @@ function MainApp() {
             onEditBudget={openEditBudget}
             onOpenAddRecurring={openAddRecurring}
             onEditRecurring={openEditRecurring}
+            onNavigateTab={setActiveTab}
+            onBack={() => setActiveTab('dashboard')}
           />
         );
       case 'accounts':
@@ -178,11 +219,16 @@ function MainApp() {
             onEditAccount={openEditAccount}
             onOpenTransfer={() => setTransferModalVisible(true)}
             onNavigateTab={setActiveTab}
-            onBack={() => setActiveTab('home')}
+            onBack={() => setActiveTab('dashboard')}
           />
         );
       case 'lending':
-        return <LendingScreen />;
+        return (
+          <LendingScreen
+            onNavigateTab={setActiveTab}
+            onBack={() => setActiveTab('dashboard')}
+          />
+        );
       case 'settings':
         return (
           <SettingsScreen
@@ -193,7 +239,18 @@ function MainApp() {
           />
         );
       default:
-        return null;
+        return (
+          <DashboardScreen
+            onOpenAddTransaction={openAddTransaction}
+            onOpenTransfer={() => setTransferModalVisible(true)}
+            onOpenAddAccount={openAddAccount}
+            onOpenAddRecurring={openAddRecurring}
+            onOpenSmartInbox={() => setSmartInboxVisible(true)}
+            onOpenSettings={() => setDrawerOpen(true)}
+            onEditTransaction={openEditTransaction}
+            onNavigateTab={setActiveTab}
+          />
+        );
     }
   };
 

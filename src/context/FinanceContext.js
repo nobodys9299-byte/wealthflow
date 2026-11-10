@@ -4,6 +4,7 @@ import { THEMES, CURRENCIES } from '../constants/theme';
 import { DEFAULT_ACCOUNTS, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
 import { INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING } from '../constants/initialData';
 import { generateFullAppCSV, parseFullAppCSV } from '../utils/formatters';
+import { CloudBackupService } from '../services/CloudBackupService';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: '@spendpulse_transactions_v1',
@@ -374,10 +375,14 @@ export const FinanceProvider = ({ children }) => {
       await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(userObj));
       const snapshot = exportAsJSON();
       await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshot);
+
+      // Check if remote cloud backup exists for this account (e.g. after fresh reinstall)
+      const remoteCheck = await CloudBackupService.checkCloudBackupExists(customEmail);
+      return { user: userObj, remoteCheck };
     } catch (e) {
       console.warn(e);
+      return { user: userObj, remoteCheck: { exists: false } };
     }
-    return userObj;
   };
 
   const logoutGoogle = async () => {
@@ -399,8 +404,13 @@ export const FinanceProvider = ({ children }) => {
 
   const backupToGoogleCloud = async () => {
     try {
-      const snapshot = exportAsJSON();
-      await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshot);
+      const snapshotStr = exportAsJSON();
+      const snapshotObj = JSON.parse(snapshotStr);
+      await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshotStr);
+
+      const email = googleUser?.email || 'user@gmail.com';
+      await CloudBackupService.syncToCloudVault(email, snapshotObj);
+
       const updatedUser = {
         ...googleUser,
         lastBackup: new Date().toISOString(),
@@ -415,6 +425,14 @@ export const FinanceProvider = ({ children }) => {
 
   const restoreFromGoogleCloud = async () => {
     try {
+      const email = googleUser?.email || 'user@gmail.com';
+      // First try cloud vault
+      const remote = await CloudBackupService.fetchFromCloudVault(email);
+      if (remote.success && remote.data) {
+        return await importFromJSON(JSON.stringify(remote.data));
+      }
+
+      // Fallback to local snapshot
       const snapshot = await AsyncStorage.getItem(STORAGE_KEYS.CLOUD_BACKUP);
       if (!snapshot) {
         return { success: false, error: 'No cloud backup snapshot found on Google Drive yet.' };
@@ -1041,6 +1059,8 @@ export const FinanceProvider = ({ children }) => {
         logoutGoogle,
         backupToGoogleCloud,
         restoreFromGoogleCloud,
+        exportToGoogleDriveFile: (jsonStr, email) => CloudBackupService.exportToGoogleDriveFile(jsonStr, email),
+        pickAndRestoreFromDriveFile: () => CloudBackupService.pickAndRestoreFromDriveFile(),
         // Confirmation dialog
         confirmDialog,
         closeConfirmDialog: () => setConfirmDialog((prev) => ({ ...prev, visible: false })),

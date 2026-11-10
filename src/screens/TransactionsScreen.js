@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -16,13 +17,35 @@ import { getCategoryById } from '../constants/categories';
 import { generateTransactionPDF } from '../utils/pdfGenerator';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
-export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) => {
+export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack }) => {
   const { theme, currency, transactions, accounts, deleteTransaction } = useFinance();
 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterAccount, setFilterAccount] = useState('all');
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+  // Hardware back handler
+  useEffect(() => {
+    const handleBack = () => {
+      if (selectedReceipt) {
+        setSelectedReceipt(null);
+        return true;
+      }
+      if (onBack) {
+        onBack();
+        return true;
+      }
+      if (onNavigateTab) {
+        onNavigateTab('dashboard');
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
+    return () => sub.remove();
+  }, [selectedReceipt, onBack, onNavigateTab]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
@@ -56,13 +79,22 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Header */}
+      {/* Header with Back Button */}
       <View style={styles.topHeader}>
-        <View>
-          <Text style={[styles.screenTitle, { color: theme.text }]}>Transactions</Text>
-          <Text style={[styles.subText, { color: theme.textMuted }]}>
-            {filteredTransactions.length} records found
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+          <TouchableOpacity
+            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
+            style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
+            accessibilityLabel="Back to Home"
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Transactions</Text>
+            <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
+              {filteredTransactions.length} records found
+            </Text>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -70,7 +102,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction }) 
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="add" size={20} color="#FFF" />
-          <Text style={styles.addBtnText}>Add</Text>
+          <Text style={styles.addBtnText} numberOfLines={1}>Add</Text>
         </TouchableOpacity>
       </View>
 
@@ -214,6 +246,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 10,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   screenTitle: {
     fontSize: 22,

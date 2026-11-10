@@ -1,13 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal,
-  TextInput,
-  SafeAreaView,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -17,7 +15,7 @@ import { LendingModal } from '../components/modals/LendingModal';
 import { FriendDetailModal } from '../components/modals/FriendDetailModal';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
-export const LendingScreen = () => {
+export const LendingScreen = ({ onNavigateTab, onBack }) => {
   const {
     theme,
     currency,
@@ -30,8 +28,36 @@ export const LendingScreen = () => {
   const [activeFriend, setActiveFriend] = useState('');
   const [selectedFriendDetails, setSelectedFriendDetails] = useState(null);
   const [selectedShareFriend, setSelectedShareFriend] = useState(null);
-  const [isExpandedPopup, setIsExpandedPopup] = useState(false);
-  const [popupSearch, setPopupSearch] = useState('');
+
+  // Hardware back handler
+  useEffect(() => {
+    const handleBack = () => {
+      if (selectedShareFriend) {
+        setSelectedShareFriend(null);
+        return true;
+      }
+      if (selectedFriendDetails) {
+        setSelectedFriendDetails(null);
+        return true;
+      }
+      if (modalVisible) {
+        setModalVisible(false);
+        return true;
+      }
+      if (onBack) {
+        onBack();
+        return true;
+      }
+      if (onNavigateTab) {
+        onNavigateTab('dashboard');
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
+    return () => sub.remove();
+  }, [selectedShareFriend, selectedFriendDetails, modalVisible, onBack, onNavigateTab]);
 
   const handleOpenAddForFriend = (friendName) => {
     setActiveFriend(friendName);
@@ -42,28 +68,30 @@ export const LendingScreen = () => {
     await generateLendingStatementPDF(friend, currency.symbol);
   };
 
-  // Filtered friends for the expanded popup
-  const filteredPopupFriends = useMemo(() => {
-    if (!popupSearch.trim()) return lendingSummary.friends;
-    const q = popupSearch.toLowerCase().trim();
-    return lendingSummary.friends.filter((f) => f.name.toLowerCase().includes(q));
-  }, [lendingSummary.friends, popupSearch]);
-
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.bg }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Header */}
+      {/* Top Header with Back Button */}
       <View style={styles.topHeader}>
-        <View style={{ flex: 1, marginRight: 10 }}>
-          <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>
-            Friends & Loans
-          </Text>
-          <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
-            Track money lent, borrowed & reminders
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+          <TouchableOpacity
+            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
+            style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
+            accessibilityLabel="Back to Home"
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>
+              Friends & Loans
+            </Text>
+            <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
+              Track money lent, borrowed & reminders
+            </Text>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -74,7 +102,7 @@ export const LendingScreen = () => {
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="add" size={18} color="#FFF" />
-          <Text style={styles.addBtnText}>New Loan</Text>
+          <Text style={styles.addBtnText} numberOfLines={1}>New Loan</Text>
         </TouchableOpacity>
       </View>
 
@@ -132,7 +160,7 @@ export const LendingScreen = () => {
         </View>
       </View>
 
-      {/* Friends List Header with Expand to Pop-up Display Button */}
+      {/* Friends List Header */}
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Friends & Contacts</Text>
@@ -142,14 +170,6 @@ export const LendingScreen = () => {
             </Text>
           </View>
         </View>
-
-        <TouchableOpacity
-          onPress={() => setIsExpandedPopup(true)}
-          style={[styles.expandBtn, { backgroundColor: `${theme.primary}18`, borderColor: `${theme.primary}40` }]}
-        >
-          <Ionicons name="open-outline" size={14} color={theme.primaryLight} />
-          <Text style={[styles.expandBtnText, { color: theme.primaryLight }]}>Expand to Pop-up</Text>
-        </TouchableOpacity>
       </View>
 
       {lendingSummary.friends.length === 0 ? (
@@ -271,205 +291,6 @@ export const LendingScreen = () => {
         })
       )}
 
-      {/* Full Expanded Pop-up Display Modal */}
-      <Modal
-        visible={isExpandedPopup}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setIsExpandedPopup(false)}
-      >
-        <SafeAreaView style={[styles.popupContainer, { backgroundColor: theme.bg }]}>
-          {/* Modal Header */}
-          <View style={[styles.popupHeader, { borderBottomColor: theme.border }]}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.popupIconBadge, { backgroundColor: `${theme.primary}25` }]}>
-                  <Ionicons name="swap-horizontal" size={20} color={theme.primaryLight} />
-                </View>
-                <Text style={[styles.popupTitle, { color: theme.text }]}>All Friends & Loans</Text>
-              </View>
-              <Text style={[styles.popupSub, { color: theme.textMuted }]}>
-                {lendingSummary.friends.length} Total Contacts • Quick Statements & Reminders
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => setIsExpandedPopup(false)}
-              style={[styles.popupCloseBtn, { backgroundColor: theme.cardAlt }]}
-            >
-              <Ionicons name="close" size={20} color={theme.text} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Search bar inside popup */}
-          <View style={[styles.searchBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Ionicons name="search-outline" size={18} color={theme.textMuted} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search contacts..."
-              placeholderTextColor={theme.textMuted}
-              value={popupSearch}
-              onChangeText={setPopupSearch}
-            />
-            {popupSearch.length > 0 && (
-              <TouchableOpacity onPress={() => setPopupSearch('')}>
-                <Ionicons name="close-circle" size={18} color={theme.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Quick Summary Ribbon */}
-          <View style={[styles.summaryRibbon, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-            <View style={styles.ribbonItem}>
-              <Text style={[styles.ribbonLabel, { color: theme.textMuted }]}>Lent (Owed)</Text>
-              <Text style={[styles.ribbonVal, { color: theme.success }]}>
-                +{formatCurrency(lendingSummary.totalLent, currency.symbol)}
-              </Text>
-            </View>
-            <View style={[styles.ribbonDivider, { backgroundColor: theme.border }]} />
-            <View style={styles.ribbonItem}>
-              <Text style={[styles.ribbonLabel, { color: theme.textMuted }]}>Borrowed</Text>
-              <Text style={[styles.ribbonVal, { color: theme.danger }]}>
-                -{formatCurrency(lendingSummary.totalBorrowed, currency.symbol)}
-              </Text>
-            </View>
-            <View style={[styles.ribbonDivider, { backgroundColor: theme.border }]} />
-            <View style={styles.ribbonItem}>
-              <Text style={[styles.ribbonLabel, { color: theme.textMuted }]}>Net Balance</Text>
-              <Text
-                style={[
-                  styles.ribbonVal,
-                  { color: lendingSummary.netBalance >= 0 ? theme.success : theme.danger },
-                ]}
-              >
-                {lendingSummary.netBalance >= 0 ? '+' : ''}
-                {formatCurrency(lendingSummary.netBalance, currency.symbol)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Scrollable list of all friends in popup */}
-          <ScrollView
-            contentContainerStyle={styles.popupScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {filteredPopupFriends.length === 0 ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: theme.textMuted, fontSize: 14 }}>
-                  No contacts found matching "{popupSearch}"
-                </Text>
-              </View>
-            ) : (
-              filteredPopupFriends.map((friend) => {
-                const isOwed = friend.balance >= 0;
-                const isSettled = friend.balance === 0;
-
-                return (
-                  <TouchableOpacity
-                    key={`popup_${friend.name}`}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      setIsExpandedPopup(false);
-                      setSelectedFriendDetails(friend);
-                    }}
-                    style={[
-                      styles.popupFriendCard,
-                      { backgroundColor: theme.card, borderColor: theme.border },
-                    ]}
-                  >
-                    <View style={styles.popupCardTop}>
-                      <View style={[styles.friendAvatar, { backgroundColor: `${theme.primary}25` }]}>
-                        <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
-                          {friend.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={[styles.friendName, { color: theme.text }]} numberOfLines={1}>
-                          {friend.name}
-                        </Text>
-                        <Text style={[styles.friendMeta, { color: theme.textMuted }]} numberOfLines={1}>
-                          {friend.transactions.length} record{friend.transactions.length !== 1 ? 's' : ''}
-                        </Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text
-                          style={[
-                            styles.friendBalance,
-                            { color: isSettled ? theme.textMuted : isOwed ? theme.success : theme.danger },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {isSettled ? '' : isOwed ? '+' : '-'}{formatCurrency(Math.abs(friend.balance), currency.symbol)}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.balanceSub,
-                            { color: isSettled ? theme.textMuted : isOwed ? theme.success : theme.danger },
-                          ]}
-                        >
-                          {isSettled ? 'Settled' : isOwed ? 'Owes You' : 'You Owe'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Action Bar inside each popup item */}
-                    <View style={[styles.popupActionRow, { borderTopColor: theme.border }]}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setIsExpandedPopup(false);
-                          setSelectedFriendDetails(friend);
-                        }}
-                        style={[styles.popupBtn, { backgroundColor: `${theme.primary}18` }]}
-                      >
-                        <Ionicons name="chatbubble-ellipses-outline" size={13} color={theme.primaryLight} />
-                        <Text style={[styles.popupBtnText, { color: theme.primaryLight }]}>Reminder</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={() => setSelectedShareFriend(friend)}
-                        style={[styles.popupBtn, { backgroundColor: '#25D36618' }]}
-                      >
-                        <Ionicons name="image-outline" size={13} color="#25D366" />
-                        <Text style={[styles.popupBtnText, { color: '#25D366' }]}>Image</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={() => {
-                          setIsExpandedPopup(false);
-                          handleOpenAddForFriend(friend.name);
-                        }}
-                        style={[styles.popupBtn, { backgroundColor: theme.cardAlt }]}
-                      >
-                        <Ionicons name="add" size={13} color={theme.text} />
-                        <Text style={[styles.popupBtnText, { color: theme.text }]}>Entry</Text>
-                      </TouchableOpacity>
-
-                      {!isSettled ? (
-                        <TouchableOpacity
-                          onPress={() => settleFriendDebt(friend.name)}
-                          style={[styles.popupBtn, { backgroundColor: `${theme.success}18` }]}
-                        >
-                          <Ionicons name="checkmark-done" size={13} color={theme.success} />
-                          <Text style={[styles.popupBtnText, { color: theme.success }]}>Settle</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() => deleteFriendAccount(friend.name)}
-                          style={[styles.popupBtn, { backgroundColor: `${theme.danger}18` }]}
-                        >
-                          <Ionicons name="trash-outline" size={13} color={theme.danger} />
-                          <Text style={[styles.popupBtnText, { color: theme.danger }]}>Clear</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
       {/* Lending Modal */}
       <LendingModal
         visible={modalVisible}
@@ -510,6 +331,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   screenTitle: {
     fontSize: 22,

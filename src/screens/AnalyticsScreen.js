@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   SafeAreaView,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -15,7 +16,8 @@ import { CategoryPieChart } from '../components/charts/CategoryPieChart';
 import { CashflowBarChart } from '../components/charts/CashflowBarChart';
 import { TransactionItem } from '../components/TransactionItem';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
-import { formatCurrency } from '../utils/formatters';
+import { CalendarDatePickerModal } from '../components/common/CalendarDatePickerModal';
+import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
 
 const ANALYSIS_VIEWS = [
@@ -39,12 +41,18 @@ const ANALYSIS_VIEWS = [
   },
 ];
 
-export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab }) => {
+export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack }) => {
   const { theme, currency, accounts, transactions, netWorth, deleteTransaction } = useFinance();
 
   const [activeView, setActiveView] = useState('account'); // 'account' | 'expense' | 'income'
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [timeframe, setTimeframe] = useState('month'); // 'month' | '30days' | 'year' | 'all'
+  const [timeframe, setTimeframe] = useState('month'); // 'month' | '30days' | 'year' | 'all' | 'custom'
+
+  // Custom Date Range state
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [customStartDate, setCustomStartDate] = useState(todayStr);
+  const [customEndDate, setCustomEndDate] = useState(todayStr);
+  const [datePickerMode, setDatePickerMode] = useState(null); // 'start' | 'end' | null
 
   // Custom Search & Filter state on main screen
   const [mainSearchQuery, setMainSearchQuery] = useState('');
@@ -61,9 +69,49 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
   // Search & Filter state for individual transaction receipts
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
+  // Android hardware back handler
+  useEffect(() => {
+    const handleBack = () => {
+      if (datePickerMode) {
+        setDatePickerMode(null);
+        return true;
+      }
+      if (shareImageModalData) {
+        setShareImageModalData(null);
+        return true;
+      }
+      if (selectedDetail) {
+        setSelectedDetail(null);
+        setDetailSearch('');
+        setIsDetailExpanded(false);
+        return true;
+      }
+      if (dropdownOpen) {
+        setDropdownOpen(false);
+        return true;
+      }
+      if (showAdvancedFilters) {
+        setShowAdvancedFilters(false);
+        return true;
+      }
+      if (onBack) {
+        onBack();
+        return true;
+      }
+      if (onNavigateTab) {
+        onNavigateTab('dashboard');
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
+    return () => sub.remove();
+  }, [datePickerMode, shareImageModalData, selectedDetail, dropdownOpen, showAdvancedFilters, onBack, onNavigateTab]);
+
   const currentViewObj = ANALYSIS_VIEWS.find((v) => v.id === activeView) || ANALYSIS_VIEWS[0];
 
-  // Filter transactions based on timeframe, search query, flow type, and account
+  // Filter transactions based on timeframe, search query, flow type, account, and custom date range
   const filteredTransactions = useMemo(() => {
     const now = new Date();
     const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -79,6 +127,8 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         if (diffDays < 0 || diffDays > 30) return false;
       } else if (timeframe === 'year') {
         if (!t.date.startsWith(currentYear)) return false;
+      } else if (timeframe === 'custom') {
+        if (t.date < customStartDate || t.date > customEndDate) return false;
       }
 
       // Flow type filter
@@ -243,13 +293,22 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Header with Title and Dropdown Option */}
+      {/* Top Header with Back Button, Title and Dropdown Option */}
       <View style={styles.topHeader}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={[styles.screenTitle, { color: theme.text }]}>Financial Analysis</Text>
-          <Text style={[styles.subText, { color: theme.textMuted }]}>
-            {currentViewObj.subtitle}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+          <TouchableOpacity
+            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
+            style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
+            accessibilityLabel="Back to Home"
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Financial Analysis</Text>
+            <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
+              {currentViewObj.subtitle}
+            </Text>
+          </View>
         </View>
 
         {/* Dropdown Trigger Button */}
@@ -258,11 +317,11 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
           style={[styles.dropdownBtn, { backgroundColor: `${theme.primary}20`, borderColor: `${theme.primary}50` }]}
           activeOpacity={0.8}
         >
-          <Ionicons name={currentViewObj.icon} size={16} color={theme.primaryLight} />
+          <Ionicons name={currentViewObj.icon} size={15} color={theme.primaryLight} />
           <Text style={[styles.dropdownBtnText, { color: theme.primaryLight }]} numberOfLines={1}>
-            {currentViewObj.title}
+            {currentViewObj.title.split(' ')[0]}
           </Text>
-          <Ionicons name="chevron-down" size={16} color={theme.primaryLight} />
+          <Ionicons name="chevron-down" size={14} color={theme.primaryLight} />
         </TouchableOpacity>
       </View>
 
@@ -295,35 +354,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         })}
       </View>
 
-      {/* Timeframe Selector Pills */}
-      <View style={[styles.timeframeRow, { backgroundColor: theme.cardAlt }]}>
-        {[
-          { id: 'month', label: 'This Month' },
-          { id: '30days', label: 'Last 30 Days' },
-          { id: 'year', label: 'This Year' },
-          { id: 'all', label: 'All Time' },
-        ].map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            onPress={() => setTimeframe(item.id)}
-            style={[
-              styles.timeframeBtn,
-              timeframe === item.id && { backgroundColor: theme.primary },
-            ]}
-          >
-            <Text
-              style={[
-                styles.timeframeText,
-                { color: timeframe === item.id ? '#FFF' : theme.textMuted },
-              ]}
-            >
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Custom Search & Interactive Filter Bar */}
+      {/* Custom Search & Interactive Filter Bar (Timeframe is moved cleanly inside this filter panel) */}
       <View style={[styles.customFilterContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.searchBarRow}>
           <Ionicons name="search-outline" size={16} color={theme.textMuted} />
@@ -345,7 +376,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
             style={[
               styles.filterToggleBtn,
-              (filterFlowType !== 'all' || filterAccount !== 'all' || showAdvancedFilters) && {
+              (filterFlowType !== 'all' || filterAccount !== 'all' || timeframe !== 'month' || showAdvancedFilters) && {
                 backgroundColor: `${theme.primary}25`,
                 borderColor: theme.primaryLight,
               },
@@ -355,18 +386,19 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             <Ionicons
               name={showAdvancedFilters ? 'funnel' : 'funnel-outline'}
               size={14}
-              color={filterFlowType !== 'all' || filterAccount !== 'all' ? theme.primaryLight : theme.textMuted}
+              color={filterFlowType !== 'all' || filterAccount !== 'all' || timeframe !== 'month' ? theme.primaryLight : theme.textMuted}
             />
             <Text
               style={[
                 styles.filterToggleText,
                 {
-                  color: filterFlowType !== 'all' || filterAccount !== 'all' ? theme.primaryLight : theme.textMuted,
-                  fontWeight: filterFlowType !== 'all' || filterAccount !== 'all' ? '800' : '600',
+                  color: filterFlowType !== 'all' || filterAccount !== 'all' || timeframe !== 'month' ? theme.primaryLight : theme.textMuted,
+                  fontWeight: filterFlowType !== 'all' || filterAccount !== 'all' || timeframe !== 'month' ? '800' : '600',
                 },
               ]}
+              numberOfLines={1}
             >
-              {filterFlowType !== 'all' || filterAccount !== 'all' ? 'Filtered' : 'Filter'}
+              {filterFlowType !== 'all' || filterAccount !== 'all' || timeframe !== 'month' ? 'Filtered' : 'Filter'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -374,7 +406,75 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         {/* Expandable Advanced Filters Panel */}
         {showAdvancedFilters && (
           <View style={[styles.advancedFiltersPanel, { borderTopColor: theme.border }]}>
-            {/* Flow Type Filter Pills */}
+            {/* 1. Timeframe & Date Range Filter Pills (Moved here from top bar) */}
+            <View style={{ marginBottom: 10 }}>
+              <Text style={[styles.filterGroupLabel, { color: theme.textMuted }]}>TIMEFRAME & DATES</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                {[
+                  { id: 'month', label: 'This Month' },
+                  { id: '30days', label: 'Last 30 Days' },
+                  { id: 'year', label: 'This Year' },
+                  { id: 'all', label: 'All Time' },
+                  { id: 'custom', label: '📅 Custom Range' },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={`tf_${item.id}`}
+                    onPress={() => setTimeframe(item.id)}
+                    style={[
+                      styles.subFilterChip,
+                      timeframe === item.id
+                        ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                        : { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.subFilterChipText,
+                        { color: timeframe === item.id ? '#FFF' : theme.text, fontWeight: timeframe === item.id ? '800' : '600' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Custom Date Range Picker Strip */}
+              {timeframe === 'custom' && (
+                <View style={[styles.customDateRangeRow, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+                  <TouchableOpacity
+                    onPress={() => setDatePickerMode('start')}
+                    style={[styles.datePickBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  >
+                    <Text style={[styles.datePickLabel, { color: theme.textMuted }]}>FROM</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Ionicons name="calendar-outline" size={13} color={theme.primaryLight} />
+                      <Text style={[styles.datePickValue, { color: theme.text }]}>
+                        {formatDateDisplay(customStartDate)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <Ionicons name="arrow-forward" size={14} color={theme.textMuted} style={{ marginHorizontal: 4 }} />
+
+                  <TouchableOpacity
+                    onPress={() => setDatePickerMode('end')}
+                    style={[styles.datePickBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  >
+                    <Text style={[styles.datePickLabel, { color: theme.textMuted }]}>TO</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Ionicons name="calendar-outline" size={13} color={theme.primaryLight} />
+                      <Text style={[styles.datePickValue, { color: theme.text }]}>
+                        {formatDateDisplay(customEndDate)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* 2. Flow Type Filter Pills */}
             <View style={{ marginBottom: 8 }}>
               <Text style={[styles.filterGroupLabel, { color: theme.textMuted }]}>FLOW TYPE</Text>
               <View style={styles.filterPillsRow}>
@@ -398,6 +498,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                         styles.subFilterChipText,
                         { color: filterFlowType === f.id ? '#FFF' : theme.text },
                       ]}
+                      numberOfLines={1}
                     >
                       {f.label}
                     </Text>
@@ -406,7 +507,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
               </View>
             </View>
 
-            {/* Wallet / Account Filter Pills */}
+            {/* 3. Wallet / Account Filter Pills */}
             <View style={{ marginBottom: 6 }}>
               <Text style={[styles.filterGroupLabel, { color: theme.textMuted }]}>ACCOUNT / WALLET</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
@@ -448,11 +549,12 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             </View>
 
             {/* Reset Button if active filters */}
-            {(filterFlowType !== 'all' || filterAccount !== 'all' || mainSearchQuery.trim().length > 0) && (
+            {(filterFlowType !== 'all' || filterAccount !== 'all' || timeframe !== 'month' || mainSearchQuery.trim().length > 0) && (
               <TouchableOpacity
                 onPress={() => {
                   setFilterFlowType('all');
                   setFilterAccount('all');
+                  setTimeframe('month');
                   setMainSearchQuery('');
                 }}
                 style={styles.resetFilterBtn}
@@ -1086,6 +1188,26 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         type={shareImageModalData?.type || 'account'}
         data={shareImageModalData?.data}
       />
+
+      {/* Calendar Date Picker Modal for Custom Date Range */}
+      <CalendarDatePickerModal
+        visible={!!datePickerMode}
+        selectedDate={datePickerMode === 'end' ? customEndDate : customStartDate}
+        onSelectDate={(newDate) => {
+          if (datePickerMode === 'start') {
+            setCustomStartDate(newDate);
+            if (newDate > customEndDate) {
+              setCustomEndDate(newDate);
+            }
+          } else {
+            setCustomEndDate(newDate);
+            if (newDate < customStartDate) {
+              setCustomStartDate(newDate);
+            }
+          }
+        }}
+        onClose={() => setDatePickerMode(null)}
+      />
     </ScrollView>
   );
 };
@@ -1667,6 +1789,37 @@ const styles = StyleSheet.create({
   },
   expandToggleText: {
     fontSize: 11,
+    fontWeight: '700',
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customDateRangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  datePickBtn: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  datePickLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  datePickValue: {
+    fontSize: 12,
     fontWeight: '700',
   },
 });

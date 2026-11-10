@@ -63,7 +63,7 @@ export const DashboardScreen = ({
     return list;
   }, [transactions, filterType, filterAccountId, searchQuery]);
 
-  const recentTransactions = transactions.slice(0, 5);
+  const displayTransactions = showSearch ? filteredTransactions : transactions;
 
   return (
     <ScrollView
@@ -211,32 +211,32 @@ export const DashboardScreen = ({
           onPress={() => onOpenAddTransaction('expense')}
           style={[styles.actionBtn, { backgroundColor: theme.danger }]}
         >
-          <Ionicons name="arrow-up" size={18} color="#FFF" />
-          <Text style={styles.actionBtnText}>Expense</Text>
+          <Ionicons name="arrow-up" size={17} color="#FFF" />
+          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>Expense</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => onOpenAddTransaction('income')}
           style={[styles.actionBtn, { backgroundColor: theme.success }]}
         >
-          <Ionicons name="arrow-down" size={18} color="#FFF" />
-          <Text style={styles.actionBtnText}>Income</Text>
+          <Ionicons name="arrow-down" size={17} color="#FFF" />
+          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>Income</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={onOpenTransfer}
           style={[styles.actionBtn, { backgroundColor: theme.primary }]}
         >
-          <Ionicons name="swap-horizontal" size={18} color="#FFF" />
-          <Text style={styles.actionBtnText}>Transfer</Text>
+          <Ionicons name="swap-horizontal" size={17} color="#FFF" />
+          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>Transfer</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={onOpenAddRecurring}
           style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
         >
-          <Ionicons name="repeat-outline" size={18} color="#FFF" />
-          <Text style={styles.actionBtnText}>Recurring</Text>
+          <Ionicons name="repeat-outline" size={17} color="#FFF" />
+          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>Recurring</Text>
         </TouchableOpacity>
       </View>
 
@@ -343,21 +343,28 @@ export const DashboardScreen = ({
         </ScrollView>
       )}
 
-      {/* Transactions Section: Filtered Search Results OR Recent Activity */}
+      {/* Transactions Section: Scrollable list of ALL transactions directly on Home */}
       <View style={[styles.sectionHeader, { marginTop: 22 }]}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          {showSearch ? `Search Results (${filteredTransactions.length})` : 'Recent Activity'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            {showSearch ? 'Search Results' : 'All Transactions'}
+          </Text>
+          <View style={[styles.countBadge, { backgroundColor: `${theme.primary}20` }]}>
+            <Text style={[styles.countBadgeText, { color: theme.primaryLight }]}>
+              {displayTransactions.length}
+            </Text>
+          </View>
+        </View>
         <TouchableOpacity
           onPress={() => onNavigateTab('transactions')}
           style={styles.seeAllBtn}
         >
-          <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>See All</Text>
+          <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>Ledger</Text>
           <Ionicons name="chevron-forward" size={14} color={theme.primaryLight} />
         </TouchableOpacity>
       </View>
 
-      {(showSearch ? filteredTransactions : recentTransactions).length === 0 ? (
+      {displayTransactions.length === 0 ? (
         <View style={[styles.emptyBox, { borderColor: theme.border }]}>
           <Text style={[styles.emptyText, { color: theme.textMuted }]}>
             {showSearch
@@ -366,7 +373,7 @@ export const DashboardScreen = ({
           </Text>
         </View>
       ) : (
-        (showSearch ? filteredTransactions : recentTransactions).map((tx) => (
+        displayTransactions.map((tx) => (
           <TransactionItem
             key={tx.id}
             transaction={tx}
@@ -577,6 +584,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   // Recurring Section Styles on Home Tab
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
   recBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,

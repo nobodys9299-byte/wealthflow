@@ -42,7 +42,7 @@ export const AccountsScreen = ({
         return true;
       }
       if (onNavigateTab) {
-        onNavigateTab('home');
+        onNavigateTab('dashboard');
         return true;
       }
       return false;
@@ -66,7 +66,7 @@ export const AccountsScreen = ({
       <View style={styles.topHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
           <TouchableOpacity
-            onPress={onBack || (() => onNavigateTab && onNavigateTab('home'))}
+            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
             style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
             accessibilityLabel="Back"
           >

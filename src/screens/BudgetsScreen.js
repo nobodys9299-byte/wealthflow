@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -17,6 +18,8 @@ export const BudgetsScreen = ({
   onEditBudget,
   onOpenAddRecurring,
   onEditRecurring,
+  onNavigateTab,
+  onBack,
 }) => {
   const {
     theme,
@@ -26,6 +29,24 @@ export const BudgetsScreen = ({
     recurring,
     deleteRecurring,
   } = useFinance();
+
+  // Hardware Back Handler
+  useEffect(() => {
+    const handleBack = () => {
+      if (onBack) {
+        onBack();
+        return true;
+      }
+      if (onNavigateTab) {
+        onNavigateTab('dashboard');
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
+    return () => sub.remove();
+  }, [onBack, onNavigateTab]);
 
   const totalBudgetLimit = useMemo(() => {
     return budgetStatusList.reduce((sum, b) => sum + b.limit, 0);
@@ -45,11 +66,20 @@ export const BudgetsScreen = ({
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.topHeader}>
-        <View>
-          <Text style={[styles.screenTitle, { color: theme.text }]}>Budget Goals</Text>
-          <Text style={[styles.subText, { color: theme.textMuted }]}>
-            Monthly limits & recurring subscriptions
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+          <TouchableOpacity
+            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
+            style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
+            accessibilityLabel="Back to Home"
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Budget Goals</Text>
+            <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
+              Monthly limits & recurring subscriptions
+            </Text>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -57,7 +87,7 @@ export const BudgetsScreen = ({
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="add" size={18} color="#FFF" />
-          <Text style={styles.addBtnText}>New Budget</Text>
+          <Text style={styles.addBtnText} numberOfLines={1}>New Budget</Text>
         </TouchableOpacity>
       </View>
 
@@ -257,6 +287,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   screenTitle: {
     fontSize: 22,

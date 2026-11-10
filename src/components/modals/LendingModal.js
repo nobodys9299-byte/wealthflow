@@ -166,6 +166,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
           style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
         >
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
+            <View style={styles.dragPillWrap}>
+              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+            </View>
+
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.titleRow}>
@@ -204,8 +209,10 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
                       styles.typeTabText,
                       { color: type === 'lent' ? '#FFF' : theme.textMuted },
                     ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
                   >
-                    I Lent (They Owe Me)
+                    I Lent (Owed)
                   </Text>
                 </TouchableOpacity>
 
@@ -530,6 +537,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
     maxHeight: '90%',
     paddingBottom: 24,
+  },
+  dragPillWrap: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  dragPill: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',

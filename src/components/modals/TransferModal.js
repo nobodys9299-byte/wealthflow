@@ -50,6 +50,11 @@ export const TransferModal = ({ visible, onClose }) => {
         style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
       >
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
+          <View style={styles.dragPillWrap}>
+            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+          </View>
+
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>Transfer Between Accounts</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -186,6 +191,16 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
     gap: 14,
+  },
+  dragPillWrap: {
+    alignItems: 'center',
+    paddingTop: 0,
+    paddingBottom: 2,
+  },
+  dragPill: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',

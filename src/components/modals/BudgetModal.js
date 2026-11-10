@@ -48,6 +48,11 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
         style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
       >
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
+          <View style={styles.dragPillWrap}>
+            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+          </View>
+
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>
               {initialData ? 'Edit Budget Limit' : 'Set Category Budget'}
@@ -136,6 +141,16 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
     gap: 16,
+  },
+  dragPillWrap: {
+    alignItems: 'center',
+    paddingTop: 0,
+    paddingBottom: 4,
+  },
+  dragPill: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',

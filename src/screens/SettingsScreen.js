@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
@@ -42,6 +43,8 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
     logoutGoogle,
     backupToGoogleCloud,
     restoreFromGoogleCloud,
+    exportToGoogleDriveFile,
+    pickAndRestoreFromDriveFile,
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
@@ -54,6 +57,57 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
   const [gEmailInput, setGEmailInput] = useState('user@gmail.com');
   const [gNameInput, setGNameInput] = useState('WealthFlow User');
   const [cloudSyncing, setCloudSyncing] = useState(false);
+
+  // Hardware Back Handler
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (currencyModalVisible) {
+        setCurrencyModalVisible(false);
+        return true;
+      }
+      if (googleModalVisible) {
+        setGoogleModalVisible(false);
+        return true;
+      }
+      if (backupModalVisible) {
+        setBackupModalVisible(false);
+        return true;
+      }
+      if (csvModalVisible) {
+        setCsvModalVisible(false);
+        return true;
+      }
+      if (upiModalVisible) {
+        setUpiModalVisible(false);
+        return true;
+      }
+      if (pinModalVisible) {
+        setPinModalVisible(false);
+        return true;
+      }
+      if (onBack) {
+        onBack();
+        return true;
+      }
+      if (onNavigateTab) {
+        onNavigateTab('dashboard');
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => sub.remove();
+  }, [
+    currencyModalVisible,
+    googleModalVisible,
+    backupModalVisible,
+    csvModalVisible,
+    upiModalVisible,
+    pinModalVisible,
+    onBack,
+    onNavigateTab,
+  ]);
 
   // UPI Setup Modal
   const [upiModalVisible, setUpiModalVisible] = useState(false);
@@ -271,9 +325,17 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
       alert('Please enter a valid Google Account email');
       return;
     }
-    await loginWithGoogle(gEmailInput.trim(), gNameInput.trim() || 'Google User');
+    const cleanEmail = gEmailInput.trim();
+    const result = await loginWithGoogle(cleanEmail, gNameInput.trim() || 'Google User');
     setGoogleModalVisible(false);
-    alert('Connected with Google! Automatic backup to Google Drive enabled.');
+
+    if (result?.remoteCheck?.exists) {
+      const { txCount, accCount, updatedAt } = result.remoteCheck;
+      const dateFormatted = new Date(updatedAt).toLocaleDateString();
+      alert(`Welcome back! We found an existing Cloud Vault backup for ${cleanEmail} from ${dateFormatted} with ${txCount} transactions and ${accCount} accounts.\n\nTap "Cloud Restore" anytime to recover all data.`);
+    } else {
+      alert('Connected with Google! Automatic backup to Google Cloud Vault enabled.');
+    }
   };
 
   const handleCloudBackupNow = async () => {
@@ -281,7 +343,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
     try {
       const res = await backupToGoogleCloud();
       if (res.success) {
-        alert('All accounts and transactions backed up to Google Drive successfully!');
+        alert('All accounts, transactions, and friends backed up to Cloud Vault successfully!');
       } else {
         alert('Cloud backup failed: ' + res.error);
       }
@@ -295,9 +357,44 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
     try {
       const res = await restoreFromGoogleCloud();
       if (res.success) {
-        alert('Database successfully restored from your Google Drive backup!');
+        alert('Database successfully restored from Cloud Vault!');
       } else {
-        alert('Cloud restore failed: ' + res.error);
+        alert('Cloud restore failed: ' + (res.error || 'No backup found'));
+      }
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
+  const handleSaveToDriveFile = async () => {
+    setCloudSyncing(true);
+    try {
+      const json = exportAsJSON();
+      const res = await exportToGoogleDriveFile(json, googleUser?.email || 'user@gmail.com');
+      if (res.success) {
+        alert(`Backup file "${res.fileName}" prepared! Select Google Drive in the share sheet to save.`);
+      } else {
+        alert('Failed to save to Google Drive: ' + res.error);
+      }
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
+  const handleImportFromDriveFile = async () => {
+    setCloudSyncing(true);
+    try {
+      const res = await pickAndRestoreFromDriveFile();
+      if (res.canceled) return;
+      if (res.success && res.data) {
+        const importRes = await importFromJSON(res.rawJson);
+        if (importRes.success) {
+          alert(`Success! 100% of data restored from "${res.fileName}".`);
+        } else {
+          alert('Failed to parse Google Drive file: ' + importRes.error);
+        }
+      } else {
+        alert('File read error: ' + (res.error || 'Unknown error'));
       }
     } finally {
       setCloudSyncing(false);
@@ -573,8 +670,8 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                     <Ionicons name="logo-google" size={20} color="#4285F4" />
                   </View>
                   <View>
-                    <Text style={[styles.googleUserName, { color: theme.text }]}>{googleUser.name}</Text>
-                    <Text style={[styles.googleUserEmail, { color: theme.textMuted }]}>{googleUser.email}</Text>
+                    <Text style={[styles.googleUserName, { color: theme.text }]} numberOfLines={1}>{googleUser.name}</Text>
+                    <Text style={[styles.googleUserEmail, { color: theme.textMuted }]} numberOfLines={1}>{googleUser.email}</Text>
                   </View>
                 </View>
                 <View style={styles.cloudActiveBadge}>
@@ -583,22 +680,31 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                 </View>
               </View>
 
+              {/* Recovery Callout Banner explaining uninstall & phone restore */}
+              <View style={[styles.cloudInfoBox, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+                <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                <Text style={[styles.cloudInfoText, { color: theme.textMuted }]}>
+                  <Text style={{ fontWeight: '800', color: theme.text }}>Uninstall Safe: </Text>
+                  If you uninstall the app or get a new device, simply sign back in with <Text style={{ fontWeight: '800', color: theme.primaryLight }}>{googleUser.email}</Text> to auto-detect and restore your complete transaction history!
+                </Text>
+              </View>
+
               <Text style={{ fontSize: 11, color: theme.textMuted, marginBottom: 12 }}>
                 {googleUser.lastBackup
                   ? `Last Cloud Backup: ${new Date(googleUser.lastBackup).toLocaleDateString()} ${new Date(googleUser.lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                  : 'Auto-Backup enabled: Will sync changes to your Google Drive'}
+                  : 'Auto-Backup enabled: Will sync changes to your Google Cloud Vault'}
               </Text>
 
-              {/* Cloud Action Buttons */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+              {/* Cloud Action Buttons Row 1: Cloud Vault Sync & Restore */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                 <TouchableOpacity
                   onPress={handleCloudBackupNow}
                   disabled={cloudSyncing}
                   style={[styles.cloudBtn, { backgroundColor: '#4285F4' }]}
                 >
                   <Ionicons name="cloud-upload-outline" size={15} color="#FFF" />
-                  <Text style={styles.cloudBtnText}>
-                    {cloudSyncing ? 'Backing Up...' : 'Backup to Drive'}
+                  <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
+                    {cloudSyncing ? 'Syncing...' : 'Sync Cloud Vault'}
                   </Text>
                 </TouchableOpacity>
 
@@ -608,13 +714,40 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                   style={[styles.cloudBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border, borderWidth: 1 }]}
                 >
                   <Ionicons name="cloud-download-outline" size={15} color={theme.text} />
-                  <Text style={[styles.cloudBtnText, { color: theme.text }]}>Restore</Text>
+                  <Text style={[styles.cloudBtnText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                    Cloud Restore
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Cloud Action Buttons Row 2: Direct Google Drive File Save & Import */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                <TouchableOpacity
+                  onPress={handleSaveToDriveFile}
+                  disabled={cloudSyncing}
+                  style={[styles.cloudBtn, { backgroundColor: '#10B981' }]}
+                >
+                  <Ionicons name="logo-google" size={14} color="#FFF" />
+                  <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
+                    Save to Drive File
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleImportFromDriveFile}
+                  disabled={cloudSyncing}
+                  style={[styles.cloudBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border, borderWidth: 1 }]}
+                >
+                  <Ionicons name="folder-open-outline" size={14} color={theme.text} />
+                  <Text style={[styles.cloudBtnText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                    Import Drive File
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity
                 onPress={logoutGoogle}
-                style={{ alignSelf: 'flex-start', marginTop: 4 }}
+                style={{ alignSelf: 'flex-start', marginTop: 4, paddingVertical: 4 }}
               >
                 <Text style={{ fontSize: 11, fontWeight: '700', color: theme.danger }}>
                   Sign Out from Google
@@ -633,7 +766,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={[styles.rowTitle, { color: theme.text }]}>Sign In with Google</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Enable automatic daily backup to Google Drive & multi-device sync
+                    Automatic Cloud Vault backup & Google Drive file restore across uninstalls
                   </Text>
                 </View>
               </View>
@@ -1529,5 +1662,19 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '800',
+  },
+  cloudInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  cloudInfoText: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 16,
   },
 });

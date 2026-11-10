@@ -49,7 +49,6 @@ export const FriendDetailModal = ({
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestAmountType, setRequestAmountType] = useState('full'); // 'full' | 'custom'
   const [customAmount, setCustomAmount] = useState('');
-  const [isExpandedPopup, setIsExpandedPopup] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
   const [showImageShare, setShowImageShare] = useState(false);
@@ -225,13 +224,12 @@ export const FriendDetailModal = ({
     <>
       <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-          <View
-            style={[
-              styles.card,
-              isExpandedPopup && styles.cardExpanded,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
+            <View style={styles.dragPillWrap}>
+              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+            </View>
+
             {/* Header */}
             <View style={styles.header}>
               <View style={[styles.friendInfo, { flex: 1 }]}>
@@ -250,24 +248,10 @@ export const FriendDetailModal = ({
                 </View>
               </View>
 
-              {/* Header Action Buttons: Expand Pop-up & Close */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <TouchableOpacity
-                  onPress={() => setIsExpandedPopup(!isExpandedPopup)}
-                  style={[styles.headerIconBtn, { backgroundColor: theme.cardAlt }]}
-                  accessibilityLabel="Expand to Pop-up Display"
-                >
-                  <Ionicons
-                    name={isExpandedPopup ? 'contract-outline' : 'expand-outline'}
-                    size={18}
-                    color={theme.primaryLight}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                  <Ionicons name="close" size={24} color={theme.textMuted} />
-                </TouchableOpacity>
-              </View>
+              {/* Close Button */}
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close">
+                <Ionicons name="close" size={24} color={theme.textMuted} />
+              </TouchableOpacity>
             </View>
 
             {/* Hero Balance Box */}
@@ -357,8 +341,8 @@ export const FriendDetailModal = ({
               </TouchableOpacity>
             </View>
 
-            {/* Search Filter if in Expanded View */}
-            {isExpandedPopup && (
+            {/* Search Filter inside friend transactions */}
+            {(friend.transactions?.length > 2 || searchFilter.length > 0) && (
               <View style={[styles.expandedSearchBar, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
                 <Ionicons name="search-outline" size={16} color={theme.textMuted} />
                 <TextInput
@@ -381,15 +365,6 @@ export const FriendDetailModal = ({
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 Transaction History ({filteredTransactions.length})
               </Text>
-              <TouchableOpacity
-                onPress={() => setIsExpandedPopup(!isExpandedPopup)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-              >
-                <Ionicons name={isExpandedPopup ? 'contract' : 'scan-outline'} size={14} color={theme.primaryLight} />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight }}>
-                  {isExpandedPopup ? 'Standard View' : 'Expand Pop-up'}
-                </Text>
-              </TouchableOpacity>
             </View>
 
             {/* Isolated Friend Custom Categories Filter Pills (Friends tab only) */}
@@ -789,26 +764,32 @@ export const FriendDetailModal = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    justifyContent: 'flex-end',
   },
   card: {
     width: '100%',
-    maxWidth: 440,
-    maxHeight: '85%',
-    borderRadius: 24,
+    maxHeight: '90%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 18,
+    borderBottomWidth: 0,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 20,
   },
-  cardExpanded: {
-    maxHeight: '96%',
-    height: '96%',
+  dragPillWrap: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  dragPill: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
   },
   header: {
     flexDirection: 'row',
