@@ -190,6 +190,7 @@ function MainApp() {
             onOpenAddTransaction={openAddTransaction}
             onNavigateTab={setActiveTab}
             onBack={() => setActiveTab('dashboard')}
+            onOpenMore={() => setDrawerOpen(true)}
           />
         );
       case 'analytics':
@@ -199,6 +200,7 @@ function MainApp() {
             onOpenAddTransaction={openAddTransaction}
             onNavigateTab={setActiveTab}
             onBack={() => setActiveTab('dashboard')}
+            onOpenMore={() => setDrawerOpen(true)}
           />
         );
       case 'budgets':
@@ -210,6 +212,7 @@ function MainApp() {
             onEditRecurring={openEditRecurring}
             onNavigateTab={setActiveTab}
             onBack={() => setActiveTab('dashboard')}
+            onOpenMore={() => setDrawerOpen(true)}
           />
         );
       case 'accounts':
@@ -220,6 +223,7 @@ function MainApp() {
             onOpenTransfer={() => setTransferModalVisible(true)}
             onNavigateTab={setActiveTab}
             onBack={() => setActiveTab('dashboard')}
+            onOpenMore={() => setDrawerOpen(true)}
           />
         );
       case 'lending':
@@ -227,6 +231,7 @@ function MainApp() {
           <LendingScreen
             onNavigateTab={setActiveTab}
             onBack={() => setActiveTab('dashboard')}
+            onOpenMore={() => setDrawerOpen(true)}
           />
         );
       case 'settings':
@@ -236,6 +241,7 @@ function MainApp() {
             onOpenSmartInbox={() => setSmartInboxVisible(true)}
             onNavigateTab={setActiveTab}
             onBack={() => setActiveTab('dashboard')}
+            onOpenMore={() => setDrawerOpen(true)}
           />
         );
       default:

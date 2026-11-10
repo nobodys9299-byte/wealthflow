@@ -13,6 +13,7 @@ import { SummaryCards } from '../components/SummaryCards';
 import { AccountCard } from '../components/AccountCard';
 import { TransactionItem } from '../components/TransactionItem';
 import { formatCurrency } from '../utils/formatters';
+import { getCategoryById } from '../constants/categories';
 
 export const DashboardScreen = ({
   onOpenAddTransaction,
@@ -318,28 +319,72 @@ export const DashboardScreen = ({
         </TouchableOpacity>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recScroll}>
-          {recurring.map((rec) => (
-            <TouchableOpacity
-              key={rec.id}
-              onPress={onOpenAddRecurring}
-              style={[styles.recCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-            >
-              <View style={styles.recCardTop}>
-                <View style={[styles.recIconWrap, { backgroundColor: '#8B5CF620' }]}>
-                  <Ionicons name="repeat" size={16} color="#8B5CF6" />
+          {recurring.map((rec) => {
+            const isIncome = rec.type === 'income';
+            const cat = getCategoryById(rec.categoryId, rec.type);
+            const dueDay = rec.dayOfMonth || (rec.nextDueDate ? new Date(rec.nextDueDate).getDate() : 1);
+            const accentColor = isIncome ? theme.success : (cat?.color || '#8B5CF6');
+
+            return (
+              <TouchableOpacity
+                key={rec.id}
+                onPress={onOpenAddRecurring}
+                style={[
+                  styles.recCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    borderTopColor: accentColor,
+                    borderTopWidth: 3,
+                  },
+                ]}
+                activeOpacity={0.8}
+              >
+                {/* Top Row: Category Icon Graphic & Frequency Badge */}
+                <View style={styles.recCardTop}>
+                  <View style={[styles.recIconWrap, { backgroundColor: `${accentColor}25` }]}>
+                    <Text style={{ fontSize: 16 }}>{cat?.emoji || (isIncome ? '💰' : '⚡')}</Text>
+                  </View>
+
+                  <View style={[styles.recFreqPill, { backgroundColor: `${accentColor}18` }]}>
+                    <Ionicons name="repeat" size={10} color={accentColor} />
+                    <Text style={[styles.recFreqText, { color: accentColor }]}>
+                      {rec.frequency ? rec.frequency.toUpperCase() : 'MONTHLY'}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={[styles.recDayTag, { color: theme.textMuted }]}>
-                  Day {rec.dayOfMonth || 1}
+
+                {/* Category Graphic Tag */}
+                <Text style={[styles.recCatName, { color: accentColor }]} numberOfLines={1}>
+                  {cat?.name || 'Recurring'}
                 </Text>
-              </View>
-              <Text style={[styles.recTitle, { color: theme.text }]} numberOfLines={1}>
-                {rec.title}
-              </Text>
-              <Text style={[styles.recAmount, { color: '#8B5CF6' }]}>
-                {formatCurrency(rec.amount, currency.symbol)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+
+                {/* Recurring Title */}
+                <Text style={[styles.recTitle, { color: theme.text }]} numberOfLines={1}>
+                  {rec.title}
+                </Text>
+
+                {/* Bottom Row: Amount & Due Day Tag */}
+                <View style={styles.recBottomRow}>
+                  <Text
+                    style={[
+                      styles.recAmount,
+                      { color: isIncome ? theme.success : theme.text },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {isIncome ? '+' : '-'}{formatCurrency(rec.amount, currency.symbol)}
+                  </Text>
+                  <View style={[styles.recDueBadge, { backgroundColor: theme.cardAlt }]}>
+                    <Text style={[styles.recDueText, { color: theme.textMuted }]}>
+                      Day {dueDay}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
 
@@ -629,35 +674,72 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   recCard: {
-    width: 140,
+    width: 155,
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   recCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   recIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recDayTag: {
+  recFreqPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  recFreqText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  recCatName: {
     fontSize: 10,
     fontWeight: '700',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   recTitle: {
     fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  recBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   recAmount: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '900',
+    flex: 1,
+  },
+  recDueBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 4,
+  },
+  recDueText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

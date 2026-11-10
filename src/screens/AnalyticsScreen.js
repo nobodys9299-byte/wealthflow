@@ -41,7 +41,7 @@ const ANALYSIS_VIEWS = [
   },
 ];
 
-export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack }) => {
+export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack, onOpenMore }) => {
   const { theme, currency, accounts, transactions, netWorth, deleteTransaction } = useFinance();
 
   const [activeView, setActiveView] = useState('account'); // 'account' | 'expense' | 'income'
@@ -288,15 +288,15 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Header with Back Button, Title and Dropdown Option */}
+      {/* Top Header with More Menu Button and Title */}
       <View style={styles.topHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
           <TouchableOpacity
-            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
-            style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
-            accessibilityLabel="Back to Home"
+            onPress={onOpenMore || (() => onNavigateTab && onNavigateTab('settings'))}
+            style={[styles.menuBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            accessibilityLabel="Open Menu"
           >
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
+            <Ionicons name="menu-outline" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Financial Analysis</Text>
@@ -978,20 +978,10 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
               <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
             </View>
 
-            {/* Top Detail Header */}
+            {/* Top Detail Header: Category/Account Info on Left, Controls & Cross Sign on Right */}
             <View style={[styles.detailHeader, { borderBottomColor: theme.border }]}>
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedDetail(null);
-                  setDetailSearch('');
-                  setIsDetailExpanded(false);
-                }}
-                style={[styles.backIconBtn, { backgroundColor: theme.cardAlt }]}
-              >
-                <Ionicons name="close" size={20} color={theme.text} />
-              </TouchableOpacity>
-
-              <View style={{ flex: 1, marginHorizontal: 8 }}>
+              {/* Left Side: Title, Emoji, and Subtitle */}
+              <View style={{ flex: 1, marginRight: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={{ fontSize: 18 }}>{selectedDetail?.emoji || '📋'}</Text>
                   <Text style={[styles.detailTitle, { color: theme.text }]} numberOfLines={1}>
@@ -1005,7 +995,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                 </Text>
               </View>
 
-              {/* Action Buttons: Expand to Full Screen & Share All */}
+              {/* Right Side: Expand, Share, and Close Cross Button on Right Side */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <TouchableOpacity
                   onPress={() => setIsDetailExpanded(!isDetailExpanded)}
@@ -1014,7 +1004,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                 >
                   <Ionicons
                     name={isDetailExpanded ? 'contract-outline' : 'expand-outline'}
-                    size={16}
+                    size={15}
                     color={theme.primaryLight}
                   />
                   <Text style={[styles.expandToggleText, { color: theme.primaryLight }]}>
@@ -1039,8 +1029,21 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                   }}
                   style={styles.shareAllImageBtn}
                 >
-                  <Ionicons name="image-outline" size={15} color="#FFF" />
-                  <Text style={styles.shareAllImageBtnText}>Share All</Text>
+                  <Ionicons name="share-social-outline" size={14} color="#FFF" />
+                  <Text style={styles.shareAllImageBtnText}>Share</Text>
+                </TouchableOpacity>
+
+                {/* Cross Close Sign Added to Right Side */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedDetail(null);
+                    setDetailSearch('');
+                    setIsDetailExpanded(false);
+                  }}
+                  style={[styles.backIconBtn, { backgroundColor: theme.cardAlt }]}
+                  accessibilityLabel="Close Ledger"
+                >
+                  <Ionicons name="close" size={20} color={theme.text} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1646,6 +1649,14 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

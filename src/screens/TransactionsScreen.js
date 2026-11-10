@@ -17,7 +17,7 @@ import { getCategoryById } from '../constants/categories';
 import { generateTransactionPDF } from '../utils/pdfGenerator';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
-export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack }) => {
+export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack, onOpenMore }) => {
   const { theme, currency, transactions, accounts, deleteTransaction } = useFinance();
 
   const [search, setSearch] = useState('');
@@ -79,15 +79,15 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Header with Back Button */}
+      {/* Header with More Menu Button */}
       <View style={styles.topHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
           <TouchableOpacity
-            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
-            style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
-            accessibilityLabel="Back to Home"
+            onPress={onOpenMore || (() => onNavigateTab && onNavigateTab('settings'))}
+            style={[styles.menuBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            accessibilityLabel="Open Menu"
           >
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
+            <Ionicons name="menu-outline" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Transactions</Text>
@@ -251,6 +251,14 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

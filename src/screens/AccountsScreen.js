@@ -21,6 +21,7 @@ export const AccountsScreen = ({
   onOpenTransfer,
   onNavigateTab,
   onBack,
+  onOpenMore,
 }) => {
   const {
     theme,
@@ -62,15 +63,15 @@ export const AccountsScreen = ({
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Header with Back Button */}
+      {/* Top Header with More Menu Button */}
       <View style={styles.topHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
           <TouchableOpacity
-            onPress={onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
-            style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
-            accessibilityLabel="Back"
+            onPress={onOpenMore || (() => onNavigateTab && onNavigateTab('settings'))}
+            style={[styles.menuBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            accessibilityLabel="Open Menu"
           >
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
+            <Ionicons name="menu-outline" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>
@@ -199,6 +200,14 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

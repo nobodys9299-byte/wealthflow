@@ -18,7 +18,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 
-export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onBack }) => {
+export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onBack, onOpenMore }) => {
   const {
     theme,
     themeId,
@@ -317,14 +317,13 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        {onBack && (
-          <TouchableOpacity
-            onPress={onBack}
-            style={[styles.backBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.text} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={onOpenMore || onBack || (() => onNavigateTab && onNavigateTab('dashboard'))}
+          style={[styles.menuBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+          accessibilityLabel="Open Menu"
+        >
+          <Ionicons name="menu-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[styles.screenTitle, { color: theme.text }]}>Settings & Security</Text>
           <Text style={[styles.subText, { color: theme.textMuted }]}>
@@ -1135,6 +1134,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
