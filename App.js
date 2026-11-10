@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,6 +8,7 @@ import {
   Platform,
   Modal,
   ScrollView,
+  BackHandler,
   StatusBar as RNStatusBar,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -59,6 +60,24 @@ function MainApp() {
   const [editingRecurring, setEditingRecurring] = useState(null);
 
   const [smartInboxVisible, setSmartInboxVisible] = useState(false);
+
+  // Handle Android Back Button so user returns to Home tab instead of closing app
+  useEffect(() => {
+    const handleHardwareBack = () => {
+      if (drawerOpen) {
+        setDrawerOpen(false);
+        return true;
+      }
+      if (activeTab !== 'home') {
+        setActiveTab('home');
+        return true;
+      }
+      return false; // let Android minimize/exit if already on home
+    };
+
+    const backSub = BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
+    return () => backSub.remove();
+  }, [drawerOpen, activeTab]);
 
   // If security is enabled and app is locked, present LockScreen
   if (securitySettings.enabled && !isAppUnlocked) {
@@ -159,6 +178,7 @@ function MainApp() {
             onEditAccount={openEditAccount}
             onOpenTransfer={() => setTransferModalVisible(true)}
             onNavigateTab={setActiveTab}
+            onBack={() => setActiveTab('home')}
           />
         );
       case 'lending':

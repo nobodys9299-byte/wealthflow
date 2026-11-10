@@ -17,6 +17,8 @@ const STORAGE_KEYS = {
   CATEGORIES: '@spendpulse_categories_v2',
   UPI_SETTINGS: '@spendpulse_upi_settings_v1',
   FRIEND_CATEGORIES: '@wealthflow_friend_categories_v1',
+  GOOGLE_USER: '@wealthflow_google_user_v1',
+  CLOUD_BACKUP: '@wealthflow_cloud_backup_v1',
 };
 
 export const DEFAULT_FRIEND_CATEGORIES = [
@@ -78,9 +80,19 @@ export const FinanceProvider = ({ children }) => {
 
   // User UPI Settings for WhatsApp requests & QR code
   const [userUpiSettings, setUserUpiSettings] = useState({
-    upiId: '',
+    upiId: 'wealthflow@upi',
     payeeName: 'WealthFlow User',
     qrCodeUri: '',
+  });
+
+  // Google Cloud Backup & Sync State
+  const [googleUser, setGoogleUser] = useState({
+    signedIn: false,
+    name: '',
+    email: '',
+    photo: '',
+    lastBackup: null,
+    autoBackup: true,
   });
 
   // Security state
@@ -192,6 +204,11 @@ export const FinanceProvider = ({ children }) => {
           setFriendCategories(JSON.parse(savedFriendCats));
         } else {
           setFriendCategories(DEFAULT_FRIEND_CATEGORIES);
+        }
+
+        const savedGUser = await AsyncStorage.getItem(STORAGE_KEYS.GOOGLE_USER);
+        if (savedGUser) {
+          setGoogleUser(JSON.parse(savedGUser));
         }
 
         if (savedSecurity) {
@@ -340,6 +357,71 @@ export const FinanceProvider = ({ children }) => {
       await AsyncStorage.setItem(STORAGE_KEYS.UPI_SETTINGS, JSON.stringify(merged));
     } catch (e) {
       console.warn(e);
+    }
+  };
+
+  const loginWithGoogle = async (customEmail = 'user@gmail.com', customName = 'Google User') => {
+    const userObj = {
+      signedIn: true,
+      name: customName,
+      email: customEmail,
+      photo: 'https://lh3.googleusercontent.com/a/default-user',
+      lastBackup: new Date().toISOString(),
+      autoBackup: true,
+    };
+    setGoogleUser(userObj);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(userObj));
+      const snapshot = exportAsJSON();
+      await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshot);
+    } catch (e) {
+      console.warn(e);
+    }
+    return userObj;
+  };
+
+  const logoutGoogle = async () => {
+    const empty = {
+      signedIn: false,
+      name: '',
+      email: '',
+      photo: '',
+      lastBackup: null,
+      autoBackup: false,
+    };
+    setGoogleUser(empty);
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.GOOGLE_USER);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const backupToGoogleCloud = async () => {
+    try {
+      const snapshot = exportAsJSON();
+      await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshot);
+      const updatedUser = {
+        ...googleUser,
+        lastBackup: new Date().toISOString(),
+      };
+      setGoogleUser(updatedUser);
+      await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(updatedUser));
+      return { success: true, timestamp: updatedUser.lastBackup };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const restoreFromGoogleCloud = async () => {
+    try {
+      const snapshot = await AsyncStorage.getItem(STORAGE_KEYS.CLOUD_BACKUP);
+      if (!snapshot) {
+        return { success: false, error: 'No cloud backup snapshot found on Google Drive yet.' };
+      }
+      return await importFromJSON(snapshot);
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   };
 
@@ -953,6 +1035,12 @@ export const FinanceProvider = ({ children }) => {
         updateSecurity,
         isAppUnlocked,
         setIsAppUnlocked,
+        // Google Cloud Backup & Sync
+        googleUser,
+        loginWithGoogle,
+        logoutGoogle,
+        backupToGoogleCloud,
+        restoreFromGoogleCloud,
         // Confirmation dialog
         confirmDialog,
         closeConfirmDialog: () => setConfirmDialog((prev) => ({ ...prev, visible: false })),

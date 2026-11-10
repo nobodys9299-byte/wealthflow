@@ -40,6 +40,7 @@ export const FriendDetailModal = ({
     deleteFriendAccount,
     deleteLendingRecord,
     userUpiSettings,
+    updateUpiSettings,
     friendCategories = DEFAULT_FRIEND_CATEGORIES,
     addFriendCategory,
     deleteFriendCategory,
@@ -53,6 +54,11 @@ export const FriendDetailModal = ({
   const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
   const [showImageShare, setShowImageShare] = useState(false);
   const [selectedTxForImage, setSelectedTxForImage] = useState(null);
+
+  // UPI reminder state with fallback
+  const [reminderUpiId, setReminderUpiId] = useState(userUpiSettings?.upiId || 'yourname@okaxis');
+  const [reminderPayee, setReminderPayee] = useState(userUpiSettings?.payeeName || 'WealthFlow User');
+  const [showEditUpi, setShowEditUpi] = useState(false);
 
   // Custom Friend Category Creator state (Friends tab only)
   const [showAddCatModal, setShowAddCatModal] = useState(false);
@@ -104,9 +110,6 @@ export const FriendDetailModal = ({
   if (!visible || !friend) return null;
 
   const handleSendWhatsAppRequest = async () => {
-    const upiId = userUpiSettings?.upiId || '';
-    const payeeName = userUpiSettings?.payeeName || 'WealthFlow User';
-
     let amountToRequest = absBalance;
     if (requestAmountType === 'custom') {
       const num = parseFloat(customAmount);
@@ -122,13 +125,17 @@ export const FriendDetailModal = ({
       return;
     }
 
-    const upiLink = upiId
-      ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amountToRequest}&cu=INR`
-      : '';
+    const upiIdToSend = (reminderUpiId.trim() || userUpiSettings?.upiId || 'wealthflow@okaxis').trim();
+    const payeeToSend = (reminderPayee.trim() || userUpiSettings?.payeeName || 'WealthFlow User').trim();
+    
+    // Auto-update global settings if user modified them
+    if (updateUpiSettings) {
+      updateUpiSettings({ upiId: upiIdToSend, payeeName: payeeToSend });
+    }
 
-    const message = `Hi ${friend.name}! 👋\n\nfriendly reminder regarding our pending balance:\n💵 *Amount Due: ${currency.symbol}${amountToRequest}*\n\n${
-      upiId ? `💳 *Pay via UPI ID:* ${upiId}\n📱 *Pay Directly:* ${upiLink}\n\n` : ''
-    }Thank you!`;
+    const upiLink = `upi://pay?pa=${encodeURIComponent(upiIdToSend)}&pn=${encodeURIComponent(payeeToSend)}&am=${amountToRequest}&cu=INR`;
+
+    const message = `Hi ${friend.name}! 👋\n\nfriendly reminder regarding our pending balance:\n💵 *Amount Due: ${currency.symbol}${amountToRequest}*\n\n💳 *Pay via UPI ID:* ${upiIdToSend}\n📱 *Direct Payment Link:* ${upiLink}\n\nThank you!`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
@@ -163,13 +170,16 @@ export const FriendDetailModal = ({
       return;
     }
 
-    const upiId = userUpiSettings?.upiId || '';
-    const payeeName = userUpiSettings?.payeeName || 'WealthFlow User';
-    const upiLink = upiId
-      ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amountToRequest}&cu=INR`
-      : '';
+    const upiIdToSend = (reminderUpiId.trim() || userUpiSettings?.upiId || 'wealthflow@okaxis').trim();
+    const payeeToSend = (reminderPayee.trim() || userUpiSettings?.payeeName || 'WealthFlow User').trim();
 
-    const message = `Hi ${friend.name}, friendly reminder regarding our pending balance: ${currency.symbol}${amountToRequest}.${upiId ? ` Pay via UPI: ${upiId} (${upiLink})` : ''} Thank you!`;
+    if (updateUpiSettings) {
+      updateUpiSettings({ upiId: upiIdToSend, payeeName: payeeToSend });
+    }
+
+    const upiLink = `upi://pay?pa=${encodeURIComponent(upiIdToSend)}&pn=${encodeURIComponent(payeeToSend)}&am=${amountToRequest}&cu=INR`;
+
+    const message = `Hi ${friend.name}, friendly reminder regarding our pending balance: ${currency.symbol}${amountToRequest}. Pay via UPI: ${upiIdToSend} (Direct Link: ${upiLink}). Thank you!`;
     const smsUrl = Platform.OS === 'ios'
       ? `sms:&body=${encodeURIComponent(message)}`
       : `sms:?body=${encodeURIComponent(message)}`;
@@ -586,6 +596,63 @@ export const FriendDetailModal = ({
                 </TouchableOpacity>
               </View>
 
+              {/* UPI Payment Configuration Card & Direct Link Preview */}
+              <View style={[styles.upiCardContainer, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+                <View style={styles.upiCardHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="card-outline" size={16} color={theme.primaryLight} />
+                    <Text style={[styles.upiCardTitle, { color: theme.text }]}>UPI Payment Details & Link</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setShowEditUpi(!showEditUpi)}
+                    style={[styles.editUpiBtn, { backgroundColor: `${theme.primary}20` }]}
+                  >
+                    <Ionicons name={showEditUpi ? 'checkmark' : 'pencil'} size={13} color={theme.primaryLight} />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight, marginLeft: 4 }}>
+                      {showEditUpi ? 'Done' : 'Change UPI'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {showEditUpi ? (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={[styles.miniLabel, { color: theme.textMuted }]}>UPI ID (VPA):</Text>
+                    <TextInput
+                      style={[styles.upiInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+                      placeholder="e.g. yourname@okaxis, yourname@paytm"
+                      placeholderTextColor={theme.textMuted}
+                      value={reminderUpiId}
+                      onChangeText={setReminderUpiId}
+                    />
+                    <Text style={[styles.miniLabel, { color: theme.textMuted, marginTop: 6 }]}>Payee Name:</Text>
+                    <TextInput
+                      style={[styles.upiInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+                      placeholder="e.g. Rahul Sharma"
+                      placeholderTextColor={theme.textMuted}
+                      value={reminderPayee}
+                      onChangeText={setReminderPayee}
+                    />
+                  </View>
+                ) : (
+                  <View style={{ marginTop: 6 }}>
+                    <View style={styles.upiValueRow}>
+                      <Text style={[styles.upiIdBold, { color: theme.primaryLight }]}>
+                        {reminderUpiId || 'wealthflow@okaxis'}
+                      </Text>
+                      <Text style={[styles.upiPayeeText, { color: theme.textMuted }]}>
+                        ({reminderPayee || 'WealthFlow User'})
+                      </Text>
+                    </View>
+                    <View style={styles.upiLinkPreviewBadge}>
+                      <Ionicons name="link-outline" size={12} color="#10B981" />
+                      <Text style={styles.upiLinkPreviewText} numberOfLines={1}>
+                        upi://pay?pa={encodeURIComponent(reminderUpiId || 'wealthflow@okaxis')}&pn={encodeURIComponent(reminderPayee || 'WealthFlow User')}&am={requestAmountType === 'custom' && parseFloat(customAmount) > 0 ? parseFloat(customAmount) : absBalance}&cu=INR
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
               {/* Send buttons: WhatsApp & Direct SMS */}
               <View style={styles.sendButtonsRow}>
                 <TouchableOpacity
@@ -918,7 +985,69 @@ const styles = StyleSheet.create({
   },
   amountOptions: {
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  upiCardContainer: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  upiCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  upiCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  editUpiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  miniLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  upiInput: {
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    fontSize: 12,
+  },
+  upiValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  upiIdBold: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  upiPayeeText: {
+    fontSize: 11,
+  },
+  upiLinkPreviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#10B98115',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 6,
+  },
+  upiLinkPreviewText: {
+    color: '#10B981',
+    fontSize: 10,
+    fontWeight: '600',
+    flex: 1,
   },
   amountOption: {
     padding: 12,

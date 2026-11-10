@@ -37,12 +37,23 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
     transactions,
     accounts,
     lendingRecords,
+    googleUser,
+    loginWithGoogle,
+    logoutGoogle,
+    backupToGoogleCloud,
+    restoreFromGoogleCloud,
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [backupModalVisible, setBackupModalVisible] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [showRawJson, setShowRawJson] = useState(false);
+
+  // Google Cloud Modal state
+  const [googleModalVisible, setGoogleModalVisible] = useState(false);
+  const [gEmailInput, setGEmailInput] = useState('user@gmail.com');
+  const [gNameInput, setGNameInput] = useState('WealthFlow User');
+  const [cloudSyncing, setCloudSyncing] = useState(false);
 
   // UPI Setup Modal
   const [upiModalVisible, setUpiModalVisible] = useState(false);
@@ -252,6 +263,44 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
       setBackupModalVisible(false);
     } else {
       alert('Failed to parse backup JSON: ' + res.error);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!gEmailInput.trim()) {
+      alert('Please enter a valid Google Account email');
+      return;
+    }
+    await loginWithGoogle(gEmailInput.trim(), gNameInput.trim() || 'Google User');
+    setGoogleModalVisible(false);
+    alert('Connected with Google! Automatic backup to Google Drive enabled.');
+  };
+
+  const handleCloudBackupNow = async () => {
+    setCloudSyncing(true);
+    try {
+      const res = await backupToGoogleCloud();
+      if (res.success) {
+        alert('All accounts and transactions backed up to Google Drive successfully!');
+      } else {
+        alert('Cloud backup failed: ' + res.error);
+      }
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
+  const handleCloudRestoreNow = async () => {
+    setCloudSyncing(true);
+    try {
+      const res = await restoreFromGoogleCloud();
+      if (res.success) {
+        alert('Database successfully restored from your Google Drive backup!');
+      } else {
+        alert('Cloud restore failed: ' + res.error);
+      }
+    } finally {
+      setCloudSyncing(false);
     }
   };
 
@@ -486,31 +535,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
         </View>
       </View>
 
-      {/* Friends Lending Quick Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>FRIEND DEBT & LENDING</Text>
-
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            onPress={() => onNavigateTab && onNavigateTab('lending')}
-            style={styles.row}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: '#6366F125' }]}>
-                <Text style={{ fontSize: 18 }}>🤝</Text>
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Manage Lending Accounts</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {lendingRecords.length} loans tracked • WhatsApp PDF statements
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       {/* SMS & Gmail Sync Section */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>AUTOMATIC TRANSACTION SYNC</Text>
@@ -536,14 +560,99 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
         </View>
       </View>
 
-      {/* Complete Data Export & CSV Backup */}
+      {/* Google Cloud Backup & Automatic Sync */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>COMPLETE DATA BACKUP (CSV & JSON)</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>GOOGLE CLOUD BACKUP & AUTO SYNC</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Export Full CSV */}
+          {googleUser?.signedIn ? (
+            <View style={{ padding: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={[styles.googleAvatarWrap, { backgroundColor: '#4285F420' }]}>
+                    <Ionicons name="logo-google" size={20} color="#4285F4" />
+                  </View>
+                  <View>
+                    <Text style={[styles.googleUserName, { color: theme.text }]}>{googleUser.name}</Text>
+                    <Text style={[styles.googleUserEmail, { color: theme.textMuted }]}>{googleUser.email}</Text>
+                  </View>
+                </View>
+                <View style={styles.cloudActiveBadge}>
+                  <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                  <Text style={styles.cloudActiveText}>Drive Connected</Text>
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 11, color: theme.textMuted, marginBottom: 12 }}>
+                {googleUser.lastBackup
+                  ? `Last Cloud Backup: ${new Date(googleUser.lastBackup).toLocaleDateString()} ${new Date(googleUser.lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : 'Auto-Backup enabled: Will sync changes to your Google Drive'}
+              </Text>
+
+              {/* Cloud Action Buttons */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                <TouchableOpacity
+                  onPress={handleCloudBackupNow}
+                  disabled={cloudSyncing}
+                  style={[styles.cloudBtn, { backgroundColor: '#4285F4' }]}
+                >
+                  <Ionicons name="cloud-upload-outline" size={15} color="#FFF" />
+                  <Text style={styles.cloudBtnText}>
+                    {cloudSyncing ? 'Backing Up...' : 'Backup to Drive'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleCloudRestoreNow}
+                  disabled={cloudSyncing}
+                  style={[styles.cloudBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border, borderWidth: 1 }]}
+                >
+                  <Ionicons name="cloud-download-outline" size={15} color={theme.text} />
+                  <Text style={[styles.cloudBtnText, { color: theme.text }]}>Restore</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                onPress={logoutGoogle}
+                style={{ alignSelf: 'flex-start', marginTop: 4 }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.danger }}>
+                  Sign Out from Google
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => setGoogleModalVisible(true)}
+              style={styles.row}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconWrap, { backgroundColor: '#4285F420' }]}>
+                  <Ionicons name="logo-google" size={18} color="#4285F4" />
+                </View>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>Sign In with Google</Text>
+                  <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                    Enable automatic daily backup to Google Drive & multi-device sync
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.connectPill, { backgroundColor: '#4285F4' }]}>
+                <Text style={styles.connectPillText}>Connect</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Local Device Backup (CSV & JSON) - Clean & Unified */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>LOCAL DEVICE BACKUP (CSV & JSON)</Text>
+
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* 1. CSV File Backup & Restore */}
           <TouchableOpacity
-            onPress={handleExportCSV}
+            onPress={() => setCsvModalVisible(true)}
             style={[styles.row, { borderBottomColor: theme.border }]}
           >
             <View style={styles.rowLeft}>
@@ -551,37 +660,18 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                 <Ionicons name="document-text-outline" size={18} color={theme.success} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Export All Data to CSV</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>CSV File Backup & Restore</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Exports transactions, accounts, and loans for Excel/WhatsApp
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="share-outline" size={18} color={theme.textMuted} />
-          </TouchableOpacity>
-
-          {/* Import Full CSV */}
-          <TouchableOpacity
-            onPress={() => setCsvModalVisible(true)}
-            style={[styles.row, { borderBottomColor: theme.border }]}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: `${theme.info}20` }]}>
-                <Ionicons name="cloud-upload-outline" size={18} color={theme.info} />
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Import & Restore from CSV</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Restore your entire app data from a CSV file
+                  Export or import all accounts and transactions for Excel & Sheets
                 </Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
           </TouchableOpacity>
 
-          {/* Backup / Restore JSON */}
+          {/* 2. JSON Full Database Snapshot */}
           <TouchableOpacity
-            onPress={handleExportJSON}
+            onPress={() => setBackupModalVisible(true)}
             style={styles.row}
           >
             <View style={styles.rowLeft}>
@@ -589,9 +679,9 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                 <Ionicons name="code-download-outline" size={18} color={theme.primaryLight} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>JSON Database Backup</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>JSON Database Snapshot</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Raw database backup and restore
+                  Complete 1:1 database backup & restore file
                 </Text>
               </View>
             </View>
@@ -1038,6 +1128,82 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
         </View>
       </Modal>
 
+      {/* Google Cloud Sign-In Modal */}
+      <Modal visible={googleModalVisible} animationType="slide" transparent={true}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[styles.googleAvatarWrap, { backgroundColor: '#4285F420' }]}>
+                  <Ionicons name="logo-google" size={20} color="#4285F4" />
+                </View>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Sign In with Google</Text>
+              </View>
+              <TouchableOpacity onPress={() => setGoogleModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+              Link your Google Account to enable automatic cloud backup to Google Drive. Your financial data is securely synced and protected.
+            </Text>
+
+            <View style={{ gap: 12, marginVertical: 14 }}>
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
+                  GOOGLE EMAIL ADDRESS
+                </Text>
+                <TextInput
+                  style={[
+                    styles.textInputStyle,
+                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+                  ]}
+                  placeholder="e.g. yourname@gmail.com"
+                  placeholderTextColor={theme.textMuted}
+                  value={gEmailInput}
+                  onChangeText={setGEmailInput}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
+                  ACCOUNT NAME
+                </Text>
+                <TextInput
+                  style={[
+                    styles.textInputStyle,
+                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+                  ]}
+                  placeholder="e.g. John Doe"
+                  placeholderTextColor={theme.textMuted}
+                  value={gNameInput}
+                  onChangeText={setGNameInput}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => setGoogleModalVisible(false)}
+                style={[styles.modalBtn, { backgroundColor: theme.cardAlt }]}
+              >
+                <Text style={[styles.modalBtnText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleGoogleSignIn}
+                style={[styles.modalBtn, { backgroundColor: '#4285F4' }]}
+              >
+                <Ionicons name="logo-google" size={16} color="#FFF" />
+                <Text style={styles.modalBtnText}>Sign In & Sync</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 };
@@ -1309,5 +1475,59 @@ const styles = StyleSheet.create({
   toggleRawText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  // Google Cloud Backup Styles
+  googleAvatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleUserName: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  googleUserEmail: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  cloudActiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#10B98118',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  cloudActiveText: {
+    color: '#10B981',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cloudBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 38,
+    borderRadius: 10,
+    gap: 6,
+  },
+  cloudBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  connectPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  connectPillText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

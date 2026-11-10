@@ -46,8 +46,15 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [timeframe, setTimeframe] = useState('month'); // 'month' | '30days' | 'year' | 'all'
 
-  // Dedicated Detail Screen for tapped card/head (opens in new screen, not below)
+  // Custom Search & Filter state on main screen
+  const [mainSearchQuery, setMainSearchQuery] = useState('');
+  const [filterFlowType, setFilterFlowType] = useState('all'); // 'all' | 'expense' | 'income'
+  const [filterAccount, setFilterAccount] = useState('all'); // 'all' | account.id
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Dedicated Detail Screen for tapped card/head (opens in 75% height with expand toggle)
   const [selectedDetail, setSelectedDetail] = useState(null);
+  const [isDetailExpanded, setIsDetailExpanded] = useState(false);
   const [detailSearch, setDetailSearch] = useState('');
   const [shareImageModalData, setShareImageModalData] = useState(null);
 
@@ -56,7 +63,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
 
   const currentViewObj = ANALYSIS_VIEWS.find((v) => v.id === activeView) || ANALYSIS_VIEWS[0];
 
-  // Filter transactions based on timeframe
+  // Filter transactions based on timeframe, search query, flow type, and account
   const filteredTransactions = useMemo(() => {
     const now = new Date();
     const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -65,19 +72,41 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
     return transactions.filter((t) => {
       if (!t.date) return false;
       if (timeframe === 'month') {
-        return t.date.startsWith(currentYearMonth);
-      }
-      if (timeframe === '30days') {
+        if (!t.date.startsWith(currentYearMonth)) return false;
+      } else if (timeframe === '30days') {
         const txDate = new Date(t.date);
         const diffDays = (now - txDate) / (1000 * 60 * 60 * 24);
-        return diffDays >= 0 && diffDays <= 30;
+        if (diffDays < 0 || diffDays > 30) return false;
+      } else if (timeframe === 'year') {
+        if (!t.date.startsWith(currentYear)) return false;
       }
-      if (timeframe === 'year') {
-        return t.date.startsWith(currentYear);
+
+      // Flow type filter
+      if (filterFlowType !== 'all' && t.type !== filterFlowType) {
+        return false;
       }
-      return true; // 'all'
+
+      // Account filter
+      if (filterAccount !== 'all' && t.accountId !== filterAccount) {
+        return false;
+      }
+
+      // Search query filter
+      if (mainSearchQuery.trim()) {
+        const q = mainSearchQuery.toLowerCase().trim();
+        const matchesTitle = t.title && t.title.toLowerCase().includes(q);
+        const matchesNote = t.note && t.note.toLowerCase().includes(q);
+        const matchesCat = t.categoryId && t.categoryId.toLowerCase().includes(q);
+        const matchesAmt = String(t.amount).includes(q);
+        const matchesDate = t.date && t.date.includes(q);
+        if (!matchesTitle && !matchesNote && !matchesCat && !matchesAmt && !matchesDate) {
+          return false;
+        }
+      }
+
+      return true;
     });
-  }, [transactions, timeframe]);
+  }, [transactions, timeframe, filterFlowType, filterAccount, mainSearchQuery]);
 
   // Search filtered transactions inside the tapped Head / Card Modal
   const filteredDetailTransactions = useMemo(() => {
@@ -292,6 +321,148 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             </Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* Custom Search & Interactive Filter Bar */}
+      <View style={[styles.customFilterContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.searchBarRow}>
+          <Ionicons name="search-outline" size={16} color={theme.textMuted} />
+          <TextInput
+            style={[styles.mainSearchInput, { color: theme.text }]}
+            placeholder="Search records, categories, notes, or amounts..."
+            placeholderTextColor={theme.textMuted}
+            value={mainSearchQuery}
+            onChangeText={setMainSearchQuery}
+          />
+          {mainSearchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setMainSearchQuery('')} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+            </TouchableOpacity>
+          )}
+
+          {/* Filter options toggle pill */}
+          <TouchableOpacity
+            onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            style={[
+              styles.filterToggleBtn,
+              (filterFlowType !== 'all' || filterAccount !== 'all' || showAdvancedFilters) && {
+                backgroundColor: `${theme.primary}25`,
+                borderColor: theme.primaryLight,
+              },
+              { borderColor: theme.border },
+            ]}
+          >
+            <Ionicons
+              name={showAdvancedFilters ? 'funnel' : 'funnel-outline'}
+              size={14}
+              color={filterFlowType !== 'all' || filterAccount !== 'all' ? theme.primaryLight : theme.textMuted}
+            />
+            <Text
+              style={[
+                styles.filterToggleText,
+                {
+                  color: filterFlowType !== 'all' || filterAccount !== 'all' ? theme.primaryLight : theme.textMuted,
+                  fontWeight: filterFlowType !== 'all' || filterAccount !== 'all' ? '800' : '600',
+                },
+              ]}
+            >
+              {filterFlowType !== 'all' || filterAccount !== 'all' ? 'Filtered' : 'Filter'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Expandable Advanced Filters Panel */}
+        {showAdvancedFilters && (
+          <View style={[styles.advancedFiltersPanel, { borderTopColor: theme.border }]}>
+            {/* Flow Type Filter Pills */}
+            <View style={{ marginBottom: 8 }}>
+              <Text style={[styles.filterGroupLabel, { color: theme.textMuted }]}>FLOW TYPE</Text>
+              <View style={styles.filterPillsRow}>
+                {[
+                  { id: 'all', label: 'All Flows' },
+                  { id: 'expense', label: '💸 Expense' },
+                  { id: 'income', label: '💰 Income' },
+                ].map((f) => (
+                  <TouchableOpacity
+                    key={`flow_${f.id}`}
+                    onPress={() => setFilterFlowType(f.id)}
+                    style={[
+                      styles.subFilterChip,
+                      filterFlowType === f.id
+                        ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                        : { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.subFilterChipText,
+                        { color: filterFlowType === f.id ? '#FFF' : theme.text },
+                      ]}
+                    >
+                      {f.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Wallet / Account Filter Pills */}
+            <View style={{ marginBottom: 6 }}>
+              <Text style={[styles.filterGroupLabel, { color: theme.textMuted }]}>ACCOUNT / WALLET</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                <TouchableOpacity
+                  onPress={() => setFilterAccount('all')}
+                  style={[
+                    styles.subFilterChip,
+                    filterAccount === 'all'
+                      ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                      : { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.subFilterChipText, { color: filterAccount === 'all' ? '#FFF' : theme.text }]}>
+                    All Accounts
+                  </Text>
+                </TouchableOpacity>
+
+                {accounts.map((acc) => {
+                  const isSel = filterAccount === acc.id;
+                  return (
+                    <TouchableOpacity
+                      key={`acc_pill_${acc.id}`}
+                      onPress={() => setFilterAccount(isSel ? 'all' : acc.id)}
+                      style={[
+                        styles.subFilterChip,
+                        isSel
+                          ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                          : { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 11, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
+                      <Text style={[styles.subFilterChipText, { color: isSel ? '#FFF' : theme.text }]}>
+                        {acc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Reset Button if active filters */}
+            {(filterFlowType !== 'all' || filterAccount !== 'all' || mainSearchQuery.trim().length > 0) && (
+              <TouchableOpacity
+                onPress={() => {
+                  setFilterFlowType('all');
+                  setFilterAccount('all');
+                  setMainSearchQuery('');
+                }}
+                style={styles.resetFilterBtn}
+              >
+                <Ionicons name="reload-outline" size={12} color={theme.danger} />
+                <Text style={[styles.resetFilterText, { color: theme.danger }]}>Clear All Filters</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       {/* ======================================================== */}
@@ -756,118 +927,156 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
 
       {/* ======================================================== */}
       {/* DEDICATED NEW SCREEN MODAL FOR TAPPED CARD / HEAD        */}
+      {/* Opens in 75% height with Expand to Full Screen option   */}
       {/* ======================================================== */}
       <Modal
         visible={!!selectedDetail && !shareImageModalData}
         animationType="slide"
+        transparent={true}
         onRequestClose={() => {
           setSelectedDetail(null);
           setDetailSearch('');
+          setIsDetailExpanded(false);
         }}
       >
-        <SafeAreaView style={[styles.detailModalContainer, { backgroundColor: theme.bg }]}>
-          {/* Top Detail Header */}
-          <View style={[styles.detailHeader, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedDetail(null);
-                setDetailSearch('');
-              }}
-              style={[styles.backIconBtn, { backgroundColor: theme.cardAlt }]}
-            >
-              <Ionicons name="arrow-back" size={20} color={theme.text} />
-            </TouchableOpacity>
-
-            <View style={{ flex: 1, marginHorizontal: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 18 }}>{selectedDetail?.emoji || '📋'}</Text>
-                <Text style={[styles.detailTitle, { color: theme.text }]} numberOfLines={1}>
-                  {selectedDetail?.title}
-                </Text>
-              </View>
-              <Text style={[styles.detailSub, { color: theme.textMuted }]}>
-                {selectedDetail?.type === 'account'
-                  ? `${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} Balance • ${selectedDetail?.transactions?.length || 0} Records`
-                  : `${selectedDetail?.categoryType === 'income' ? '+' : '-'}${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} • ${selectedDetail?.transactions?.length || 0} Records`}
-              </Text>
+        <View style={[styles.detailModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View
+            style={[
+              styles.detailModalCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                height: isDetailExpanded ? '98%' : '75%',
+                maxHeight: isDetailExpanded ? '98%' : '75%',
+              },
+            ]}
+          >
+            {/* Top Drag / Grab Bar Pill */}
+            <View style={styles.dragPillWrap}>
+              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
             </View>
 
-            {/* Share entire account or category as single WhatsApp image */}
-            <TouchableOpacity
-              onPress={() => {
-                setShareImageModalData({
-                  type: selectedDetail.type,
-                  data: {
-                    ...selectedDetail.data,
-                    name: selectedDetail.title,
-                    emoji: selectedDetail.emoji,
-                    currentBalance: selectedDetail.amount,
-                    totalAmount: selectedDetail.amount,
-                    type: selectedDetail.categoryType || selectedDetail.data?.type || 'account',
-                    transactions: selectedDetail.transactions || [],
-                  },
-                });
-              }}
-              style={styles.shareAllImageBtn}
-            >
-              <Ionicons name="image-outline" size={15} color="#FFF" />
-              <Text style={styles.shareAllImageBtnText}>Share All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Bar inside Detail Screen */}
-          <View style={[styles.detailSearchRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Ionicons name="search-outline" size={16} color={theme.textMuted} />
-            <TextInput
-              style={[styles.detailSearchInput, { color: theme.text }]}
-              placeholder={`Search ${selectedDetail?.title} transactions...`}
-              placeholderTextColor={theme.textMuted}
-              value={detailSearch}
-              onChangeText={setDetailSearch}
-            />
-            {detailSearch.length > 0 && (
-              <TouchableOpacity onPress={() => setDetailSearch('')}>
-                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+            {/* Top Detail Header */}
+            <View style={[styles.detailHeader, { borderBottomColor: theme.border }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedDetail(null);
+                  setDetailSearch('');
+                  setIsDetailExpanded(false);
+                }}
+                style={[styles.backIconBtn, { backgroundColor: theme.cardAlt }]}
+              >
+                <Ionicons name="close" size={20} color={theme.text} />
               </TouchableOpacity>
-            )}
-          </View>
 
-          {/* Scrollable List of Transactions */}
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {filteredDetailTransactions.length === 0 ? (
-              <View style={[styles.emptyBox, { borderColor: theme.border }]}>
-                <Ionicons name="receipt-outline" size={36} color={theme.textMuted} />
-                <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 8 }}>
-                  No transactions found for {selectedDetail?.title}.
+              <View style={{ flex: 1, marginHorizontal: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontSize: 18 }}>{selectedDetail?.emoji || '📋'}</Text>
+                  <Text style={[styles.detailTitle, { color: theme.text }]} numberOfLines={1}>
+                    {selectedDetail?.title}
+                  </Text>
+                </View>
+                <Text style={[styles.detailSub, { color: theme.textMuted }]} numberOfLines={1}>
+                  {selectedDetail?.type === 'account'
+                    ? `${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} Balance • ${selectedDetail?.transactions?.length || 0} Records`
+                    : `${selectedDetail?.categoryType === 'income' ? '+' : '-'}${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} • ${selectedDetail?.transactions?.length || 0} Records`}
                 </Text>
               </View>
-            ) : (
-              filteredDetailTransactions.map((item) => (
-                <View key={`detail_item_${item.id}`} style={{ marginBottom: 8 }}>
-                  <TransactionItem
-                    transaction={item}
-                    onPress={() => onEditTransaction && onEditTransaction(item)}
-                    onEdit={onEditTransaction}
-                    onDelete={deleteTransaction}
+
+              {/* Action Buttons: Expand to Full Screen & Share All */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  onPress={() => setIsDetailExpanded(!isDetailExpanded)}
+                  style={[styles.expandToggleBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+                  accessibilityLabel="Expand to Full Screen"
+                >
+                  <Ionicons
+                    name={isDetailExpanded ? 'contract-outline' : 'expand-outline'}
+                    size={16}
+                    color={theme.primaryLight}
                   />
-                  <TouchableOpacity
-                    onPress={() => setSelectedReceipt(item)}
-                    style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
-                  >
-                    <Ionicons name="image-outline" size={13} color="#25D366" />
-                    <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
-                      Share Single Receipt Image
-                    </Text>
-                  </TouchableOpacity>
+                  <Text style={[styles.expandToggleText, { color: theme.primaryLight }]}>
+                    {isDetailExpanded ? '75%' : 'Expand'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setShareImageModalData({
+                      type: selectedDetail.type,
+                      data: {
+                        ...selectedDetail.data,
+                        name: selectedDetail.title,
+                        emoji: selectedDetail.emoji,
+                        currentBalance: selectedDetail.amount,
+                        totalAmount: selectedDetail.amount,
+                        type: selectedDetail.categoryType || selectedDetail.data?.type || 'account',
+                        transactions: selectedDetail.transactions || [],
+                      },
+                    });
+                  }}
+                  style={styles.shareAllImageBtn}
+                >
+                  <Ionicons name="image-outline" size={15} color="#FFF" />
+                  <Text style={styles.shareAllImageBtnText}>Share All</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Search Bar inside Detail Screen */}
+            <View style={[styles.detailSearchRow, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+              <Ionicons name="search-outline" size={16} color={theme.textMuted} />
+              <TextInput
+                style={[styles.detailSearchInput, { color: theme.text }]}
+                placeholder={`Search ${selectedDetail?.title} transactions...`}
+                placeholderTextColor={theme.textMuted}
+                value={detailSearch}
+                onChangeText={setDetailSearch}
+              />
+              {detailSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setDetailSearch('')}>
+                  <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Scrollable List of Transactions */}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 30 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {filteredDetailTransactions.length === 0 ? (
+                <View style={[styles.emptyBox, { borderColor: theme.border }]}>
+                  <Ionicons name="receipt-outline" size={36} color={theme.textMuted} />
+                  <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 8 }}>
+                    No transactions found for {selectedDetail?.title}.
+                  </Text>
                 </View>
-              ))
-            )}
-          </ScrollView>
-        </SafeAreaView>
+              ) : (
+                filteredDetailTransactions.map((item) => (
+                  <View key={`detail_item_${item.id}`} style={{ marginBottom: 8 }}>
+                    <TransactionItem
+                      transaction={item}
+                      onPress={() => onEditTransaction && onEditTransaction(item)}
+                      onEdit={onEditTransaction}
+                      onDelete={deleteTransaction}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setSelectedReceipt(item)}
+                      style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
+                    >
+                      <Ionicons name="image-outline" size={13} color="#25D366" />
+                      <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
+                        Share Single Receipt Image
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       {/* WhatsApp Full Image Statement Modal (Entire Account or Entire Category at once) */}
@@ -1349,5 +1558,115 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     padding: 0,
+  },
+  // Custom Filter Container Styles
+  customFilterContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  searchBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mainSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 4,
+  },
+  filterToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  filterToggleText: {
+    fontSize: 11,
+  },
+  advancedFiltersPanel: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
+  filterGroupLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  filterPillsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  subFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  subFilterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  resetFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  resetFilterText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  // 75% height popup modal styles
+  detailModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  detailModalCard: {
+    width: '100%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  dragPillWrap: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  dragPill: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+  },
+  expandToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  expandToggleText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
