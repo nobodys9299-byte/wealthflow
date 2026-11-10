@@ -45,7 +45,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
   const { theme, currency, accounts, transactions, netWorth, deleteTransaction } = useFinance();
 
   const [activeView, setActiveView] = useState('account'); // 'account' | 'expense' | 'income'
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [timeframe, setTimeframe] = useState('month'); // 'month' | '30days' | 'year' | 'all' | 'custom'
 
   // Custom Date Range state
@@ -86,10 +85,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         setIsDetailExpanded(false);
         return true;
       }
-      if (dropdownOpen) {
-        setDropdownOpen(false);
-        return true;
-      }
       if (showAdvancedFilters) {
         setShowAdvancedFilters(false);
         return true;
@@ -107,7 +102,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
 
     const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
     return () => sub.remove();
-  }, [datePickerMode, shareImageModalData, selectedDetail, dropdownOpen, showAdvancedFilters, onBack, onNavigateTab]);
+  }, [datePickerMode, shareImageModalData, selectedDetail, showAdvancedFilters, onBack, onNavigateTab]);
 
   const currentViewObj = ANALYSIS_VIEWS.find((v) => v.id === activeView) || ANALYSIS_VIEWS[0];
 
@@ -310,19 +305,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             </Text>
           </View>
         </View>
-
-        {/* Dropdown Trigger Button */}
-        <TouchableOpacity
-          onPress={() => setDropdownOpen(true)}
-          style={[styles.dropdownBtn, { backgroundColor: `${theme.primary}20`, borderColor: `${theme.primary}50` }]}
-          activeOpacity={0.8}
-        >
-          <Ionicons name={currentViewObj.icon} size={15} color={theme.primaryLight} />
-          <Text style={[styles.dropdownBtnText, { color: theme.primaryLight }]} numberOfLines={1}>
-            {currentViewObj.title.split(' ')[0]}
-          </Text>
-          <Ionicons name="chevron-down" size={14} color={theme.primaryLight} />
-        </TouchableOpacity>
       </View>
 
       {/* Segmented Quick Switch Tabs */}
@@ -957,68 +939,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         </View>
       )}
 
-      {/* ======================================================== */}
-      {/* DROPDOWN SELECTOR MODAL                                 */}
-      {/* ======================================================== */}
-      <Modal
-        visible={dropdownOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDropdownOpen(false)}
-      >
-        <TouchableOpacity
-          style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}
-          activeOpacity={1}
-          onPress={() => setDropdownOpen(false)}
-        >
-          <View style={[styles.dropdownMenu, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.menuHeader}>
-              <Text style={[styles.menuTitle, { color: theme.text }]}>Select Analysis View</Text>
-              <TouchableOpacity onPress={() => setDropdownOpen(false)}>
-                <Ionicons name="close" size={20} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            {ANALYSIS_VIEWS.map((item) => {
-              const isSelected = activeView === item.id;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => {
-                    setActiveView(item.id);
-                    setDropdownOpen(false);
-                  }}
-                  style={[
-                    styles.menuItem,
-                    isSelected && { backgroundColor: `${theme.primary}18`, borderColor: theme.primary },
-                  ]}
-                >
-                  <View style={[styles.menuItemIcon, { backgroundColor: `${theme.primary}25` }]}>
-                    <Ionicons name={item.icon} size={20} color={theme.primaryLight} />
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text
-                      style={[
-                        styles.menuItemTitle,
-                        { color: isSelected ? theme.primaryLight : theme.text, fontWeight: isSelected ? '800' : '700' },
-                      ]}
-                    >
-                      {item.title}
-                    </Text>
-                    <Text style={[styles.menuItemSub, { color: theme.textMuted }]}>
-                      {item.subtitle}
-                    </Text>
-                  </View>
-                  {isSelected && (
-                    <Ionicons name="checkmark-circle" size={20} color={theme.primaryLight} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
       {/* WhatsApp Image Receipt Share Modal */}
       <ReceiptImageShareModal
         visible={!!selectedReceipt}
@@ -1235,19 +1155,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginTop: 2,
-  },
-  dropdownBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  dropdownBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
   },
   quickTabsRow: {
     flexDirection: 'row',
@@ -1566,62 +1473,6 @@ const styles = StyleSheet.create({
   quickShareText: {
     fontSize: 11,
     fontWeight: '600',
-  },
-
-  // Modal Dropdown Menu
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  dropdownMenu: {
-    width: '100%',
-    maxWidth: 380,
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  menuHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  menuTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  menuItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuItemTitle: {
-    fontSize: 15,
-  },
-  menuItemSub: {
-    fontSize: 11,
-    marginTop: 2,
   },
   // Dedicated Detail Screen Modal styles
   detailModalContainer: {

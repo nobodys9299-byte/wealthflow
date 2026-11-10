@@ -185,7 +185,14 @@ export const FinanceProvider = ({ children }) => {
         if (savedCurr) {
           const parsed = JSON.parse(savedCurr);
           const match = CURRENCIES.find((c) => c.code === parsed.code);
-          if (match) setCurrency(match);
+          if (match) {
+            setCurrency(match);
+          } else {
+            setCurrency(CURRENCIES[0]);
+          }
+        } else {
+          setCurrency(CURRENCIES[0]);
+          await AsyncStorage.setItem(STORAGE_KEYS.CURRENCY, JSON.stringify(CURRENCIES[0]));
         }
 
         if (savedTheme && THEMES[savedTheme]) {

@@ -45,7 +45,7 @@ export const ACCOUNT_ICONS_GALLERY = [
 
 export const DEFAULT_ACCOUNTS = [
   { id: 'acc_wallet', name: 'Cash Wallet', type: 'cash', emoji: '💵', initialBalance: 250, color: '#10B981', icon: 'wallet-outline' },
-  { id: 'acc_checking', name: 'Main Checking', type: 'bank', emoji: '🏦', initialBalance: 3200, color: '#3B82F6', icon: 'business-outline' },
+  { id: 'acc_checking', name: 'Main Account', type: 'bank', emoji: '🏦', initialBalance: 3200, color: '#3B82F6', icon: 'business-outline' },
   { id: 'acc_savings', name: 'High Yield Savings', type: 'savings', emoji: '🛡️', initialBalance: 8500, color: '#8B5CF6', icon: 'vault-outline' },
   { id: 'acc_credit', name: 'Platinum Card', type: 'card', emoji: '💳', initialBalance: -450, color: '#F43F5E', icon: 'card-outline' },
 ];

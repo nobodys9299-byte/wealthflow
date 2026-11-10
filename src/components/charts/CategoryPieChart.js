@@ -75,28 +75,35 @@ export const CategoryPieChart = ({ data = [], totalAmount = 0, size = 200, strok
 
         {/* Center Total Card */}
         <View style={styles.centerLabel}>
-          <Text style={[styles.centerSub, { color: theme.textMuted }]}>Total Spent</Text>
-          <Text style={[styles.centerMain, { color: theme.text }]}>
+          <Text style={[styles.centerSub, { color: theme.textMuted }]}>
+            {categoryType === 'income' ? 'Total Income' : 'Total Spent'}
+          </Text>
+          <Text style={[styles.centerMain, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrency(totalAmount, currency.symbol)}
           </Text>
         </View>
       </View>
 
-      {/* Legend */}
-      <View style={styles.legendContainer}>
-        {segments.slice(0, 6).map((seg) => (
-          <View key={`leg_${seg.categoryId}`} style={styles.legendRow}>
-            <View style={styles.legendLeft}>
+      {/* Side-by-Side Category Breakdown Grid */}
+      <View style={styles.legendGrid}>
+        {segments.slice(0, 8).map((seg) => (
+          <View
+            key={`leg_${seg.categoryId}`}
+            style={[styles.legendCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+          >
+            <View style={styles.legendCardTop}>
               <View style={[styles.colorDot, { backgroundColor: seg.color }]} />
               <Text style={[styles.legendName, { color: theme.text }]} numberOfLines={1}>
                 {seg.name}
               </Text>
             </View>
-            <View style={styles.legendRight}>
-              <Text style={[styles.legendPercent, { color: theme.textMuted }]}>{seg.percent}%</Text>
-              <Text style={[styles.legendAmount, { color: theme.text }]}>
+            <View style={styles.legendCardBottom}>
+              <Text style={[styles.legendAmount, { color: categoryType === 'income' ? theme.success : theme.text }]} numberOfLines={1}>
                 {formatCurrency(seg.amount, currency.symbol)}
               </Text>
+              <View style={[styles.percentBadge, { backgroundColor: `${seg.color}20` }]}>
+                <Text style={[styles.percentBadgeText, { color: seg.color }]}>{seg.percent}%</Text>
+              </View>
             </View>
           </View>
         ))}
@@ -131,53 +138,64 @@ const styles = StyleSheet.create({
   },
   centerSub: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   centerMain: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
     marginTop: 2,
   },
-  legendContainer: {
+  legendGrid: {
     width: '100%',
-    marginTop: 20,
-    gap: 10,
-  },
-  legendRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    rowGap: 8,
+    marginTop: 18,
   },
-  legendLeft: {
+  legendCard: {
+    width: '48.5%',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  legendCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flex: 1,
+    gap: 6,
+    marginBottom: 4,
   },
   colorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   legendName: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    flex: 1,
   },
-  legendRight: {
+  legendCardBottom: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  legendPercent: {
-    fontSize: 12,
-    fontWeight: '500',
-    width: 32,
-    textAlign: 'right',
+    justifyContent: 'space-between',
   },
   legendAmount: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
+    flex: 1,
+  },
+  percentBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 4,
+  },
+  percentBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
   },
 });

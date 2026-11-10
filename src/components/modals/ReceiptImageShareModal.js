@@ -402,7 +402,7 @@ export const ReceiptImageShareModal = ({
               </View>
             </View>
 
-            {/* Action Buttons */}
+            {/* Action Button */}
             <TouchableOpacity
               onPress={handleShareImage}
               disabled={isCapturing}
@@ -416,17 +416,6 @@ export const ReceiptImageShareModal = ({
                   <Text style={styles.shareWhatsAppText}>Share Image to WhatsApp</Text>
                 </>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleShareImage}
-              disabled={isCapturing}
-              style={[styles.shareOtherBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
-            >
-              <Ionicons name="share-social-outline" size={18} color={theme.text} />
-              <Text style={[styles.shareOtherText, { color: theme.text }]}>
-                Save Image / Other Apps
-              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

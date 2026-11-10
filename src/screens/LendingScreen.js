@@ -249,13 +249,13 @@ export const LendingScreen = ({ onNavigateTab, onBack }) => {
                   <Text style={[styles.shareBtnText, { color: theme.primaryLight }]}>Reminder</Text>
                 </TouchableOpacity>
 
-                {/* Share Image Statement via WhatsApp */}
+                {/* Share Statement via WhatsApp */}
                 <TouchableOpacity
                   onPress={() => setSelectedShareFriend(friend)}
                   style={[styles.shareBtn, { backgroundColor: '#25D36618', borderColor: '#25D36635' }]}
                 >
-                  <Ionicons name="image-outline" size={14} color="#25D366" />
-                  <Text style={[styles.shareBtnText, { color: '#25D366' }]}>Image</Text>
+                  <Ionicons name="share-social-outline" size={14} color="#25D366" />
+                  <Text style={[styles.shareBtnText, { color: '#25D366' }]}>Share</Text>
                 </TouchableOpacity>
 
                 {/* Record New Entry for Friend */}

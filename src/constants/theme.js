@@ -1,8 +1,8 @@
 export const CURRENCIES = [
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
   { code: 'USD', symbol: '$', name: 'US Dollar' },
   { code: 'EUR', symbol: '€', name: 'Euro' },
   { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
   { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar' },
   { code: 'AUD', symbol: 'AU$', name: 'Australian Dollar' },
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
@@ -157,5 +157,125 @@ export const THEMES = {
     warningBg: 'rgba(251, 191, 36, 0.2)',
     info: '#60A5FA',
     modalOverlay: 'rgba(10, 25, 47, 0.85)',
+  },
+  amberGold: {
+    id: 'amberGold',
+    name: 'Warm Amber Gold',
+    isDark: true,
+    bg: '#18130C',         // Rich Amber Charcoal
+    card: '#241C12',       // Warm Honey Card
+    cardAlt: '#362B1D',    // Muted Gold Wood
+    cardHover: '#423524',
+    text: '#FEF3C7',       // Warm Amber Light
+    textMuted: '#D97706',  // Amber Gold
+    border: '#453520',
+    inputBg: '#120E08',
+    primary: '#F59E0B',    // Amber 500
+    primaryLight: '#FBBF24',
+    primaryBg: 'rgba(245, 158, 11, 0.25)',
+    success: '#10B981',
+    successBg: 'rgba(16, 185, 129, 0.2)',
+    danger: '#F43F5E',
+    dangerBg: 'rgba(244, 63, 94, 0.2)',
+    warning: '#F59E0B',
+    warningBg: 'rgba(245, 158, 11, 0.2)',
+    info: '#06B6D4',
+    modalOverlay: 'rgba(24, 19, 12, 0.88)',
+  },
+  terracotta: {
+    id: 'terracotta',
+    name: 'Tuscan Terracotta',
+    isDark: true,
+    bg: '#1C130E',         // Deep Tuscan Earth
+    card: '#291C15',       // Baked Clay Card
+    cardAlt: '#3D2A20',    // Terracotta Shadow
+    cardHover: '#4D3629',
+    text: '#FFEDD5',       // Warm Peach White
+    textMuted: '#FB923C',  // Warm Clay Muted
+    border: '#4A3226',
+    inputBg: '#140D0A',
+    primary: '#EA580C',    // Terracotta 600
+    primaryLight: '#FB923C',
+    primaryBg: 'rgba(234, 88, 12, 0.25)',
+    success: '#34D399',
+    successBg: 'rgba(52, 211, 153, 0.2)',
+    danger: '#EF4444',
+    dangerBg: 'rgba(239, 68, 68, 0.2)',
+    warning: '#F59E0B',
+    warningBg: 'rgba(245, 158, 11, 0.2)',
+    info: '#38BDF8',
+    modalOverlay: 'rgba(28, 19, 14, 0.88)',
+  },
+  warmMocha: {
+    id: 'warmMocha',
+    name: 'Cozy Mocha',
+    isDark: true,
+    bg: '#171311',         // Espresso Roast
+    card: '#241D1A',       // Dark Roast Card
+    cardAlt: '#382E29',    // Roasted Cocoa
+    cardHover: '#483C35',
+    text: '#F5EBE6',       // Cream Foam
+    textMuted: '#C4A482',  // Coffee Crema
+    border: '#423731',
+    inputBg: '#100D0B',
+    primary: '#B45309',    // Warm Cinnamon
+    primaryLight: '#D97706',
+    primaryBg: 'rgba(180, 83, 9, 0.25)',
+    success: '#10B981',
+    successBg: 'rgba(16, 185, 129, 0.2)',
+    danger: '#F43F5E',
+    dangerBg: 'rgba(244, 63, 94, 0.2)',
+    warning: '#F59E0B',
+    warningBg: 'rgba(245, 158, 11, 0.2)',
+    info: '#0EA5E9',
+    modalOverlay: 'rgba(23, 19, 17, 0.88)',
+  },
+  roseGold: {
+    id: 'roseGold',
+    name: 'Warm Rose Gold',
+    isDark: true,
+    bg: '#1A1115',         // Deep Burgundy Velvet
+    card: '#271921',       // Rose Mahogany Card
+    cardAlt: '#3C2633',    // Rose Copper Shadow
+    cardHover: '#4D3141',
+    text: '#FFE4E6',       // Rose Cream
+    textMuted: '#FDA4AF',  // Soft Blush
+    border: '#452B3A',
+    inputBg: '#130C10',
+    primary: '#E11D48',    // Rose Gold Crimson
+    primaryLight: '#FB7185',
+    primaryBg: 'rgba(225, 29, 72, 0.25)',
+    success: '#10B981',
+    successBg: 'rgba(16, 185, 129, 0.2)',
+    danger: '#F43F5E',
+    dangerBg: 'rgba(244, 63, 94, 0.2)',
+    warning: '#F59E0B',
+    warningBg: 'rgba(245, 158, 11, 0.2)',
+    info: '#A855F7',
+    modalOverlay: 'rgba(26, 17, 21, 0.88)',
+  },
+  autumnGlow: {
+    id: 'autumnGlow',
+    name: 'Autumn Harvest',
+    isDark: true,
+    bg: '#191209',         // Deep Maple Night
+    card: '#271C0F',       // Spiced Pumpkin Card
+    cardAlt: '#3D2D1A',    // Toasted Amber
+    cardHover: '#4D3922',
+    text: '#FEF3C7',       // Warm Candle Glow
+    textMuted: '#F59E0B',  // Autumn Orange
+    border: '#483520',
+    inputBg: '#110C05',
+    primary: '#D97706',    // Warm Amber Orange
+    primaryLight: '#FBBF24',
+    primaryBg: 'rgba(217, 119, 6, 0.25)',
+    success: '#10B981',
+    successBg: 'rgba(16, 185, 129, 0.2)',
+    danger: '#E11D48',
+    dangerBg: 'rgba(225, 29, 72, 0.2)',
+    warning: '#F59E0B',
+    warningBg: 'rgba(245, 158, 11, 0.2)',
+    info: '#06B6D4',
+    modalOverlay: 'rgba(25, 18, 9, 0.88)',
   },
 };

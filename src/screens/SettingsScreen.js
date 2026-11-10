@@ -48,9 +48,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
-  const [backupModalVisible, setBackupModalVisible] = useState(false);
-  const [jsonInput, setJsonInput] = useState('');
-  const [showRawJson, setShowRawJson] = useState(false);
 
   // Google Cloud Modal state
   const [googleModalVisible, setGoogleModalVisible] = useState(false);
@@ -67,10 +64,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
       }
       if (googleModalVisible) {
         setGoogleModalVisible(false);
-        return true;
-      }
-      if (backupModalVisible) {
-        setBackupModalVisible(false);
         return true;
       }
       if (csvModalVisible) {
@@ -101,7 +94,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
   }, [
     currencyModalVisible,
     googleModalVisible,
-    backupModalVisible,
     csvModalVisible,
     upiModalVisible,
     pinModalVisible,
@@ -224,101 +216,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
     }
   };
 
-  const handleExportJSON = () => {
-    const json = exportAsJSON();
-    setJsonInput(json);
-    setBackupModalVisible(true);
-  };
 
-  const handleExportJSONFile = async () => {
-    try {
-      const json = exportAsJSON();
-      setJsonInput(json);
-
-      if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `wealthflow_backup_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        alert('JSON backup file successfully downloaded!');
-      } else {
-        const fileUri = `${FileSystem.documentDirectory}wealthflow_backup_${Date.now()}.json`;
-        await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'application/json',
-            dialogTitle: 'Save / Export WealthFlow Backup JSON',
-            UTI: 'public.json',
-          });
-        } else {
-          alert('Sharing is not available on this device');
-        }
-      }
-    } catch (err) {
-      console.warn('Native JSON export failed:', err);
-      alert('Export failed: ' + (err.message || 'Unknown error'));
-    }
-  };
-
-  const handlePickAndImportJSONFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/json', 'text/plain', '*/*'],
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) return;
-
-      const file = result.assets ? result.assets[0] : result;
-      if (!file || !file.uri) {
-        alert('No file selected');
-        return;
-      }
-
-      let content = '';
-      if (Platform.OS === 'web' && file.file) {
-        content = await file.file.text();
-      } else {
-        content = await FileSystem.readAsStringAsync(file.uri, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
-      }
-
-      if (!content || !content.trim()) {
-        alert('The selected JSON file is empty');
-        return;
-      }
-
-      const res = await importFromJSON(content.trim());
-      if (res.success) {
-        alert(`Success! Database restored from "${file.name || 'JSON file'}".`);
-        setBackupModalVisible(false);
-      } else {
-        alert('Failed to parse JSON file: ' + (res.error || 'Invalid JSON format'));
-      }
-    } catch (err) {
-      console.warn('Import JSON error:', err);
-      alert('Failed to import file: ' + (err.message || 'Unknown error'));
-    }
-  };
-
-  const handleImportJSON = async () => {
-    if (!jsonInput.trim()) {
-      alert('Please paste valid backup JSON data');
-      return;
-    }
-    const res = await importFromJSON(jsonInput);
-    if (res.success) {
-      alert('Data successfully restored!');
-      setBackupModalVisible(false);
-    } else {
-      alert('Failed to parse backup JSON: ' + res.error);
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     if (!gEmailInput.trim()) {
@@ -778,43 +676,24 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
         </View>
       </View>
 
-      {/* Local Device Backup (CSV & JSON) - Clean & Unified */}
+      {/* Local Device Backup (CSV) - Clean & Standalone */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>LOCAL DEVICE BACKUP (CSV & JSON)</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>LOCAL DEVICE BACKUP (CSV FILE)</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* 1. CSV File Backup & Restore */}
+          {/* CSV File Backup & Restore */}
           <TouchableOpacity
             onPress={() => setCsvModalVisible(true)}
-            style={[styles.row, { borderBottomColor: theme.border }]}
+            style={styles.row}
           >
             <View style={styles.rowLeft}>
               <View style={[styles.iconWrap, { backgroundColor: `${theme.success}20` }]}>
                 <Ionicons name="document-text-outline" size={18} color={theme.success} />
               </View>
-              <View>
+              <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>CSV File Backup & Restore</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   Export or import all accounts and transactions for Excel & Sheets
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-          </TouchableOpacity>
-
-          {/* 2. JSON Full Database Snapshot */}
-          <TouchableOpacity
-            onPress={() => setBackupModalVisible(true)}
-            style={styles.row}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}20` }]}>
-                <Ionicons name="code-download-outline" size={18} color={theme.primaryLight} />
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>JSON Database Snapshot</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Complete 1:1 database backup & restore file
                 </Text>
               </View>
             </View>
@@ -1093,107 +972,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                 );
               })}
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* JSON Backup Modal */}
-      <Modal visible={backupModalVisible} animationType="slide" transparent={true}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>JSON Database Backup & Restore</Text>
-              <TouchableOpacity onPress={() => setBackupModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Export and import your entire database including accounts, categories, transactions, budgets, and loans as a JSON backup file.
-            </Text>
-
-            {/* Action 1: Export JSON File */}
-            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <View style={styles.fileActionHeader}>
-                <View style={[styles.fileIconBadge, { backgroundColor: `${theme.primary}20` }]}>
-                  <Ionicons name="code-download-outline" size={20} color={theme.primaryLight} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Export JSON File</Text>
-                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                    Save entire database snapshot to a .json file
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={handleExportJSONFile}
-                style={[styles.fileActionBtn, { backgroundColor: theme.primary }]}
-              >
-                <Ionicons name="download-outline" size={18} color="#FFF" />
-                <Text style={styles.fileActionBtnText}>Export & Save .JSON File</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Action 2: Import JSON File */}
-            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <View style={styles.fileActionHeader}>
-                <View style={[styles.fileIconBadge, { backgroundColor: '#10B98120' }]}>
-                  <Ionicons name="folder-open-outline" size={20} color="#10B981" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Import JSON File</Text>
-                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                    Select and restore a .json backup file from device storage
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={handlePickAndImportJSONFile}
-                style={[styles.fileActionBtn, { backgroundColor: '#10B981' }]}
-              >
-                <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
-                <Text style={styles.fileActionBtnText}>Choose & Import .JSON File</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Optional Collapsible Direct Text Input */}
-            <TouchableOpacity
-              onPress={() => setShowRawJson(!showRawJson)}
-              style={styles.toggleRawTextRow}
-            >
-              <Text style={[styles.toggleRawText, { color: theme.primaryLight }]}>
-                {showRawJson ? '▲ Hide Direct JSON Text' : '▼ Advanced: View / Paste Direct JSON Text'}
-              </Text>
-            </TouchableOpacity>
-
-            {showRawJson && (
-              <View style={{ marginTop: 8 }}>
-                <TextInput
-                  style={[
-                    styles.jsonTextarea,
-                    {
-                      backgroundColor: theme.inputBg,
-                      color: theme.text,
-                      borderColor: theme.border,
-                      maxHeight: 120,
-                    },
-                  ]}
-                  multiline
-                  value={jsonInput}
-                  onChangeText={setJsonInput}
-                  placeholder="Paste JSON text here..."
-                  placeholderTextColor={theme.textMuted}
-                />
-                <TouchableOpacity
-                  onPress={handleImportJSON}
-                  style={[styles.fileActionBtn, { backgroundColor: theme.primary, marginTop: 8 }]}
-                >
-                  <Text style={styles.fileActionBtnText}>Restore from Pasted JSON</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         </View>
       </Modal>
