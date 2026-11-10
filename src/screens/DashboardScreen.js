@@ -21,7 +21,6 @@ export const DashboardScreen = ({
   onOpenTransfer,
   onOpenAddAccount,
   onOpenAddRecurring,
-  onOpenSmartInbox,
   onOpenSettings,
   onEditTransaction,
   onNavigateTab,

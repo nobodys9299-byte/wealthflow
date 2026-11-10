@@ -28,7 +28,6 @@ import { BudgetModal } from './src/components/modals/BudgetModal';
 import { RecurringModal } from './src/components/modals/RecurringModal';
 import { AccountModal } from './src/components/modals/AccountModal';
 import { ConfirmDeleteModal } from './src/components/modals/ConfirmDeleteModal';
-import { SmartInboxModal } from './src/components/modals/SmartInboxModal';
 import { LockScreen } from './src/components/security/LockScreen';
 
 function MainApp() {
@@ -59,8 +58,6 @@ function MainApp() {
   const [recurringModalVisible, setRecurringModalVisible] = useState(false);
   const [editingRecurring, setEditingRecurring] = useState(null);
 
-  const [smartInboxVisible, setSmartInboxVisible] = useState(false);
-
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {
     const handleHardwareBack = () => {
@@ -85,10 +82,6 @@ function MainApp() {
         setRecurringModalVisible(false);
         return true;
       }
-      if (smartInboxVisible) {
-        setSmartInboxVisible(false);
-        return true;
-      }
       if (drawerOpen) {
         setDrawerOpen(false);
         return true;
@@ -109,7 +102,6 @@ function MainApp() {
     budgetModalVisible,
     accountModalVisible,
     recurringModalVisible,
-    smartInboxVisible,
     drawerOpen,
     activeTab,
   ]);
@@ -177,7 +169,6 @@ function MainApp() {
             onOpenTransfer={() => setTransferModalVisible(true)}
             onOpenAddAccount={openAddAccount}
             onOpenAddRecurring={openAddRecurring}
-            onOpenSmartInbox={() => setSmartInboxVisible(true)}
             onOpenSettings={() => setDrawerOpen(true)}
             onEditTransaction={openEditTransaction}
             onNavigateTab={setActiveTab}
@@ -238,7 +229,6 @@ function MainApp() {
         return (
           <SettingsScreen
             onLockApp={() => setIsAppUnlocked(false)}
-            onOpenSmartInbox={() => setSmartInboxVisible(true)}
             onNavigateTab={setActiveTab}
             onBack={() => setActiveTab('dashboard')}
             onOpenMore={() => setDrawerOpen(true)}
@@ -251,7 +241,6 @@ function MainApp() {
             onOpenTransfer={() => setTransferModalVisible(true)}
             onOpenAddAccount={openAddAccount}
             onOpenAddRecurring={openAddRecurring}
-            onOpenSmartInbox={() => setSmartInboxVisible(true)}
             onOpenSettings={() => setDrawerOpen(true)}
             onEditTransaction={openEditTransaction}
             onNavigateTab={setActiveTab}
@@ -327,12 +316,6 @@ function MainApp() {
         onConfirm={confirmDialog.onConfirm}
         title={confirmDialog.title}
         message={confirmDialog.message}
-      />
-
-      {/* SMS & Bank Smart Inbox Modal */}
-      <SmartInboxModal
-        visible={smartInboxVisible}
-        onClose={() => setSmartInboxVisible(false)}
       />
 
       {/* Transaction Modal */}
@@ -502,19 +485,6 @@ function MainApp() {
                 <Ionicons name="settings-outline" size={20} color={activeTab === 'settings' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'settings' ? theme.primaryLight : theme.text }]}>
                   Settings & Security
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setDrawerOpen(false);
-                  setSmartInboxVisible(true);
-                }}
-                style={styles.drawerItem}
-              >
-                <Ionicons name="mail-unread-outline" size={20} color={theme.text} />
-                <Text style={[styles.drawerItemText, { color: theme.text }]}>
-                  SMS & Bank Auto Sync
                 </Text>
               </TouchableOpacity>
 

@@ -18,7 +18,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 
-export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onBack, onOpenMore }) => {
+export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore }) => {
   const {
     theme,
     themeId,
@@ -528,31 +528,6 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                 <Text style={[styles.rowTitle, { color: theme.text }]}>Base Currency</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   {currency.code} ({currency.name})
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* SMS & Gmail Sync Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>AUTOMATIC TRANSACTION SYNC</Text>
-
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            onPress={onOpenSmartInbox}
-            style={styles.row}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}20` }]}>
-                <Ionicons name="mail-unread-outline" size={18} color={theme.primaryLight} />
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>SMS & Gmail Bank Inbox</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Real SMS permission & pending confirmation queue
                 </Text>
               </View>
             </View>
