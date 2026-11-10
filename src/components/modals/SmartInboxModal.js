@@ -26,15 +26,7 @@ export const SmartInboxModal = ({ visible, onClose }) => {
   ].filter(Boolean));
 
   const [customText, setCustomText] = useState('');
-  const [showTester, setShowTester] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState('Tap to Scan');
-
-  const scanDeviceSMS = () => {
-    setShowTester(true);
-    setPermissionStatus('Paste SMS Below');
-    alert('Paste your bank SMS alert in the text box below. WealthFlow will instantly parse and extract the amount, merchant, and category.');
-  };
+  const [showTester, setShowTester] = useState(true);
 
   const handleApproveAll = () => {
     if (pendingList.length === 0) return;
@@ -113,17 +105,17 @@ export const SmartInboxModal = ({ visible, onClose }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Permissions Status Banner */}
+          {/* Permissions / Privacy Status Banner */}
           <View style={[styles.permBanner, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-            <TouchableOpacity onPress={scanDeviceSMS} style={styles.permCol}>
+            <View style={styles.permCol}>
               <View style={styles.permBadge}>
-                <Ionicons name="chatbox-ellipses" size={14} color="#10B981" />
-                <Text style={[styles.permText, { color: theme.text }]}>Android SMS Reader</Text>
+                <Ionicons name="sparkles" size={14} color="#10B981" />
+                <Text style={[styles.permText, { color: theme.text }]}>Smart SMS Parser</Text>
               </View>
               <Text style={[styles.permSub, { color: theme.primaryLight }]}>
-                {isScanning ? 'Scanning SMS Inbox...' : 'Tap to Scan Device SMS'}
+                Auto-extracts Amount & Category
               </Text>
-            </TouchableOpacity>
+            </View>
 
             <View style={styles.dividerV} />
 
@@ -139,22 +131,22 @@ export const SmartInboxModal = ({ visible, onClose }) => {
           {/* Quick Actions */}
           <View style={styles.actionToolbar}>
             <TouchableOpacity
-              onPress={scanDeviceSMS}
+              onPress={() => setShowTester(!showTester)}
               style={[styles.toolBtn, { backgroundColor: theme.primary }]}
             >
-              <Ionicons name="scan-outline" size={15} color="#FFF" />
+              <Ionicons name={showTester ? "chevron-up" : "create-outline"} size={15} color="#FFF" />
               <Text style={[styles.toolBtnText, { color: '#FFF' }]}>
-                {isScanning ? 'Scanning...' : 'Scan SMS'}
+                {showTester ? 'Collapse Input' : 'Paste Bank SMS'}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => setShowTester(!showTester)}
+              onPress={handleLoadSamples}
               style={[styles.toolBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
             >
-              <Ionicons name="create-outline" size={15} color={theme.primaryLight} />
+              <Ionicons name="refresh-outline" size={15} color={theme.primaryLight} />
               <Text style={[styles.toolBtnText, { color: theme.primaryLight }]}>
-                {showTester ? 'Hide Paste' : 'Paste SMS'}
+                Reset Samples
               </Text>
             </TouchableOpacity>
 

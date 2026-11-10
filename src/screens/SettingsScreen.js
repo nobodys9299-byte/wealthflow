@@ -12,7 +12,7 @@ import {
   BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { useFinance } from '../context/FinanceContext';
@@ -169,9 +169,15 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
       if (Platform.OS === 'web' && file.file) {
         content = await file.file.text();
       } else {
-        content = await FileSystem.readAsStringAsync(file.uri, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
+        try {
+          content = await FileSystem.readAsStringAsync(file.uri, {
+            encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+          });
+        } catch (fsErr) {
+          console.warn('FileSystem.readAsStringAsync failed, falling back to fetch:', fsErr);
+          const res = await fetch(file.uri);
+          content = await res.text();
+        }
       }
 
       if (!content || !content.trim()) {
