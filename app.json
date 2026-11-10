@@ -17,8 +17,6 @@
     "android": {
       "package": "com.wealthflow.moneytracker",
       "permissions": [
-        "RECEIVE_SMS",
-        "READ_SMS",
         "USE_BIOMETRIC",
         "USE_FINGERPRINT"
       ],

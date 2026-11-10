@@ -16,13 +16,6 @@ import { formatCurrency } from '../../utils/formatters';
 import { getCategoryById } from '../../constants/categories';
 import { parseBankMessage, SAMPLE_BANK_MESSAGES } from '../../utils/smsParser';
 
-let SmsAndroid = null;
-try {
-  SmsAndroid = require('react-native-get-sms-android').default || require('react-native-get-sms-android');
-} catch (e) {
-  SmsAndroid = null;
-}
-
 export const SmartInboxModal = ({ visible, onClose }) => {
   const { theme, currency, accounts, addTransaction } = useFinance();
 
@@ -37,83 +30,10 @@ export const SmartInboxModal = ({ visible, onClose }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState('Tap to Scan');
 
-  const scanDeviceSMS = async () => {
-    if (Platform.OS !== 'android') {
-      alert('Automatic SMS inbox reading is available on Android devices. On Web and iOS, use the Paste option below.');
-      return;
-    }
-
-    setIsScanning(true);
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_SMS,
-        {
-          title: 'SMS Permission Required',
-          message: 'WealthFlow needs access to read incoming bank SMS messages to automatically fetch your transactions.',
-          buttonPositive: 'Allow',
-          buttonNegative: 'Deny',
-        }
-      );
-
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        setPermissionStatus('Denied');
-        setIsScanning(false);
-        alert('SMS permission was denied. Please allow SMS permission in Android App Info.');
-        return;
-      }
-
-      setPermissionStatus('Granted');
-
-      if (!SmsAndroid || !SmsAndroid.list) {
-        setIsScanning(false);
-        alert('SMS Native module is active on installed Android APK. If testing in development, please paste bank messages below.');
-        return;
-      }
-
-      const filter = {
-        box: 'inbox',
-        maxCount: 40,
-      };
-
-      SmsAndroid.list(
-        JSON.stringify(filter),
-        (fail) => {
-          setIsScanning(false);
-          console.warn('Failed to list SMS:', fail);
-          alert('Could not read SMS: ' + fail);
-        },
-        (count, smsList) => {
-          setIsScanning(false);
-          try {
-            const parsedArray = typeof smsList === 'string' ? JSON.parse(smsList) : smsList;
-            const foundEntries = [];
-            for (let msg of parsedArray) {
-              const body = msg.body || '';
-              const address = msg.address || 'Bank SMS';
-              const parsed = parseBankMessage(body, address);
-              if (parsed && parsed.amount > 0) {
-                if (!pendingList.some((p) => p.title === parsed.title && p.amount === parsed.amount && p.date === parsed.date)) {
-                  foundEntries.push(parsed);
-                }
-              }
-            }
-
-            if (foundEntries.length > 0) {
-              setPendingList((prev) => [...foundEntries, ...prev]);
-              alert(`Success! Auto-detected ${foundEntries.length} new bank transactions from your SMS inbox.`);
-            } else {
-              alert('Scanned your recent SMS inbox, but no new bank transaction alerts were found.');
-            }
-          } catch (err) {
-            console.warn('Parse SMS error:', err);
-          }
-        }
-      );
-    } catch (err) {
-      setIsScanning(false);
-      console.warn('SMS error:', err);
-      alert('Error requesting SMS permission: ' + err.message);
-    }
+  const scanDeviceSMS = () => {
+    setShowTester(true);
+    setPermissionStatus('Paste SMS Below');
+    alert('Paste your bank SMS alert in the text box below. WealthFlow will instantly parse and extract the amount, merchant, and category.');
   };
 
   const handleApproveAll = () => {
