@@ -5,24 +5,28 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils/formatters';
 import { AccountVisual } from './common/CategoryVisual';
 
-export const AccountCard = ({ account, onEdit, onDelete, compact = false }) => {
+export const AccountCard = ({ account, onEdit, onDelete, compact = false, onPress, isSelected = false }) => {
   const { theme, currency } = useFinance();
   const isNegative = account.currentBalance < 0;
 
   if (compact) {
+    const CardWrapper = onPress ? TouchableOpacity : View;
     return (
-      <View
+      <CardWrapper
+        onPress={onPress}
+        activeOpacity={0.8}
         style={[
           styles.compactCard,
           {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
+            backgroundColor: isSelected ? `${theme.primary}20` : theme.card,
+            borderColor: isSelected ? theme.primary : theme.border,
+            borderWidth: isSelected ? 1.5 : 1,
           },
         ]}
       >
         <AccountVisual account={account} size={36} />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.compactName, { color: theme.text }]} numberOfLines={1}>
+          <Text style={[styles.compactName, { color: isSelected ? theme.primaryLight : theme.text }]} numberOfLines={1}>
             {account.name}
           </Text>
           <Text
@@ -34,7 +38,7 @@ export const AccountCard = ({ account, onEdit, onDelete, compact = false }) => {
             {formatCurrency(account.currentBalance, currency.symbol)}
           </Text>
         </View>
-      </View>
+      </CardWrapper>
     );
   }
 

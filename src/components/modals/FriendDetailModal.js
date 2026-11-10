@@ -32,6 +32,7 @@ export const FriendDetailModal = ({
   onClose,
   friend,
   onOpenAddEntry,
+  initialOpenReminder = false,
 }) => {
   const {
     theme,
@@ -59,6 +60,25 @@ export const FriendDetailModal = ({
   const [reminderUpiId, setReminderUpiId] = useState(userUpiSettings?.upiId || 'yourname@okaxis');
   const [reminderPayee, setReminderPayee] = useState(userUpiSettings?.payeeName || 'WealthFlow User');
   const [showEditUpi, setShowEditUpi] = useState(false);
+
+  // Synchronize initialOpenReminder and userUpiSettings
+  React.useEffect(() => {
+    if (visible && initialOpenReminder) {
+      setShowRequestModal(true);
+    } else if (!visible) {
+      setShowRequestModal(false);
+      setShowAddCatModal(false);
+    }
+  }, [visible, initialOpenReminder]);
+
+  React.useEffect(() => {
+    if (userUpiSettings?.upiId) {
+      setReminderUpiId(userUpiSettings.upiId);
+    }
+    if (userUpiSettings?.payeeName) {
+      setReminderPayee(userUpiSettings.payeeName);
+    }
+  }, [userUpiSettings]);
 
   // Custom Friend Category Creator state (Friends tab only)
   const [showAddCatModal, setShowAddCatModal] = useState(false);
@@ -273,43 +293,29 @@ export const FriendDetailModal = ({
               </Text>
             </View>
 
-            {/* Quick Action Buttons: WhatsApp, Direct SMS & Share */}
+            {/* Quick Action Buttons: Payment Reminder & Share Statement */}
             <View style={styles.actionsRow}>
-              {/* WhatsApp Friends Reminder */}
+              {/* Payment Reminder */}
               {isOwed && absBalance > 0 && (
                 <TouchableOpacity
-                  onPress={() => {
-                    setReminderChannel('whatsapp');
-                    setShowRequestModal(true);
-                  }}
+                  onPress={() => setShowRequestModal(true)}
                   style={[styles.actionBtn, { backgroundColor: '#25D366' }]}
                 >
-                  <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
-                  <Text style={styles.actionBtnText}>WhatsApp</Text>
+                  <Ionicons name="chatbubble-ellipses" size={16} color="#FFF" />
+                  <Text style={styles.actionBtnText} numberOfLines={1}>Payment Reminder</Text>
                 </TouchableOpacity>
               )}
 
-              {/* Direct SMS Reminder */}
-              {isOwed && absBalance > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setReminderChannel('sms');
-                    setShowRequestModal(true);
-                  }}
-                  style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
-                >
-                  <Ionicons name="chatbubble-ellipses-outline" size={16} color="#FFF" />
-                  <Text style={styles.actionBtnText}>Direct SMS</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Share via WhatsApp */}
+              {/* Share Statement */}
               <TouchableOpacity
                 onPress={() => setShowImageShare(true)}
-                style={[styles.actionBtn, { backgroundColor: theme.primary }]}
+                style={[
+                  styles.actionBtn,
+                  { backgroundColor: isOwed && absBalance > 0 ? theme.primary : '#25D366' },
+                ]}
               >
                 <Ionicons name="share-social-outline" size={16} color="#FFF" />
-                <Text style={styles.actionBtnText}>Share</Text>
+                <Text style={styles.actionBtnText} numberOfLines={1}>Share Statement</Text>
               </TouchableOpacity>
             </View>
 
@@ -450,59 +456,96 @@ export const FriendDetailModal = ({
                     <View
                       key={t.id}
                       style={[
-                        styles.txItem,
-                        { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                        styles.txCard,
+                        {
+                          backgroundColor: theme.cardAlt,
+                          borderColor: theme.border,
+                          borderLeftColor: isLent ? theme.success : theme.danger,
+                          borderLeftWidth: 3.5,
+                        },
                       ]}
                     >
-                      <View style={styles.txLeft}>
-                        <View style={[styles.txBadge, { backgroundColor: isLent ? theme.successBg : theme.dangerBg }]}>
-                          <Ionicons
-                            name={isLent ? 'arrow-up-circle' : 'arrow-down-circle'}
-                            size={16}
-                            color={isLent ? theme.success : theme.danger}
-                          />
-                        </View>
-                        <View style={{ flex: 1, marginRight: 8 }}>
+                      {/* Top Row: Type Pill, Title & Amount */}
+                      <View style={styles.txTopRow}>
+                        <View style={styles.txTitleWrap}>
+                          <View style={[styles.txBadge, { backgroundColor: isLent ? theme.successBg : theme.dangerBg }]}>
+                            <Ionicons
+                              name={isLent ? 'arrow-up-circle' : 'arrow-down-circle'}
+                              size={16}
+                              color={isLent ? theme.success : theme.danger}
+                            />
+                          </View>
                           <Text style={[styles.txTitle, { color: theme.text }]} numberOfLines={1}>
                             {t.note || (isLent ? 'Money Lent' : 'Money Borrowed')}
                           </Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-                            <Text style={[styles.txDate, { color: theme.textMuted }]}>
-                              {formatDateDisplay(t.date)} • {t.status?.toUpperCase() || 'PENDING'}
-                            </Text>
-                            {(t.friendCategoryName || t.categoryName) && (
-                              <View style={[styles.fCatBadge, { backgroundColor: `${theme.primary}20` }]}>
-                                <Text style={{ fontSize: 10 }}>{t.friendCategoryEmoji || '🤝'}</Text>
-                                <Text style={[styles.fCatBadgeText, { color: theme.primaryLight }]}>
-                                  {t.friendCategoryName || t.categoryName}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
                         </View>
-                      </View>
 
-                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
                         <Text
                           style={[
                             styles.txAmount,
                             { color: isLent ? theme.success : theme.danger },
                           ]}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
                         >
                           {isLent ? '+' : '-'}{formatCurrency(t.amount, currency.symbol)}
                         </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                          {/* Share single entry as image */}
+                      </View>
+
+                      {/* Bottom Row: Metadata & Actions */}
+                      <View style={[styles.txBottomRow, { borderTopColor: `${theme.border}60` }]}>
+                        <View style={styles.txMetaLeft}>
+                          <Text style={[styles.txDate, { color: theme.textMuted }]}>
+                            {formatDateDisplay(t.date)}
+                          </Text>
+
+                          <View
+                            style={[
+                              styles.statusPill,
+                              {
+                                backgroundColor: t.status === 'settled' ? `${theme.success}18` : `${theme.warning}18`,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.statusPillText,
+                                { color: t.status === 'settled' ? theme.success : theme.warning },
+                              ]}
+                            >
+                              {t.status?.toUpperCase() || 'PENDING'}
+                            </Text>
+                          </View>
+
+                          {(t.friendCategoryName || t.categoryName) && (
+                            <View style={[styles.fCatBadge, { backgroundColor: `${theme.primary}20` }]}>
+                              <Text style={{ fontSize: 10 }}>{t.friendCategoryEmoji || '🤝'}</Text>
+                              <Text style={[styles.fCatBadgeText, { color: theme.primaryLight }]} numberOfLines={1}>
+                                {t.friendCategoryName || t.categoryName}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Action Icons */}
+                        <View style={styles.txActions}>
                           <TouchableOpacity
                             onPress={() => setSelectedTxForImage({
                               ...t,
                               title: `${isLent ? 'Loan to' : 'Borrow from'} ${friend.name}: ${t.note || 'Cash'}`,
                             })}
+                            style={[styles.txIconBtn, { backgroundColor: `${theme.primary}18` }]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Ionicons name="image-outline" size={15} color={theme.primaryLight} />
+                            <Ionicons name="image-outline" size={13} color={theme.primaryLight} />
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => deleteLendingRecord(t.id)}>
-                            <Ionicons name="trash-outline" size={15} color={theme.danger} />
+
+                          <TouchableOpacity
+                            onPress={() => deleteLendingRecord(t.id)}
+                            style={[styles.txIconBtn, { backgroundColor: `${theme.danger}18` }]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="trash-outline" size={13} color={theme.danger} />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -525,7 +568,7 @@ export const FriendDetailModal = ({
 
               {/* Header */}
               <View style={styles.modalHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
                   <View style={[styles.channelIconBadge, { backgroundColor: reminderChannel === 'whatsapp' ? '#25D36625' : '#3B82F625' }]}>
                     <Ionicons
                       name={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
@@ -535,10 +578,10 @@ export const FriendDetailModal = ({
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.modalTitle, { color: theme.text }]} numberOfLines={1}>
-                      Friends Reminder - {reminderChannel === 'whatsapp' ? 'WhatsApp' : 'Direct SMS'}
+                      Friends Reminder
                     </Text>
                     <Text style={[styles.modalSub, { color: theme.textMuted }]} numberOfLines={1}>
-                      Friendly reminder with direct UPI payment link
+                      Direct UPI payment link to {friend.name}
                     </Text>
                   </View>
                 </View>
@@ -547,18 +590,65 @@ export const FriendDetailModal = ({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+                {/* Channel Switcher Tabs */}
+                <View style={[styles.channelSegmentedWrap, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+                  <TouchableOpacity
+                    onPress={() => setReminderChannel('whatsapp')}
+                    style={[
+                      styles.channelTab,
+                      reminderChannel === 'whatsapp' && { backgroundColor: '#25D366' },
+                    ]}
+                  >
+                    <Ionicons
+                      name="logo-whatsapp"
+                      size={15}
+                      color={reminderChannel === 'whatsapp' ? '#FFF' : theme.textMuted}
+                    />
+                    <Text
+                      style={[
+                        styles.channelTabText,
+                        { color: reminderChannel === 'whatsapp' ? '#FFF' : theme.textMuted },
+                      ]}
+                    >
+                      WhatsApp
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setReminderChannel('sms')}
+                    style={[
+                      styles.channelTab,
+                      reminderChannel === 'sms' && { backgroundColor: '#3B82F6' },
+                    ]}
+                  >
+                    <Ionicons
+                      name="chatbubble-ellipses-outline"
+                      size={15}
+                      color={reminderChannel === 'sms' ? '#FFF' : theme.textMuted}
+                    />
+                    <Text
+                      style={[
+                        styles.channelTabText,
+                        { color: reminderChannel === 'sms' ? '#FFF' : theme.textMuted },
+                      ]}
+                    >
+                      Direct SMS
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 {/* Friend Balance Hero Banner */}
                 <View style={[styles.requestHeroCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <View style={[styles.friendAvatarSmall, { backgroundColor: `${theme.primary}25` }]}>
                       <Text style={{ fontSize: 16 }}>👤</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
                       <Text style={[styles.requestFriendName, { color: theme.text }]} numberOfLines={1}>
                         {friend.name}
                       </Text>
-                      <Text style={[styles.requestFriendStatus, { color: theme.textMuted }]}>
+                      <Text style={[styles.requestFriendStatus, { color: theme.textMuted }]} numberOfLines={1}>
                         Pending Owed Balance
                       </Text>
                     </View>
@@ -603,26 +693,41 @@ export const FriendDetailModal = ({
                     <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'custom' ? '#FFF' : theme.textMuted }]}>
                       Custom Amount
                     </Text>
-                    {requestAmountType === 'custom' ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF', marginRight: 4 }}>
-                          {currency.symbol}
-                        </Text>
-                        <TextInput
-                          style={[styles.customInput, { color: '#FFF' }]}
-                          keyboardType="numeric"
-                          placeholder="0.00"
-                          placeholderTextColor="#FFF8"
-                          value={customAmount}
-                          onChangeText={setCustomAmount}
-                          autoFocus
-                        />
-                      </View>
-                    ) : (
-                      <Text style={[styles.amountOptionVal, { color: theme.textMuted }]}>Tap to specify</Text>
-                    )}
+                    <Text style={[styles.amountOptionVal, { color: requestAmountType === 'custom' ? '#FFF' : theme.text }]}>
+                      {requestAmountType === 'custom' && customAmount
+                        ? `${currency.symbol}${customAmount}`
+                        : 'Enter Amount'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Dedicated Custom Amount Input Row if custom is selected */}
+                {requestAmountType === 'custom' && (
+                  <View style={[styles.customInputCard, { backgroundColor: theme.cardAlt, borderColor: theme.primary }]}>
+                    <Text style={[styles.customInputLabel, { color: theme.textMuted }]}>
+                      Enter Custom Amount to Request:
+                    </Text>
+                    <View style={styles.customInputRow}>
+                      <Text style={[styles.customCurrencySymbol, { color: theme.primaryLight }]}>
+                        {currency.symbol}
+                      </Text>
+                      <TextInput
+                        style={[styles.customTextInput, { color: theme.text }]}
+                        keyboardType="numeric"
+                        placeholder="0.00"
+                        placeholderTextColor={theme.textMuted}
+                        value={customAmount}
+                        onChangeText={setCustomAmount}
+                        autoFocus
+                      />
+                      {customAmount.length > 0 && (
+                        <TouchableOpacity onPress={() => setCustomAmount('')}>
+                          <Ionicons name="close-circle" size={18} color={theme.textMuted} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                )}
 
                 {/* UPI Configuration & Live Link Preview */}
                 <View style={[styles.upiCardContainer, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
@@ -644,7 +749,7 @@ export const FriendDetailModal = ({
 
                   {showEditUpi ? (
                     <View style={{ marginTop: 8 }}>
-                      <Text style={[styles.miniLabel, { color: theme.textMuted }]}>UPI ID (VPA):</Text>
+                      <Text style={[styles.miniLabel, { color: theme.textMuted }]}>Your UPI ID (VPA):</Text>
                       <TextInput
                         style={[styles.upiInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
                         placeholder="e.g. yourname@okaxis, yourname@paytm"
@@ -664,16 +769,16 @@ export const FriendDetailModal = ({
                   ) : (
                     <View style={{ marginTop: 6 }}>
                       <View style={styles.upiValueRow}>
-                        <Text style={[styles.upiIdBold, { color: theme.primaryLight }]}>
+                        <Text style={[styles.upiIdBold, { color: theme.primaryLight }]} numberOfLines={1}>
                           {reminderUpiId || 'wealthflow@okaxis'}
                         </Text>
-                        <Text style={[styles.upiPayeeText, { color: theme.textMuted }]}>
+                        <Text style={[styles.upiPayeeText, { color: theme.textMuted }]} numberOfLines={1}>
                           ({reminderPayee || 'WealthFlow User'})
                         </Text>
                       </View>
                       <View style={styles.upiLinkPreviewBadge}>
                         <Ionicons name="link-outline" size={12} color="#10B981" />
-                        <Text style={styles.upiLinkPreviewText} numberOfLines={1}>
+                        <Text style={styles.upiLinkPreviewText} numberOfLines={1} ellipsizeMode="middle">
                           upi://pay?pa={encodeURIComponent(reminderUpiId || 'wealthflow@okaxis')}&pn={encodeURIComponent(reminderPayee || 'WealthFlow User')}&am={requestAmountType === 'custom' && parseFloat(customAmount) > 0 ? parseFloat(customAmount) : absBalance}&cu=INR
                         </Text>
                       </View>
@@ -681,48 +786,24 @@ export const FriendDetailModal = ({
                   )}
                 </View>
 
-                {/* Primary Action Button (Single Clean Prominent Button as per selected channel) */}
-                {reminderChannel === 'whatsapp' ? (
-                  <View style={{ marginTop: 4 }}>
-                    <TouchableOpacity
-                      onPress={handleSendWhatsAppRequest}
-                      style={[styles.sendPrimaryBtn, { backgroundColor: '#25D366' }]}
-                    >
-                      <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
-                      <Text style={styles.sendPrimaryBtnText}>Send Friends Reminder via WhatsApp</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setReminderChannel('sms')}
-                      style={styles.switchChannelBtn}
-                    >
-                      <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.textMuted} />
-                      <Text style={[styles.switchChannelText, { color: theme.textMuted }]}>
-                        Switch to Direct SMS instead
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={{ marginTop: 4 }}>
-                    <TouchableOpacity
-                      onPress={handleSendDirectSMS}
-                      style={[styles.sendPrimaryBtn, { backgroundColor: '#3B82F6' }]}
-                    >
-                      <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFF" />
-                      <Text style={styles.sendPrimaryBtnText}>Send Friends Reminder via Direct SMS</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setReminderChannel('whatsapp')}
-                      style={styles.switchChannelBtn}
-                    >
-                      <Ionicons name="logo-whatsapp" size={14} color={theme.textMuted} />
-                      <Text style={[styles.switchChannelText, { color: theme.textMuted }]}>
-                        Switch to WhatsApp instead
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                {/* Primary Action Button */}
+                <TouchableOpacity
+                  onPress={reminderChannel === 'whatsapp' ? handleSendWhatsAppRequest : handleSendDirectSMS}
+                  style={[
+                    styles.sendPrimaryBtn,
+                    { backgroundColor: reminderChannel === 'whatsapp' ? '#25D366' : '#3B82F6' },
+                  ]}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
+                    size={20}
+                    color="#FFF"
+                  />
+                  <Text style={styles.sendPrimaryBtnText} numberOfLines={1} adjustsFontSizeToFit>
+                    {reminderChannel === 'whatsapp' ? 'Send WhatsApp Reminder' : 'Send SMS Reminder'}
+                  </Text>
+                </TouchableOpacity>
               </ScrollView>
             </View>
           </View>
@@ -990,40 +1071,84 @@ const styles = StyleSheet.create({
   },
   txList: {
     marginTop: 4,
+    maxHeight: 320,
   },
-  txItem: {
+  txCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 8,
+  },
+  txTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  txLeft: {
+  txTitleWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flex: 1,
+    marginRight: 8,
   },
   txBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   txTitle: {
     fontSize: 13,
-    fontWeight: '700',
-  },
-  txDate: {
-    fontSize: 10,
-    marginTop: 1,
+    fontWeight: '800',
+    flex: 1,
   },
   txAmount: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '900',
+    maxWidth: 130,
+  },
+  txBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    paddingTop: 8,
+  },
+  txMetaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    flexWrap: 'wrap',
+    marginRight: 6,
+  },
+  txDate: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  statusPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusPillText: {
+    fontSize: 9,
     fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  txActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  txIconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   requestCard: {
     width: '100%',
@@ -1040,6 +1165,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 20,
+  },
+  channelSegmentedWrap: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: 12,
+  },
+  channelTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  channelTabText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   channelIconBadge: {
     width: 32,
@@ -1119,11 +1264,31 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 3,
   },
-  customInput: {
-    fontSize: 15,
+  customInputCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 12,
+  },
+  customInputLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  customInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  customCurrencySymbol: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginRight: 6,
+  },
+  customTextInput: {
+    flex: 1,
+    fontSize: 18,
     fontWeight: '800',
     padding: 0,
-    flex: 1,
   },
   upiCardContainer: {
     padding: 12,

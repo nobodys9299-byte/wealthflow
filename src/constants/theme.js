@@ -36,6 +36,8 @@ export const THEMES = {
     warning: '#F59E0B',    // Amber 500
     warningBg: 'rgba(245, 158, 11, 0.15)',
     info: '#0EA5E9',       // Sky 500
+    heroBg: '#1E1B4B',     // Deep Midnight Indigo
+    heroBorder: '#6366F1',
     modalOverlay: 'rgba(0, 0, 0, 0.75)',
   },
   light: {
@@ -60,6 +62,8 @@ export const THEMES = {
     warning: '#D97706',    // Amber 600
     warningBg: '#FEF3C7',
     info: '#0284C7',       // Sky 600
+    heroBg: '#4338CA',     // Indigo 700
+    heroBorder: '#4F46E5',
     modalOverlay: 'rgba(15, 23, 42, 0.5)',
   },
   emerald: {
@@ -84,6 +88,8 @@ export const THEMES = {
     warning: '#FBBF24',
     warningBg: 'rgba(251, 191, 36, 0.2)',
     info: '#2DD4BF',
+    heroBg: '#093A2A',     // Rich Forest Emerald
+    heroBorder: '#10B981',
     modalOverlay: 'rgba(2, 18, 12, 0.85)',
   },
   cyberpunk: {
@@ -108,6 +114,8 @@ export const THEMES = {
     warning: '#FFE600',    // Neon Yellow
     warningBg: 'rgba(255, 230, 0, 0.2)',
     info: '#8B5CF6',
+    heroBg: '#16132C',     // Neon Obsidian
+    heroBorder: '#00F0FF',
     modalOverlay: 'rgba(0, 0, 0, 0.9)',
   },
   sunset: {
@@ -132,6 +140,8 @@ export const THEMES = {
     warning: '#F59E0B',
     warningBg: 'rgba(245, 158, 11, 0.2)',
     info: '#38BDF8',
+    heroBg: '#3A1C12',     // Sunset Amber Bronze
+    heroBorder: '#F97316',
     modalOverlay: 'rgba(28, 25, 23, 0.85)',
   },
   ocean: {
@@ -156,6 +166,8 @@ export const THEMES = {
     warning: '#FBBF24',
     warningBg: 'rgba(251, 191, 36, 0.2)',
     info: '#60A5FA',
+    heroBg: '#0E2E4E',     // Deep Oceanic Navy
+    heroBorder: '#38BDF8',
     modalOverlay: 'rgba(10, 25, 47, 0.85)',
   },
   amberGold: {
@@ -180,6 +192,8 @@ export const THEMES = {
     warning: '#F59E0B',
     warningBg: 'rgba(245, 158, 11, 0.2)',
     info: '#06B6D4',
+    heroBg: '#36240E',     // Deep Warm Amber Honey
+    heroBorder: '#F59E0B',
     modalOverlay: 'rgba(24, 19, 12, 0.88)',
   },
   terracotta: {
@@ -204,6 +218,8 @@ export const THEMES = {
     warning: '#F59E0B',
     warningBg: 'rgba(245, 158, 11, 0.2)',
     info: '#38BDF8',
+    heroBg: '#3B1A10',     // Tuscan Earth Terracotta
+    heroBorder: '#EA580C',
     modalOverlay: 'rgba(28, 19, 14, 0.88)',
   },
   warmMocha: {
@@ -228,6 +244,8 @@ export const THEMES = {
     warning: '#F59E0B',
     warningBg: 'rgba(245, 158, 11, 0.2)',
     info: '#0EA5E9',
+    heroBg: '#2E1F18',     // Deep Roasted Mocha
+    heroBorder: '#B45309',
     modalOverlay: 'rgba(23, 19, 17, 0.88)',
   },
   roseGold: {
@@ -252,6 +270,8 @@ export const THEMES = {
     warning: '#F59E0B',
     warningBg: 'rgba(245, 158, 11, 0.2)',
     info: '#A855F7',
+    heroBg: '#351424',     // Deep Velvet Rose Gold
+    heroBorder: '#E11D48',
     modalOverlay: 'rgba(26, 17, 21, 0.88)',
   },
   autumnGlow: {
@@ -276,6 +296,7 @@ export const THEMES = {
     warning: '#F59E0B',
     warningBg: 'rgba(245, 158, 11, 0.2)',
     info: '#06B6D4',
-    modalOverlay: 'rgba(25, 18, 9, 0.88)',
+    heroBg: '#361E0A',     // Deep Spiced Autumn Glow
+    heroBorder: '#D97706',
   },
 };

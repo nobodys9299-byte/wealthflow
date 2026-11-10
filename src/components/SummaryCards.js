@@ -7,6 +7,9 @@ import { formatCurrency } from '../utils/formatters';
 export const SummaryCards = () => {
   const { theme, currency, netWorth, currentMonthStats } = useFinance();
 
+  const cardBg = theme.heroBg || (theme.isDark ? '#1E1B4B' : '#4F46E5');
+  const cardBorder = theme.heroBorder || theme.primary;
+
   return (
     <View style={styles.container}>
       {/* Net Worth Primary Hero Card */}
@@ -14,18 +17,28 @@ export const SummaryCards = () => {
         style={[
           styles.netWorthCard,
           {
-            backgroundColor: theme.isDark ? '#1E1B4B' : '#4F46E5', // deep rich indigo
+            backgroundColor: cardBg,
+            borderColor: cardBorder,
+            borderWidth: 1.5,
           },
         ]}
       >
         <View style={styles.netWorthHeader}>
           <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.netWorthLabel} numberOfLines={1}>TOTAL NET WORTH</Text>
+            <Text
+              style={[
+                styles.netWorthLabel,
+                { color: theme.primaryLight || '#C7D2FE' },
+              ]}
+              numberOfLines={1}
+            >
+              TOTAL NET WORTH
+            </Text>
             <Text style={styles.netWorthValue} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(netWorth, currency.symbol)}
             </Text>
           </View>
-          <View style={styles.savingsRateBadge}>
+          <View style={[styles.savingsRateBadge, { borderColor: `${theme.primaryLight || '#FFF'}40` }]}>
             <Ionicons name="sparkles" size={12} color="#FDE047" />
             <Text style={styles.savingsRateText} numberOfLines={1}>
               {currentMonthStats.savingsRate}% Saved this mo.
@@ -41,7 +54,9 @@ export const SummaryCards = () => {
               <Ionicons name="arrow-down-outline" size={14} color="#10B981" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cashFlowLabel} numberOfLines={1}>Income ({currentMonthStats.monthName.split(' ')[0]})</Text>
+              <Text style={styles.cashFlowLabel} numberOfLines={1}>
+                Income ({currentMonthStats.monthName.split(' ')[0]})
+              </Text>
               <Text style={styles.incomeValue} numberOfLines={1} adjustsFontSizeToFit>
                 +{formatCurrency(currentMonthStats.income, currency.symbol)}
               </Text>
@@ -141,7 +156,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cashFlowLabel: {
-    color: '#C7D2FE',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 11,
     fontWeight: '600',
   },

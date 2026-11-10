@@ -27,6 +27,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [activeFriend, setActiveFriend] = useState('');
   const [selectedFriendDetails, setSelectedFriendDetails] = useState(null);
+  const [openReminderDirectly, setOpenReminderDirectly] = useState(false);
   const [selectedShareFriend, setSelectedShareFriend] = useState(null);
 
   // Hardware back handler
@@ -191,7 +192,10 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
             <TouchableOpacity
               key={friend.name}
               activeOpacity={0.8}
-              onPress={() => setSelectedFriendDetails(friend)}
+              onPress={() => {
+                setSelectedFriendDetails(friend);
+                setOpenReminderDirectly(false);
+              }}
               style={[
                 styles.friendCard,
                 { backgroundColor: theme.card, borderColor: theme.border },
@@ -242,7 +246,10 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
               <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
                 {/* View Details / Reminder */}
                 <TouchableOpacity
-                  onPress={() => setSelectedFriendDetails(friend)}
+                  onPress={() => {
+                    setSelectedFriendDetails(friend);
+                    setOpenReminderDirectly(true);
+                  }}
                   style={[styles.shareBtn, { backgroundColor: `${theme.primary}18`, borderColor: `${theme.primary}35` }]}
                 >
                   <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.primaryLight} />
@@ -302,7 +309,11 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
       <FriendDetailModal
         visible={!!selectedFriendDetails}
         friend={selectedFriendDetails}
-        onClose={() => setSelectedFriendDetails(null)}
+        initialOpenReminder={openReminderDirectly}
+        onClose={() => {
+          setSelectedFriendDetails(null);
+          setOpenReminderDirectly(false);
+        }}
         onOpenAddEntry={handleOpenAddForFriend}
       />
 
