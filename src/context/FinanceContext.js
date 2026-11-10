@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { safeStorage as AsyncStorage } from '../utils/safeStorage';
 import { THEMES, CURRENCIES } from '../constants/theme';
-import { DEFAULT_ACCOUNTS, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
+import { DEFAULT_ACCOUNTS, EXPENSE_CATEGORIES, INCOME_CATEGORIES, setDynamicCategoriesRegistry } from '../constants/categories';
 import { INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING } from '../constants/initialData';
 import { generateFullAppCSV, parseFullAppCSV } from '../utils/formatters';
 import { CloudBackupService } from '../services/CloudBackupService';
@@ -202,7 +202,11 @@ export const FinanceProvider = ({ children }) => {
         }
 
         if (savedCategories) {
-          setCategories(JSON.parse(savedCategories));
+          const parsedCats = JSON.parse(savedCategories);
+          setCategories(parsedCats);
+          setDynamicCategoriesRegistry(parsedCats);
+        } else {
+          setDynamicCategoriesRegistry({ expense: EXPENSE_CATEGORIES, income: INCOME_CATEGORIES });
         }
 
         if (savedUpi) {
@@ -317,6 +321,7 @@ export const FinanceProvider = ({ children }) => {
 
   const persistCategories = async (newCats) => {
     setCategories(newCats);
+    setDynamicCategoriesRegistry(newCats);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(newCats));
     } catch (e) {
@@ -329,7 +334,7 @@ export const FinanceProvider = ({ children }) => {
     const id = `cat_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
     const newCat = {
       id,
-      name,
+      name: name ? name.trim() : 'New Category',
       emoji: emoji || '🏷️',
       icon: 'pricetag-outline',
       color: color || '#3B82F6',
@@ -342,22 +347,74 @@ export const FinanceProvider = ({ children }) => {
       [cleanType]: [...(categories[cleanType] || []), newCat],
     };
     persistCategories(updated);
+    return newCat;
   };
 
-  const deleteCategory = (type, categoryId) => {
-    const cleanType = type === 'income' ? 'income' : 'expense';
-    setConfirmDialog({
-      visible: true,
-      title: 'Delete Category?',
-      message: 'Are you sure you want to delete this custom category?',
-      onConfirm: () => {
-        const updated = {
-          ...categories,
-          [cleanType]: (categories[cleanType] || []).filter((c) => c.id !== categoryId),
+  const editCategory = ({ id, name, emoji, color, type }) => {
+    let cleanType = type === 'income' ? 'income' : 'expense';
+    if (!type) {
+      if ((categories.income || []).some((c) => c.id === id)) {
+        cleanType = 'income';
+      }
+    }
+
+    const list = categories[cleanType] || [];
+    const updatedList = list.map((cat) => {
+      if (cat.id === id) {
+        const newColor = color || cat.color || '#3B82F6';
+        return {
+          ...cat,
+          name: name ? name.trim() : cat.name,
+          emoji: emoji || cat.emoji || '🏷️',
+          color: newColor,
+          bg: `${newColor}20`,
+          gradient: [newColor, newColor],
         };
-        persistCategories(updated);
-      },
+      }
+      return cat;
     });
+
+    const updated = {
+      ...categories,
+      [cleanType]: updatedList,
+    };
+    persistCategories(updated);
+    return true;
+  };
+
+  const deleteCategory = (arg1, arg2) => {
+    let cleanType = 'expense';
+    let categoryId = '';
+
+    if (arg1 === 'expense' || arg1 === 'income') {
+      cleanType = arg1;
+      categoryId = arg2;
+    } else if (arg2 === 'expense' || arg2 === 'income') {
+      cleanType = arg2;
+      categoryId = arg1;
+    } else {
+      categoryId = arg1;
+      if ((categories.income || []).some((c) => c.id === categoryId)) {
+        cleanType = 'income';
+      }
+    }
+
+    if (!categoryId) return false;
+
+    const updated = {
+      ...categories,
+      [cleanType]: (categories[cleanType] || []).filter((c) => c.id !== categoryId),
+    };
+    persistCategories(updated);
+    return true;
+  };
+
+  const resetCategoriesToDefault = () => {
+    const defaultCats = {
+      expense: EXPENSE_CATEGORIES,
+      income: INCOME_CATEGORIES,
+    };
+    persistCategories(defaultCats);
   };
 
   const updateUpiSettings = async (newSettings) => {
@@ -1120,7 +1177,9 @@ export const FinanceProvider = ({ children }) => {
         // Categories Management
         categories,
         addCategory,
+        editCategory,
         deleteCategory,
+        resetCategoriesToDefault,
         // UPI Settings for WhatsApp requests
         userUpiSettings,
         updateUpiSettings,

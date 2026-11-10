@@ -50,7 +50,27 @@ export const DEFAULT_ACCOUNTS = [
   { id: 'acc_credit', name: 'Platinum Card', type: 'card', emoji: '💳', initialBalance: -450, color: '#F43F5E', icon: 'card-outline' },
 ];
 
+let dynamicCategoriesRegistry = null;
+
+export const setDynamicCategoriesRegistry = (cats) => {
+  dynamicCategoriesRegistry = cats;
+};
+
 export const getCategoryById = (id, type = 'expense') => {
+  if (dynamicCategoriesRegistry) {
+    const list = type === 'income' ? dynamicCategoriesRegistry.income : dynamicCategoriesRegistry.expense;
+    if (list && Array.isArray(list)) {
+      const found = list.find((c) => c.id === id);
+      if (found) return found;
+    }
+    const all = [
+      ...(dynamicCategoriesRegistry.expense || []),
+      ...(dynamicCategoriesRegistry.income || []),
+    ];
+    const anyCustom = all.find((c) => c.id === id);
+    if (anyCustom) return anyCustom;
+  }
+
   const list = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const found = list.find((c) => c.id === id);
   if (found) return found;
