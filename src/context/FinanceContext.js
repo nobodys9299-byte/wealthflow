@@ -94,6 +94,8 @@ export const FinanceProvider = ({ children }) => {
     photo: '',
     lastBackup: null,
     autoBackup: true,
+    autoBackupTime: '22:00', // Default 10:00 PM nightly
+    autoBackupFrequency: 'daily', // 'daily' | 'twice_daily' | 'every_6h' | 'weekly'
   });
 
   // Security state
@@ -376,6 +378,8 @@ export const FinanceProvider = ({ children }) => {
       photo: 'https://lh3.googleusercontent.com/a/default-user',
       lastBackup: new Date().toISOString(),
       autoBackup: true,
+      autoBackupTime: googleUser?.autoBackupTime || '22:00',
+      autoBackupFrequency: googleUser?.autoBackupFrequency || 'daily',
     };
     setGoogleUser(userObj);
     try {
@@ -389,6 +393,19 @@ export const FinanceProvider = ({ children }) => {
     } catch (e) {
       console.warn(e);
       return { user: userObj, remoteCheck: { exists: false } };
+    }
+  };
+
+  const updateGoogleAutoBackupSettings = async (settings) => {
+    const updated = {
+      ...googleUser,
+      ...settings,
+    };
+    setGoogleUser(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('updateGoogleAutoBackupSettings error:', e);
     }
   };
 
@@ -449,6 +466,68 @@ export const FinanceProvider = ({ children }) => {
       return { success: false, error: e.message };
     }
   };
+
+  // Automatic Cloud Backup Timer (runs silently at scheduled time / frequency)
+  useEffect(() => {
+    const checkScheduledBackup = async () => {
+      if (!googleUser?.signedIn || googleUser?.autoBackup === false) return;
+      const email = googleUser.email;
+      if (!email) return;
+
+      const now = new Date();
+      const lastBackupDate = googleUser.lastBackup ? new Date(googleUser.lastBackup) : null;
+      const freq = googleUser.autoBackupFrequency || 'daily';
+      const targetTime = googleUser.autoBackupTime || '22:00';
+      const [tHour, tMin] = targetTime.split(':').map(Number);
+
+      let shouldRun = false;
+
+      if (freq === 'daily') {
+        const isPastScheduledTime = (now.getHours() > tHour) || (now.getHours() === tHour && now.getMinutes() >= tMin);
+        const backedUpToday = lastBackupDate && (lastBackupDate.toDateString() === now.toDateString());
+        if (isPastScheduledTime && !backedUpToday) {
+          shouldRun = true;
+        } else if (!lastBackupDate) {
+          shouldRun = true;
+        }
+      } else if (freq === 'twice_daily') {
+        const hoursSinceLast = lastBackupDate ? (now.getTime() - lastBackupDate.getTime()) / (1000 * 60 * 60) : 999;
+        if (hoursSinceLast >= 12) shouldRun = true;
+      } else if (freq === 'every_6h') {
+        const hoursSinceLast = lastBackupDate ? (now.getTime() - lastBackupDate.getTime()) / (1000 * 60 * 60) : 999;
+        if (hoursSinceLast >= 6) shouldRun = true;
+      } else if (freq === 'weekly') {
+        const daysSinceLast = lastBackupDate ? (now.getTime() - lastBackupDate.getTime()) / (1000 * 60 * 60 * 24) : 999;
+        if (daysSinceLast >= 7) shouldRun = true;
+      }
+
+      if (shouldRun) {
+        console.log(`[Auto-Backup] Scheduled time reached (${targetTime}, freq: ${freq}). Triggering Google Account cloud backup...`);
+        try {
+          const snapshotStr = exportAsJSON();
+          const snapshotObj = JSON.parse(snapshotStr);
+          await CloudBackupService.syncToCloudVault(email, snapshotObj);
+          const updatedUser = {
+            ...googleUser,
+            lastBackup: new Date().toISOString(),
+          };
+          setGoogleUser(updatedUser);
+          await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(updatedUser));
+          console.log('[Auto-Backup] Google Account cloud backup successfully synced at', updatedUser.lastBackup);
+        } catch (err) {
+          console.warn('[Auto-Backup] Failed to auto-sync:', err);
+        }
+      }
+    };
+
+    const timeout = setTimeout(checkScheduledBackup, 4000);
+    const interval = setInterval(checkScheduledBackup, 5 * 60 * 1000);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [googleUser, transactions, accounts, categories, budgets, recurring]);
 
   const deleteFriendAccount = (friendName) => {
     setConfirmDialog({
@@ -1066,6 +1145,7 @@ export const FinanceProvider = ({ children }) => {
         logoutGoogle,
         backupToGoogleCloud,
         restoreFromGoogleCloud,
+        updateGoogleAutoBackupSettings,
         exportToGoogleDriveFile: (jsonStr, email) => CloudBackupService.exportToGoogleDriveFile(jsonStr, email),
         pickAndRestoreFromDriveFile: () => CloudBackupService.pickAndRestoreFromDriveFile(),
         // Confirmation dialog

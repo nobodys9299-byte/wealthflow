@@ -43,6 +43,7 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
     logoutGoogle,
     backupToGoogleCloud,
     restoreFromGoogleCloud,
+    updateGoogleAutoBackupSettings,
     exportToGoogleDriveFile,
     pickAndRestoreFromDriveFile,
   } = useFinance();
@@ -597,6 +598,92 @@ export const SettingsScreen = ({ onLockApp, onOpenSmartInbox, onNavigateTab, onB
                   ? `Last Cloud Backup: ${new Date(googleUser.lastBackup).toLocaleDateString()} ${new Date(googleUser.lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                   : 'Auto-Backup enabled: Will sync changes to your Google Cloud Vault'}
               </Text>
+
+              {/* Automatic Backup Schedule & Time Box */}
+              <View style={[styles.autoBackupBox, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="time-outline" size={16} color={theme.primaryLight} />
+                    <Text style={[styles.autoBackupTitle, { color: theme.text }]}>Automatic Backup Schedule</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const nextState = !googleUser.autoBackup;
+                      updateGoogleAutoBackupSettings({ autoBackup: nextState });
+                    }}
+                    style={[
+                      styles.autoToggleBtn,
+                      { backgroundColor: googleUser.autoBackup ? theme.success : theme.cardHover },
+                    ]}
+                  >
+                    <Text style={[styles.autoToggleText, { color: googleUser.autoBackup ? '#FFF' : theme.textMuted }]}>
+                      {googleUser.autoBackup ? 'ON' : 'OFF'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {googleUser.autoBackup ? (
+                  <>
+                    <Text style={[styles.autoBackupSub, { color: theme.textMuted }]}>
+                      Choose when WealthFlow automatically backs up your financial data to your Google Account:
+                    </Text>
+
+                    {/* Frequency & Time Selector Pills */}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 8 }}>
+                      {[
+                        { id: '22:00', label: '10:00 PM (Nightly)', freq: 'daily' },
+                        { id: '08:00', label: '08:00 AM (Morning)', freq: 'daily' },
+                        { id: '14:00', label: '02:00 PM (Afternoon)', freq: 'daily' },
+                        { id: '12h', label: 'Every 12 Hours', freq: 'twice_daily' },
+                        { id: '6h', label: 'Every 6 Hours', freq: 'every_6h' },
+                      ].map((item) => {
+                        const isSelected =
+                          (item.freq === 'daily' && googleUser.autoBackupTime === item.id && googleUser.autoBackupFrequency === 'daily') ||
+                          (item.freq !== 'daily' && googleUser.autoBackupFrequency === item.freq);
+
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            onPress={() => {
+                              updateGoogleAutoBackupSettings({
+                                autoBackupFrequency: item.freq,
+                                autoBackupTime: item.freq === 'daily' ? item.id : '22:00',
+                              });
+                            }}
+                            style={[
+                              styles.schedulePill,
+                              {
+                                backgroundColor: isSelected ? theme.primary : theme.card,
+                                borderColor: isSelected ? theme.primaryLight : theme.border,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.schedulePillText,
+                                { color: isSelected ? '#FFF' : theme.text },
+                              ]}
+                            >
+                              {item.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                      <Ionicons name="sparkles" size={12} color="#10B981" />
+                      <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600' }}>
+                        Active: Auto-sync runs {googleUser.autoBackupFrequency === 'daily' ? `daily at ${googleUser.autoBackupTime || '10:00 PM'}` : googleUser.autoBackupFrequency === 'twice_daily' ? 'every 12 hours' : 'periodically'} in the background.
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>
+                    Auto-backup is paused. Turn ON to automatically protect your transactions without manual clicking.
+                  </Text>
+                )}
+              </View>
 
               {/* Cloud Action Buttons Row 1: Cloud Vault Sync & Restore */}
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
@@ -1467,5 +1554,38 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     lineHeight: 16,
+  },
+  autoBackupBox: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  autoBackupTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  autoBackupSub: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  autoToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  autoToggleText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  schedulePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  schedulePillText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

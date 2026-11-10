@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -11,6 +11,7 @@ import {
   PermissionsAndroid,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency } from '../../utils/formatters';
 import { getCategoryById } from '../../constants/categories';
@@ -27,6 +28,63 @@ export const SmartInboxModal = ({ visible, onClose }) => {
 
   const [customText, setCustomText] = useState('');
   const [showTester, setShowTester] = useState(true);
+  const [editingItem, setEditingItem] = useState(null);
+
+  // Auto-detect copied bank SMS from clipboard when inbox modal opens
+  useEffect(() => {
+    if (visible) {
+      (async () => {
+        try {
+          const hasStr = await Clipboard.hasStringAsync();
+          if (hasStr) {
+            const clipText = await Clipboard.getStringAsync();
+            if (clipText && clipText.trim().length > 10) {
+              const lower = clipText.toLowerCase();
+              const isBankLike = ['debited', 'credited', 'spent', 'paid', 'vpa', 'upi', 'inr', 'rs.', 'a/c', 'account', 'card', 'bank'].some((k) => lower.includes(k));
+              if (isBankLike) {
+                const parsed = parseBankMessage(clipText.trim(), 'Copied Bank SMS');
+                if (parsed && parsed.amount > 0) {
+                  setPendingList((prev) => {
+                    if (prev.some((p) => p.rawText === parsed.rawText)) return prev;
+                    return [parsed, ...prev];
+                  });
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // ignore background clipboard check issues
+        }
+      })();
+    }
+  }, [visible]);
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await Clipboard.getStringAsync();
+      if (!text || !text.trim()) {
+        alert('Your clipboard is empty! Copy any bank SMS alert from your SMS or bank notification, then tap this button.');
+        return;
+      }
+      const parsed = parseBankMessage(text.trim(), 'SMS Clipboard');
+      if (parsed && parsed.amount > 0) {
+        setPendingList((prev) => {
+          if (prev.some((p) => p.rawText === parsed.rawText)) {
+            alert('This SMS is already in your pending queue below!');
+            return prev;
+          }
+          return [parsed, ...prev];
+        });
+        alert(`Success! Detected ${currency.symbol}${parsed.amount} at "${parsed.title}".\n\nReview, edit, or approve below.`);
+      } else {
+        setCustomText(text.trim());
+        setShowTester(true);
+        alert('Copied text pasted into input box below. Check the amount and adjust if needed.');
+      }
+    } catch (err) {
+      alert('Could not read clipboard: ' + err.message);
+    }
+  };
 
   const handleApproveAll = () => {
     if (pendingList.length === 0) return;
@@ -36,13 +94,13 @@ export const SmartInboxModal = ({ visible, onClose }) => {
         amount: item.amount,
         title: item.title,
         categoryId: item.categoryId,
-        accountId: accounts[0]?.id || 'acc_checking',
+        accountId: item.accountId || accounts[0]?.id || 'acc_checking',
         date: item.date,
         note: `Auto-fetched from ${item.source}`,
       });
     });
     setPendingList([]);
-    alert(`Added all ${pendingList.length} transactions to your accounts!`);
+    alert(`Added all ${pendingList.length} transactions to your Home Tab transaction history!`);
   };
 
   const handleApprove = (item) => {
@@ -51,12 +109,37 @@ export const SmartInboxModal = ({ visible, onClose }) => {
       amount: item.amount,
       title: item.title,
       categoryId: item.categoryId,
-      accountId: accounts[0]?.id || 'acc_checking',
+      accountId: item.accountId || accounts[0]?.id || 'acc_checking',
       date: item.date,
       note: `Auto-fetched from ${item.source}`,
     });
 
     setPendingList((prev) => prev.filter((p) => p.id !== item.id));
+    alert(`Success! "${item.title}" (${currency.symbol}${item.amount}) has been moved to your Transaction History in Home tab.`);
+  };
+
+  const handleSaveAndMoveToHistory = () => {
+    if (!editingItem) return;
+    const parsedAmount = parseFloat(editingItem.amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
+    addTransaction({
+      type: editingItem.type || 'expense',
+      amount: parsedAmount,
+      title: editingItem.title?.trim() || 'Bank Transaction',
+      categoryId: editingItem.categoryId || 'other',
+      accountId: editingItem.accountId || accounts[0]?.id || 'acc_checking',
+      date: editingItem.date || new Date().toISOString().split('T')[0],
+      note: `Detected from ${editingItem.source || 'Bank SMS'}`,
+    });
+
+    setPendingList((prev) => prev.filter((p) => p.id !== editingItem.id));
+    const titleSaved = editingItem.title || 'Transaction';
+    setEditingItem(null);
+    alert(`Success! "${titleSaved}" (${currency.symbol}${parsedAmount}) has been moved to your Transaction History in Home tab.`);
   };
 
   const handleDismiss = (id) => {
@@ -131,12 +214,22 @@ export const SmartInboxModal = ({ visible, onClose }) => {
           {/* Quick Actions */}
           <View style={styles.actionToolbar}>
             <TouchableOpacity
-              onPress={() => setShowTester(!showTester)}
-              style={[styles.toolBtn, { backgroundColor: theme.primary }]}
+              onPress={handlePasteFromClipboard}
+              style={[styles.toolBtn, { backgroundColor: '#3B82F6' }]}
             >
-              <Ionicons name={showTester ? "chevron-up" : "create-outline"} size={15} color="#FFF" />
+              <Ionicons name="clipboard" size={15} color="#FFF" />
               <Text style={[styles.toolBtnText, { color: '#FFF' }]}>
-                {showTester ? 'Collapse Input' : 'Paste Bank SMS'}
+                Paste Clipboard
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setShowTester(!showTester)}
+              style={[styles.toolBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+            >
+              <Ionicons name={showTester ? "chevron-up" : "create-outline"} size={15} color={theme.text} />
+              <Text style={[styles.toolBtnText, { color: theme.text }]}>
+                {showTester ? 'Hide' : 'Type SMS'}
               </Text>
             </TouchableOpacity>
 
@@ -146,7 +239,7 @@ export const SmartInboxModal = ({ visible, onClose }) => {
             >
               <Ionicons name="refresh-outline" size={15} color={theme.primaryLight} />
               <Text style={[styles.toolBtnText, { color: theme.primaryLight }]}>
-                Reset Samples
+                Samples
               </Text>
             </TouchableOpacity>
 
@@ -157,7 +250,7 @@ export const SmartInboxModal = ({ visible, onClose }) => {
               >
                 <Ionicons name="checkmark-done" size={15} color="#FFF" />
                 <Text style={[styles.toolBtnText, { color: '#FFF' }]}>
-                  Approve All ({pendingList.length})
+                  Approve ({pendingList.length})
                 </Text>
               </TouchableOpacity>
             )}
@@ -171,7 +264,7 @@ export const SmartInboxModal = ({ visible, onClose }) => {
               </Text>
               <TextInput
                 style={[styles.testerInput, { color: theme.text, borderColor: theme.border }]}
-                placeholder="e.g. Your A/c *1234 debited INR 500 at Starbucks on 09-Nov"
+                placeholder="e.g. Your A/c *1234 debited INR 750.00 at Swiggy on 10-Nov"
                 placeholderTextColor={theme.textMuted}
                 value={customText}
                 onChangeText={setCustomText}
@@ -181,8 +274,34 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                 onPress={handleParseCustom}
                 style={[styles.parseBtn, { backgroundColor: theme.primary }]}
               >
-                <Text style={styles.parseBtnText}>Detect Transaction</Text>
+                <Ionicons name="flash" size={15} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={styles.parseBtnText}>Detect & Add to Pending</Text>
               </TouchableOpacity>
+
+              {/* Indian Bank Presets Chips */}
+              <Text style={{ fontSize: 11, color: theme.textMuted, marginTop: 10, marginBottom: 6 }}>
+                Or test with sample Indian bank alerts (1-Tap):
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                {SAMPLE_BANK_MESSAGES.map((s, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => {
+                      const parsed = parseBankMessage(s.body, s.source);
+                      if (parsed) {
+                        setPendingList((prev) => [parsed, ...prev]);
+                        alert(`Detected ${s.source}! Review, edit, or approve below.`);
+                      }
+                    }}
+                    style={[styles.bankChip, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+                  >
+                    <Ionicons name="business-outline" size={12} color={theme.primaryLight} style={{ marginRight: 4 }} />
+                    <Text style={[styles.bankChipText, { color: theme.text }]}>
+                      {s.source.replace('SMS (', '').replace(')', '')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           )}
 
@@ -266,8 +385,16 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                         onPress={() => handleDismiss(item.id)}
                         style={[styles.dismissBtn, { borderColor: theme.border }]}
                       >
-                        <Ionicons name="close" size={16} color={theme.textMuted} />
+                        <Ionicons name="close" size={15} color={theme.textMuted} />
                         <Text style={[styles.dismissText, { color: theme.textMuted }]}>Dismiss</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => setEditingItem({ ...item, accountId: item.accountId || accounts[0]?.id || 'acc_checking' })}
+                        style={[styles.editBtn, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
+                      >
+                        <Ionicons name="create-outline" size={15} color={theme.primaryLight} />
+                        <Text style={[styles.editText, { color: theme.primaryLight }]}>Edit</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -277,8 +404,8 @@ export const SmartInboxModal = ({ visible, onClose }) => {
                           { backgroundColor: isIncome ? theme.success : theme.primary },
                         ]}
                       >
-                        <Ionicons name="checkmark" size={16} color="#FFF" />
-                        <Text style={styles.approveText}>Confirm & Add to Ledger</Text>
+                        <Ionicons name="checkmark" size={15} color="#FFF" />
+                        <Text style={styles.approveText}>Approve & Move to History</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -288,6 +415,124 @@ export const SmartInboxModal = ({ visible, onClose }) => {
           </ScrollView>
         </View>
       </View>
+
+      {/* Edit Detected Transaction Sub-Modal */}
+      <Modal visible={!!editingItem} animationType="slide" transparent={true} onRequestClose={() => setEditingItem(null)}>
+        <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.editCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.dragPillWrap}>
+              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+            </View>
+
+            <View style={styles.header}>
+              <View>
+                <Text style={[styles.title, { color: theme.text }]}>Edit Bank Transaction</Text>
+                <Text style={[styles.subText, { color: theme.textMuted }]}>
+                  Adjust details before moving to Home Tab History
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditingItem(null)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {/* Type Switcher */}
+              <View style={[styles.typeRow, { backgroundColor: theme.cardAlt }]}>
+                <TouchableOpacity
+                  onPress={() => setEditingItem((prev) => ({ ...prev, type: 'expense' }))}
+                  style={[
+                    styles.typeBtn,
+                    editingItem?.type === 'expense' && { backgroundColor: theme.danger },
+                  ]}
+                >
+                  <Text style={[styles.typeBtnText, { color: editingItem?.type === 'expense' ? '#FFF' : theme.textMuted }]}>
+                    Expense (-)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setEditingItem((prev) => ({ ...prev, type: 'income' }))}
+                  style={[
+                    styles.typeBtn,
+                    editingItem?.type === 'income' && { backgroundColor: theme.success },
+                  ]}
+                >
+                  <Text style={[styles.typeBtnText, { color: editingItem?.type === 'income' ? '#FFF' : theme.textMuted }]}>
+                    Income (+)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Title / Merchant */}
+              <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Merchant / Payee Name</Text>
+              <TextInput
+                style={[styles.inputField, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]}
+                value={editingItem?.title || ''}
+                onChangeText={(t) => setEditingItem((prev) => ({ ...prev, title: t }))}
+                placeholder="e.g. Swiggy, Starbucks, Salary"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              {/* Amount */}
+              <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Amount ({currency.symbol})</Text>
+              <TextInput
+                style={[styles.inputField, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]}
+                value={String(editingItem?.amount || '')}
+                onChangeText={(a) => setEditingItem((prev) => ({ ...prev, amount: a }))}
+                placeholder="0.00"
+                keyboardType="numeric"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              {/* Account Selector */}
+              <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Deposit / Deduction Account</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {accounts.map((acc) => {
+                  const isSel = (editingItem?.accountId || accounts[0]?.id) === acc.id;
+                  return (
+                    <TouchableOpacity
+                      key={acc.id}
+                      onPress={() => setEditingItem((prev) => ({ ...prev, accountId: acc.id }))}
+                      style={[
+                        styles.accPill,
+                        {
+                          backgroundColor: isSel ? `${theme.primary}25` : theme.cardAlt,
+                          borderColor: isSel ? theme.primary : theme.border,
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 13, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
+                      <Text style={[styles.accPillText, { color: isSel ? theme.primaryLight : theme.text }]}>
+                        {acc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Date */}
+              <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={[styles.inputField, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]}
+                value={editingItem?.date || new Date().toISOString().split('T')[0]}
+                onChangeText={(d) => setEditingItem((prev) => ({ ...prev, date: d }))}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={theme.textMuted}
+              />
+            </ScrollView>
+
+            {/* Save & Move to History Action Button */}
+            <TouchableOpacity
+              onPress={handleSaveAndMoveToHistory}
+              style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+              <Text style={styles.saveBtnText}>Save & Move to Transaction History</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -524,6 +769,96 @@ const styles = StyleSheet.create({
   approveText: {
     color: '#FFF',
     fontSize: 12,
+    fontWeight: '800',
+  },
+  bankChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  bankChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 4,
+  },
+  editText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  editCard: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    padding: 20,
+    paddingBottom: 32,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 14,
+  },
+  typeBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  typeBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  inputField: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 14,
+    marginBottom: 14,
+  },
+  accPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  accPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 10,
+    gap: 6,
+  },
+  saveBtnText: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '800',
   },
 });

@@ -3,32 +3,32 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories';
 export const SAMPLE_BANK_MESSAGES = [
   {
     source: 'SMS (HDFC Bank)',
-    body: 'Alert: Rs 480.00 debited from A/c **4120 at Starbucks Coffee on 09-Nov-26. Avail Bal: Rs 42,100.',
+    body: 'Alert: Rs 750.00 debited from A/c **4120 at Swiggy on 10-Nov-26. Avail Bal: Rs 42,100.',
     date: new Date().toISOString().split('T')[0],
   },
   {
-    source: 'SMS (Chase Bank)',
-    body: 'Your Chase Sapphire card ending 8812 was charged $64.20 at Trader Joe\'s on Nov 9.',
+    source: 'SMS (State Bank of India)',
+    body: 'Dear UPI user A/C *8901 debited by Rs 1,250.00 on 10-Nov-26 transfer to Zomato Ref 34215.',
     date: new Date().toISOString().split('T')[0],
   },
   {
-    source: 'Gmail (Google Pay)',
-    body: 'Payment Receipt: You received $1,250.00 from Upwork Global Inc. for Freelance Project.',
+    source: 'SMS (ICICI Bank)',
+    body: 'Acct XX109 debited with INR 2,400.00 on 10-Nov at Amazon India. Avail Bal: INR 18,500.',
     date: new Date().toISOString().split('T')[0],
   },
   {
-    source: 'SMS (Wells Fargo)',
-    body: 'Wells Fargo Alert: $14.99 debited from Checking *7701 for NETFLIX.COM.',
+    source: 'SMS (Axis Bank)',
+    body: 'Rs 4,500.00 debited from A/c *5678 on 10-Nov towards Electricity Bill. Info: BESCOM.',
+    date: new Date().toISOString().split('T')[0],
+  },
+  {
+    source: 'SMS (UPI / PhonePe)',
+    body: 'Paid Rs 320 to Chai Point on 10-Nov. UPI transaction ID 4321098765.',
     date: new Date().toISOString().split('T')[0],
   },
   {
     source: 'SMS (State Bank)',
     body: 'Salary Credit: INR 85,000.00 credited to your A/c *8990 from Tech Innovations Corp.',
-    date: new Date().toISOString().split('T')[0],
-  },
-  {
-    source: 'Gmail (Apple Receipt)',
-    body: 'Your receipt from Apple for iCloud Storage 2TB: $9.99 billed to Apple Card.',
     date: new Date().toISOString().split('T')[0],
   },
 ];
