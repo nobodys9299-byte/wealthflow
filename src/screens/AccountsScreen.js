@@ -84,21 +84,21 @@ export const AccountsScreen = ({
         </View>
       </View>
 
-      {/* Net Worth Summary Strip - Colored Hero Panel */}
-      <View style={[styles.netWorthCard, { backgroundColor: '#064E3B', borderColor: '#059669', borderWidth: 1.5 }]}>
+      {/* Net Worth Summary Strip - Harmonious Top Display Panel */}
+      <View style={[styles.netWorthCard, { backgroundColor: theme.card, borderColor: theme.border, borderTopColor: '#10B981', borderTopWidth: 3.5 }]}>
         <View style={styles.netWorthLeft}>
-          <Text style={[styles.netWorthLabel, { color: '#6EE7B7' }]}>TOTAL CONSOLIDATED WEALTH</Text>
-          <Text style={[styles.netWorthValue, { color: '#FFFFFF' }]}>
+          <Text style={[styles.netWorthLabel, { color: '#10B981', fontWeight: '800' }]}>TOTAL CONSOLIDATED WEALTH</Text>
+          <Text style={[styles.netWorthValue, { color: theme.text }]}>
             {formatCurrency(netWorth, currency.symbol)}
           </Text>
         </View>
 
         <TouchableOpacity
           onPress={onOpenTransfer}
-          style={[styles.transferBtn, { backgroundColor: '#047857', borderColor: '#34D399', borderWidth: 1 }]}
+          style={[styles.transferBtn, { backgroundColor: `${theme.primary}18`, borderColor: `${theme.primary}40`, borderWidth: 1 }]}
         >
-          <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
-          <Text style={[styles.transferBtnText, { color: '#FFFFFF' }]}>Transfer</Text>
+          <Ionicons name="swap-horizontal" size={18} color={theme.primaryLight} />
+          <Text style={[styles.transferBtnText, { color: theme.primaryLight }]}>Transfer</Text>
         </TouchableOpacity>
       </View>
 
@@ -121,7 +121,7 @@ export const AccountsScreen = ({
               </Text>
             </View>
           </View>
-          <Ionicons name="add-circle" size={22} color={theme.primaryLight} />
+          <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
         </TouchableOpacity>
 
         {/* Add & Manage Categories Option */}

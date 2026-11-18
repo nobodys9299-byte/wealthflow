@@ -178,15 +178,6 @@ export const DashboardScreen = ({
               color={showSearch ? '#FFF' : theme.text}
             />
           </TouchableOpacity>
-
-          {/* Edit Home Dashboard Pencil Button (Replaced 3-dots more menu) */}
-          <TouchableOpacity
-            onPress={handleOpenCustomize}
-            style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: 8 }]}
-            accessibilityLabel="Edit Home Dashboard"
-          >
-            <Ionicons name="pencil-outline" size={19} color={theme.primaryLight} />
-          </TouchableOpacity>
         </View>
       </View>
 

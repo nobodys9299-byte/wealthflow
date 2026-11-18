@@ -92,25 +92,26 @@ export const BudgetsScreen = ({
         </TouchableOpacity>
       </View>
 
-      {/* Overall Budget Hero Progress Card - Colored Display Panel */}
+      {/* Overall Budget Hero Progress Card - Harmonious Display Panel */}
       <View
         style={[
           styles.overallCard,
           {
-            backgroundColor: '#3B0764',
-            borderColor: overallPercent >= 100 ? '#EF4444' : '#7E22CE',
-            borderWidth: 1.5,
+            backgroundColor: theme.card,
+            borderColor: overallPercent >= 100 ? theme.danger : theme.border,
+            borderTopColor: '#8B5CF6',
+            borderTopWidth: 3.5,
           },
         ]}
       >
         <View style={styles.overallTop}>
           <View>
-            <Text style={[styles.overallLabel, { color: '#E9D5FF' }]}>
+            <Text style={[styles.overallLabel, { color: '#8B5CF6', fontWeight: '800' }]}>
               MONTHLY BUDGET POOL
             </Text>
-            <Text style={[styles.overallValue, { color: '#FFFFFF' }]}>
+            <Text style={[styles.overallValue, { color: theme.text }]}>
               {formatCurrency(totalBudgetSpent, currency.symbol)}{' '}
-              <Text style={{ fontSize: 16, color: '#D8B4FE', fontWeight: '500' }}>
+              <Text style={{ fontSize: 16, color: theme.textMuted, fontWeight: '500' }}>
                 / {formatCurrency(totalBudgetLimit, currency.symbol)}
               </Text>
             </Text>
@@ -122,17 +123,10 @@ export const BudgetsScreen = ({
               {
                 backgroundColor:
                   overallPercent >= 100
-                    ? '#991B1B'
+                    ? theme.dangerBg
                     : overallPercent >= 80
-                    ? '#78350F'
-                    : '#065F46',
-                borderWidth: 1,
-                borderColor:
-                  overallPercent >= 100
-                    ? '#F87171'
-                    : overallPercent >= 80
-                    ? '#FBBF24'
-                    : '#34D399',
+                    ? theme.warningBg
+                    : theme.successBg,
               },
             ]}
           >
@@ -140,8 +134,12 @@ export const BudgetsScreen = ({
               style={[
                 styles.overallBadgeText,
                 {
-                  color: '#FFFFFF',
-                  fontWeight: '800',
+                  color:
+                    overallPercent >= 100
+                      ? theme.danger
+                      : overallPercent >= 80
+                      ? theme.warning
+                      : theme.success,
                 },
               ]}
             >

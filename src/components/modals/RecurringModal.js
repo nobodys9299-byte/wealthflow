@@ -324,7 +324,7 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
 
             {/* Account Selector */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Linked Account</Text>
+              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>From Account</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
                 {accounts.map((acc) => {
                   const isSelected = accountId === acc.id;

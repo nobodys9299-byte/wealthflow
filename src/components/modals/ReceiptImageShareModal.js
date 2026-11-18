@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
@@ -40,6 +41,14 @@ export const ReceiptImageShareModal = ({
     ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${targetAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
     : `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&cu=INR`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}&margin=2`;
+
+  const friendTxs = data?.transactions || [];
+  const totalLentAmount = friendTxs.length > 0
+    ? friendTxs.filter((t) => t.type === 'lent').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+    : (parseFloat(data?.totalLent) || 0);
+  const totalBorrowedAmount = friendTxs.length > 0
+    ? friendTxs.filter((t) => t.type === 'borrowed').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+    : (parseFloat(data?.totalBorrowed) || 0);
 
   const handleShareImage = async () => {
     try {
@@ -246,7 +255,7 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 16px; font-weight: 800; color: #0F172A; margin-top: 3px;">Amount: ${currency.symbol}${targetAmount.toFixed(2)}</div>
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
-                <div style="font-size: 11px; color: #2563EB; margin-top: 5px; word-break: break-all;"><strong>Payment Link:</strong> <a href="${upiLink}" style="color: #2563EB;">${upiLink}</a></div>
+                <div style="font-size: 11px; color: #2563EB; margin-top: 5px; word-break: break-all;"><strong>Payment Link (Click to Pay):</strong> <a href="${upiLink}" target="_blank" style="color: #0284C7; font-weight: 700; text-decoration: underline;">${upiLink}</a></div>
                 <div style="font-size: 10px; color: #64748B; margin-top: 5px;">Scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
               </div>
               <div style="text-align: center;">
@@ -406,7 +415,14 @@ export const ReceiptImageShareModal = ({
                         </Text>
                         <Text style={styles.paymentUpiLabel}>UPI ID: <Text style={styles.paymentUpiText}>{upiId}</Text></Text>
                         <Text style={styles.paymentPayeeLabel}>Payee: <Text style={styles.paymentUpiText}>{payeeName}</Text></Text>
-                        <Text style={styles.paymentLinkLabel} numberOfLines={1}>Link: {upiLink}</Text>
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => Linking.openURL(upiLink).catch(() => Alert.alert('Payment Link', upiLink))}
+                          style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        >
+                          <Ionicons name="link-outline" size={12} color="#38BDF8" />
+                          <Text style={styles.paymentLinkLabel} numberOfLines={1}>Tap to Open Link: {upiLink}</Text>
+                        </TouchableOpacity>
                       </View>
                       <View style={styles.qrCol}>
                         <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
@@ -466,13 +482,13 @@ export const ReceiptImageShareModal = ({
                     <View style={styles.summaryCol}>
                       <Text style={styles.summaryColKey}>Total Lent</Text>
                       <Text style={[styles.summaryColVal, { color: '#34D399' }]}>
-                        +{formatCurrency(data.totalLent || 0, currency.symbol)}
+                        +{formatCurrency(totalLentAmount, currency.symbol)}
                       </Text>
                     </View>
                     <View style={styles.summaryCol}>
                       <Text style={styles.summaryColKey}>Total Borrowed</Text>
                       <Text style={[styles.summaryColVal, { color: '#F87171' }]}>
-                        -{formatCurrency(data.totalBorrowed || 0, currency.symbol)}
+                        -{formatCurrency(totalBorrowedAmount, currency.symbol)}
                       </Text>
                     </View>
                   </View>
@@ -492,7 +508,14 @@ export const ReceiptImageShareModal = ({
                           </Text>
                           <Text style={styles.paymentUpiLabel}>UPI ID: <Text style={styles.paymentUpiText}>{upiId}</Text></Text>
                           <Text style={styles.paymentPayeeLabel}>Payee: <Text style={styles.paymentUpiText}>{payeeName}</Text></Text>
-                          <Text style={styles.paymentLinkLabel} numberOfLines={1}>Link: {upiLink}</Text>
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => Linking.openURL(upiLink).catch(() => Alert.alert('Payment Link', upiLink))}
+                            style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          >
+                            <Ionicons name="link-outline" size={12} color="#38BDF8" />
+                            <Text style={styles.paymentLinkLabel} numberOfLines={1}>Tap to Open Link: {upiLink}</Text>
+                          </TouchableOpacity>
                         </View>
                         <View style={styles.qrCol}>
                           <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />

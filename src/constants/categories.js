@@ -24,22 +24,27 @@ export const INCOME_CATEGORIES = [
 ];
 
 export const ACCOUNT_ICONS_GALLERY = [
-  { id: 'bank_main', emoji: '🏦', label: 'Primary Bank (Blue)', color: '#2563EB' },
-  { id: 'bank_national', emoji: '🏛️', label: 'National Bank (Indigo)', color: '#4F46E5' },
-  { id: 'bank_corp', emoji: '🏢', label: 'Corporate Bank (Purple)', color: '#7C3AED' },
-  { id: 'bank_branch', emoji: '🏧', label: 'ATM & Branch (Emerald)', color: '#059669' },
-  { id: 'card_credit', emoji: '💳', label: 'Credit Card (Rose)', color: '#E11D48' },
-  { id: 'card_debit', emoji: '💳', label: 'Debit Card (Cyan)', color: '#0891B2' },
-  { id: 'bank_online', emoji: '🌐', label: 'Net Banking (Teal)', color: '#0D9488' },
-  { id: 'bank_locker', emoji: '🔒', label: 'Bank Locker / Vault (Slate)', color: '#475569' },
-  { id: 'bank_reserve', emoji: '🛡️', label: 'Reserve Account (Amber)', color: '#D97706' },
-  { id: 'bank_salary', emoji: '📑', label: 'Salary Bank (Sky)', color: '#0284C7' },
-  { id: 'bank_current', emoji: '🧾', label: 'Current Account (Violet)', color: '#6366F1' },
-  { id: 'cash_reserve', emoji: '💵', label: 'Cash Reserve (Green)', color: '#10B981' },
-  { id: 'bank_global', emoji: '🏛️', label: 'Forex / Global Bank (Navy)', color: '#1E3A8A' },
-  { id: 'bank_regional', emoji: '🏦', label: 'Regional Bank (Orange)', color: '#EA580C' },
-  { id: 'bank_priority', emoji: '🏦', label: 'Priority Wealth (Gold)', color: '#CA8A04' },
-  { id: 'bank_digital', emoji: '💳', label: 'Digital Neo-Bank (Fuchsia)', color: '#C026D3' },
+  // Saving
+  { id: 'saving_vault', emoji: '🛡️', label: 'Savings Vault', color: '#10B981' },
+  { id: 'saving_fund', emoji: '💰', label: 'Emergency Savings', color: '#059669' },
+  { id: 'saving_target', emoji: '🎯', label: 'Savings Goal', color: '#0284C7' },
+  { id: 'saving_growth', emoji: '📈', label: 'Growth Savings', color: '#2563EB' },
+  // Holiday
+  { id: 'holiday_vacation', emoji: '🏖️', label: 'Holiday & Vacation', color: '#06B6D4' },
+  { id: 'holiday_travel', emoji: '✈️', label: 'Travel & Trips', color: '#3B82F6' },
+  { id: 'holiday_palm', emoji: '🌴', label: 'Leisure Trip', color: '#14B8A6' },
+  { id: 'holiday_luggage', emoji: '🧳', label: 'Holiday Fund', color: '#F59E0B' },
+  // Piggy Bank
+  { id: 'piggy_bank', emoji: '🐷', label: 'Piggy Bank', color: '#EC4899' },
+  { id: 'piggy_pocket', emoji: '👛', label: 'Pocket Savings', color: '#F43F5E' },
+  { id: 'piggy_coins', emoji: '🪙', label: 'Loose Coins / Piggy', color: '#EAB308' },
+  // Property
+  { id: 'property_house', emoji: '🏠', label: 'Property & Estate', color: '#8B5CF6' },
+  { id: 'property_home', emoji: '🏡', label: 'Home & Mortgage', color: '#6366F1' },
+  { id: 'property_keys', emoji: '🔑', label: 'Real Estate / Land', color: '#7C3AED' },
+  // Cards & Cash
+  { id: 'card_credit', emoji: '💳', label: 'Credit Card', color: '#E11D48' },
+  { id: 'cash_wallet', emoji: '💵', label: 'Cash Wallet', color: '#10B981' },
 ];
 
 export const DEFAULT_ACCOUNTS = [

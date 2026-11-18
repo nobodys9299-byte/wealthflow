@@ -1009,6 +1009,8 @@ export const FinanceProvider = ({ children }) => {
         map[name] = {
           name,
           balance: 0,
+          totalLent: 0,
+          totalBorrowed: 0,
           pendingCount: 0,
           transactions: [],
           photoUri: r.photoUri || null,
@@ -1022,14 +1024,20 @@ export const FinanceProvider = ({ children }) => {
       if (r.avatarEmoji && !map[name].avatarEmoji) {
         map[name].avatarEmoji = r.avatarEmoji;
       }
-      if (r.status === 'pending') {
-        map[name].pendingCount++;
-        const amt = parseFloat(r.amount) || 0;
-        if (r.type === 'lent') {
+      const amt = parseFloat(r.amount) || 0;
+      if (r.type === 'lent') {
+        map[name].totalLent += amt;
+        if (r.status === 'pending') {
           map[name].balance += amt; // they owe me (+)
-        } else {
+        }
+      } else {
+        map[name].totalBorrowed += amt;
+        if (r.status === 'pending') {
           map[name].balance -= amt; // I owe them (-)
         }
+      }
+      if (r.status === 'pending') {
+        map[name].pendingCount++;
       }
     });
 

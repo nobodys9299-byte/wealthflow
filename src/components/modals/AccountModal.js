@@ -16,9 +16,6 @@ import { ACCOUNT_ICONS_GALLERY } from '../../constants/categories';
 
 const ACCOUNT_TYPES = [
   { id: 'bank', name: 'Bank Account' },
-  { id: 'savings', name: 'Savings Account' },
-  { id: 'salary', name: 'Salary Account' },
-  { id: 'current', name: 'Current Account' },
   { id: 'card', name: 'Credit Card' },
   { id: 'cash', name: 'Cash Wallet' },
 ];
@@ -30,8 +27,6 @@ const COLORS = [
   '#E11D48', '#475569', '#1E3A8A', '#059669',
 ];
 
-const ACCOUNT_EMOJI_OPTIONS = ['🏦', '🏛️', '🏢', '🏧', '💳', '💵', '🔒', '🛡️', '🌐', '📑', '🧾', '💼', '🪙', '🏷️'];
-
 export const AccountModal = ({ visible, onClose, initialData = null }) => {
   const { theme, currency, addAccount, editAccount } = useFinance();
 
@@ -39,7 +34,7 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
   const [type, setType] = useState('bank');
   const [initialBalance, setInitialBalance] = useState('');
   const [color, setColor] = useState(COLORS[0]);
-  const [selectedEmoji, setSelectedEmoji] = useState('🏦');
+  const [selectedEmoji, setSelectedEmoji] = useState('🛡️');
 
   useEffect(() => {
     if (initialData) {
@@ -47,13 +42,13 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
       setType(initialData.type || 'bank');
       setInitialBalance(initialData.initialBalance !== undefined ? String(initialData.initialBalance) : '');
       setColor(initialData.color || COLORS[0]);
-      setSelectedEmoji(initialData.emoji || '🏦');
+      setSelectedEmoji(initialData.emoji || '🛡️');
     } else {
       setName('');
       setType('bank');
       setInitialBalance('');
       setColor(COLORS[0]);
-      setSelectedEmoji('🏦');
+      setSelectedEmoji('🛡️');
     }
   }, [initialData, visible]);
 
@@ -94,7 +89,7 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
 
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>
-              {initialData ? 'Edit Account' : 'Add New Account'}
+              {initialData ? 'Edit Account' : 'Add Account'}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
@@ -146,34 +141,6 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
                       <Text style={[styles.galleryLabel, { color: isSelected ? item.color : theme.textMuted }]}>
                         {item.label.split(' ')[0]}
                       </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Dedicated Bank & Financial Emoji Row */}
-              <Text style={[styles.label, { color: theme.textMuted, marginTop: 10 }]}>Account & Bank Emojis</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-                {ACCOUNT_EMOJI_OPTIONS.map((em) => {
-                  const isSel = selectedEmoji === em;
-                  return (
-                    <TouchableOpacity
-                      key={em}
-                      onPress={() => setSelectedEmoji(em)}
-                      style={[
-                        {
-                          width: 44,
-                          height: 44,
-                          borderRadius: 12,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: isSel ? `${theme.primary}25` : theme.inputBg,
-                          borderColor: isSel ? theme.primaryLight : theme.border,
-                          borderWidth: isSel ? 2 : 1,
-                        },
-                      ]}
-                    >
-                      <Text style={{ fontSize: 22 }}>{em}</Text>
                     </TouchableOpacity>
                   );
                 })}
