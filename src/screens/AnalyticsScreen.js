@@ -59,9 +59,8 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
   const [filterAccount, setFilterAccount] = useState('all'); // 'all' | account.id
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Dedicated Detail Screen for tapped card/head (opens in 75% height with expand toggle)
+  // Dedicated Detail Screen for tapped card/head
   const [selectedDetail, setSelectedDetail] = useState(null);
-  const [isDetailExpanded, setIsDetailExpanded] = useState(false);
   const [detailSearch, setDetailSearch] = useState('');
   const [shareImageModalData, setShareImageModalData] = useState(null);
 
@@ -235,14 +234,14 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 
       const bal = parseFloat(acc.currentBalance) || 0;
-      const share = totalPositiveBalance > 0 && bal > 0 ? Math.round((bal / totalPositiveBalance) * 100) : 0;
+      const exactShare = totalPositiveBalance > 0 && bal > 0 ? Number(((bal / totalPositiveBalance) * 100).toFixed(1)) : 0;
 
       return {
         ...acc,
         inflows,
         outflows,
         txCount: accTx.length,
-        share,
+        share: exactShare,
       };
     });
   }, [accounts, filteredTransactions]);
@@ -589,7 +588,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
 
           {/* Section: Account Allocation & Balances */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Wallet & Account Breakdown</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Breakdown</Text>
             <Text style={[styles.sectionMeta, { color: theme.textMuted }]}>{accounts.length} Accounts</Text>
           </View>
 
@@ -653,7 +652,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                     style={[
                       styles.shareBarFill,
                       {
-                        width: `${Math.max(4, Math.min(100, acc.share))}%`,
+                        width: `${acc.share <= 0 ? 0 : Math.min(100, Math.max(1, acc.share))}%`,
                         backgroundColor: acc.color || theme.primary,
                       },
                     ]}
@@ -737,7 +736,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
           ) : (
             expenseBreakdown.map((item, index) => {
               const cat = getCategoryById(item.categoryId, 'expense');
-              const percent = totalExpense > 0 ? Math.round((item.amount / totalExpense) * 100) : 0;
+              const exactPercent = totalExpense > 0 ? Number(((item.amount / totalExpense) * 100).toFixed(1)) : 0;
               const catTxs = filteredTransactions.filter((t) => t.categoryId === item.categoryId && t.type === 'expense');
 
               return (
@@ -773,7 +772,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                         #{index + 1} {cat.name}
                       </Text>
                       <Text style={[styles.catRowPercent, { color: theme.textMuted }]}>
-                        {percent}% of spend • Tap to open ledger ({catTxs.length} txs) →
+                        {exactPercent}% of spend • Tap to open ledger ({catTxs.length} txs) →
                       </Text>
                     </View>
 
@@ -790,7 +789,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                     <View
                       style={[
                         styles.catProgressFill,
-                        { width: `${Math.max(4, percent)}%`, backgroundColor: cat.color },
+                        { width: `${exactPercent <= 0 ? 0 : Math.min(100, Math.max(1, exactPercent))}%`, backgroundColor: cat.color },
                       ]}
                     />
                   </View>
@@ -868,7 +867,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
           ) : (
             incomeBreakdown.map((item, index) => {
               const cat = getCategoryById(item.categoryId, 'income');
-              const percent = totalIncome > 0 ? Math.round((item.amount / totalIncome) * 100) : 0;
+              const exactPercent = totalIncome > 0 ? Number(((item.amount / totalIncome) * 100).toFixed(1)) : 0;
               const catTxs = filteredTransactions.filter((t) => t.categoryId === item.categoryId && t.type === 'income');
 
               return (
@@ -904,7 +903,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                         #{index + 1} {cat.name}
                       </Text>
                       <Text style={[styles.catRowPercent, { color: theme.textMuted }]}>
-                        {percent}% of income • Tap to open ledger ({catTxs.length} txs) →
+                        {exactPercent}% of income • Tap to open ledger ({catTxs.length} txs) →
                       </Text>
                     </View>
 
@@ -920,7 +919,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                     <View
                       style={[
                         styles.catProgressFill,
-                        { width: `${Math.max(4, percent)}%`, backgroundColor: cat.color },
+                        { width: `${exactPercent <= 0 ? 0 : Math.min(100, Math.max(1, exactPercent))}%`, backgroundColor: cat.color },
                       ]}
                     />
                   </View>
@@ -958,7 +957,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         onRequestClose={() => {
           setSelectedDetail(null);
           setDetailSearch('');
-          setIsDetailExpanded(false);
         }}
       >
         <View style={[styles.detailModalOverlay, { backgroundColor: theme.modalOverlay }]}>
@@ -968,8 +966,8 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
               {
                 backgroundColor: theme.card,
                 borderColor: theme.border,
-                height: isDetailExpanded ? '98%' : '75%',
-                maxHeight: isDetailExpanded ? '98%' : '75%',
+                height: '85%',
+                maxHeight: '92%',
               },
             ]}
           >
@@ -995,23 +993,8 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                 </Text>
               </View>
 
-              {/* Right Side: Expand, Share, and Close Cross Button on Right Side */}
+              {/* Right Side: Share and Close Cross Button */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <TouchableOpacity
-                  onPress={() => setIsDetailExpanded(!isDetailExpanded)}
-                  style={[styles.expandToggleBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
-                  accessibilityLabel="Expand to Full Screen"
-                >
-                  <Ionicons
-                    name={isDetailExpanded ? 'contract-outline' : 'expand-outline'}
-                    size={15}
-                    color={theme.primaryLight}
-                  />
-                  <Text style={[styles.expandToggleText, { color: theme.primaryLight }]}>
-                    {isDetailExpanded ? '75%' : 'Expand'}
-                  </Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity
                   onPress={() => {
                     setShareImageModalData({
@@ -1038,7 +1021,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                   onPress={() => {
                     setSelectedDetail(null);
                     setDetailSearch('');
-                    setIsDetailExpanded(false);
                   }}
                   style={[styles.backIconBtn, { backgroundColor: theme.cardAlt }]}
                   accessibilityLabel="Close Ledger"
@@ -1632,19 +1614,7 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
   },
-  expandToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 4,
-  },
-  expandToggleText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
+
   backBtn: {
     width: 38,
     height: 38,

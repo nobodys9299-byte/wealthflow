@@ -10,8 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
 import { formatDateDisplay } from '../../utils/formatters';
 import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
@@ -19,7 +21,7 @@ import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
 const POPULAR_EMOJIS = [
   '🍽️', '🚗', '🎬', '🛒', '⚡', '💵', '🎁', '🤝',
   '☕', '🍻', '🍕', '✈️', '🎮', '🏠', '🍿', '🚴',
-  '🏥', '🎉', '🏖️', '🛍️', '🎟️', ' fuel', '🍔', '🚌'
+  '🏥', '🎉', '🏖️', '🛍️', '🎟️', '🍔', '🚌'
 ];
 
 const CATEGORY_COLORS = [
@@ -27,14 +29,22 @@ const CATEGORY_COLORS = [
   '#8B5CF6', '#EC4899', '#06B6D4', '#64748B'
 ];
 
-export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
+const PERSON_AVATARS = [
+  '👨‍💼', '👩‍💼', '🧔', '👱‍♀️', '🧑‍💻', '👵', '👴', '👮',
+  '🧑‍🌾', '🧑‍🍳', '🧑‍🎓', '🧑‍🔬', '🧑‍🎨', '🧑‍✈️', '🦸', '🧕',
+  '🧔‍♂️', '👩‍🦰', '👨‍🦱', '👩‍🦱', '🧑‍🦰', '🤠', '😎', '🧐'
+];
+
+export const LendingModal = ({ visible, onClose, initialFriend = '', initialData = null }) => {
   const {
     theme,
     currency,
     addLendingRecord,
+    editLendingRecord,
     friendCategories = DEFAULT_FRIEND_CATEGORIES,
     addFriendCategory,
     deleteFriendCategory,
+    resetFriendCategoriesToDefault,
   } = useFinance();
 
   const [friendName, setFriendName] = useState(initialFriend);
@@ -45,6 +55,14 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
   const [note, setNote] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Person photo & avatar state
+  const [photoUri, setPhotoUri] = useState(null);
+  const [avatarEmoji, setAvatarEmoji] = useState('👤');
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+
+  // Manage Categories modal state
+  const [showManageCatsModal, setShowManageCatsModal] = useState(false);
+
   // Custom Friend Category Creator state
   const [showAddCatModal, setShowAddCatModal] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -52,16 +70,57 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
   const [newCatColor, setNewCatColor] = useState('#3B82F6');
 
   useEffect(() => {
-    if (initialFriend) {
+    if (initialData) {
+      setFriendName(initialData.friendName || initialFriend || '');
+      setType(initialData.type || 'lent');
+      setAmount(initialData.amount ? String(initialData.amount) : '');
+      setCategoryId(initialData.friendCategoryId || initialData.categoryId || friendCategories[0]?.id || 'fcat_dinner');
+      setDate(initialData.date || new Date().toISOString().split('T')[0]);
+      setNote(initialData.note || '');
+      setPhotoUri(initialData.photoUri || null);
+      setAvatarEmoji(initialData.avatarEmoji || (initialData.photoUri ? null : '👤'));
+    } else if (initialFriend) {
       setFriendName(initialFriend);
+      setType('lent');
+      setAmount('');
+      setNote('');
+      setPhotoUri(null);
+      setAvatarEmoji('👤');
+      setDate(new Date().toISOString().split('T')[0]);
+    } else {
+      setFriendName('');
+      setType('lent');
+      setAmount('');
+      setNote('');
+      setPhotoUri(null);
+      setAvatarEmoji('👤');
+      setDate(new Date().toISOString().split('T')[0]);
     }
-  }, [initialFriend, visible]);
+  }, [initialData, initialFriend, visible]);
 
   useEffect(() => {
     if (friendCategories && friendCategories.length > 0 && !friendCategories.some((c) => c.id === categoryId)) {
       setCategoryId(friendCategories[0].id);
     }
   }, [friendCategories]);
+
+  const handlePickFromGallery = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled) return;
+      const file = res.assets ? res.assets[0] : res;
+      if (file && file.uri) {
+        setPhotoUri(file.uri);
+        setAvatarEmoji(null);
+      }
+    } catch (e) {
+      console.warn('Pick photo error:', e);
+      alert('Could not pick photo from gallery: ' + (e.message || 'Error'));
+    }
+  };
 
   const handleSave = () => {
     const numAmount = parseFloat(amount);
@@ -81,7 +140,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
       color: '#64748B',
     };
 
-    addLendingRecord({
+    const recordPayload = {
       friendName: friendName.trim(),
       type,
       amount: numAmount,
@@ -94,7 +153,18 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
       categoryColor: selectedCat.color,
       date,
       note: note.trim(),
-    });
+      photoUri: photoUri || null,
+      avatarEmoji: photoUri ? null : (avatarEmoji || '👤'),
+    };
+
+    if (initialData?.id && editLendingRecord) {
+      editLendingRecord({
+        ...initialData,
+        ...recordPayload,
+      });
+    } else {
+      addLendingRecord(recordPayload);
+    }
 
     setAmount('');
     setNote('');
@@ -124,17 +194,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
   };
 
   const handleDeleteCategory = (cat) => {
-    const isDefault = DEFAULT_FRIEND_CATEGORIES.some((d) => d.id === cat.id);
-    if (isDefault) {
-      alert('Default friend categories cannot be removed.');
-      return;
-    }
-
     if (Platform.OS === 'web') {
       if (window.confirm(`Delete friend category "${cat.name}"?`)) {
         deleteFriendCategory(cat.id);
         if (categoryId === cat.id) {
-          setCategoryId(friendCategories[0]?.id || 'fcat_dinner');
+          setCategoryId(friendCategories.find((c) => c.id !== cat.id)?.id || '');
         }
       }
     } else {
@@ -149,7 +213,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
             onPress: () => {
               deleteFriendCategory(cat.id);
               if (categoryId === cat.id) {
-                setCategoryId(friendCategories[0]?.id || 'fcat_dinner');
+                setCategoryId(friendCategories.find((c) => c.id !== cat.id)?.id || '');
               }
             },
           },
@@ -178,9 +242,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
                   <Ionicons name="swap-horizontal" size={20} color={theme.primaryLight} />
                 </View>
                 <View>
-                  <Text style={[styles.title, { color: theme.text }]}>Record Friend Loan / Debt</Text>
+                  <Text style={[styles.title, { color: theme.text }]}>
+                    {initialData ? 'Edit Friend Transaction' : 'Record Friend Loan / Debt'}
+                  </Text>
                   <Text style={[styles.subText, { color: theme.textMuted }]}>
-                    Track money given or taken
+                    {initialData ? 'Update lending details & amount' : 'Track money given or taken'}
                   </Text>
                 </View>
               </View>
@@ -239,6 +305,41 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
                 </TouchableOpacity>
               </View>
 
+              {/* Person Photo / Avatar Picker */}
+              <View style={styles.group}>
+                <Text style={[styles.label, { color: theme.textMuted }]}>Person Photo / Avatar</Text>
+                <View style={styles.personPhotoRow}>
+                  <TouchableOpacity
+                    onPress={() => setShowAvatarPicker(true)}
+                    style={[styles.personAvatarPreview, { backgroundColor: `${theme.primary}20`, borderColor: theme.border }]}
+                  >
+                    {photoUri ? (
+                      <Image source={{ uri: photoUri }} style={styles.personPhotoImg} />
+                    ) : (
+                      <Text style={{ fontSize: 28 }}>{avatarEmoji || '👤'}</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <TouchableOpacity
+                      onPress={handlePickFromGallery}
+                      style={[styles.photoActionBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+                    >
+                      <Ionicons name="images-outline" size={15} color={theme.primaryLight} />
+                      <Text style={[styles.photoActionText, { color: theme.text }]}>Upload Photo from Gallery</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setShowAvatarPicker(true)}
+                      style={[styles.photoActionBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+                    >
+                      <Ionicons name="happy-outline" size={15} color={theme.primaryLight} />
+                      <Text style={[styles.photoActionText, { color: theme.text }]}>Choose Built-in Avatar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
               {/* Friend Name */}
               <View style={styles.group}>
                 <Text style={[styles.label, { color: theme.textMuted }]}>Friend / Contact Name</Text>
@@ -284,15 +385,27 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
                   <Text style={[styles.label, { color: theme.textMuted }]}>
                     Friend Split Category
                   </Text>
-                  <TouchableOpacity
-                    onPress={() => setShowAddCatModal(true)}
-                    style={styles.addCatHeaderBtn}
-                  >
-                    <Ionicons name="add-circle" size={14} color={theme.primaryLight} />
-                    <Text style={[styles.addCatHeaderText, { color: theme.primaryLight }]}>
-                      Add Category
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <TouchableOpacity
+                      onPress={() => setShowManageCatsModal(true)}
+                      style={[styles.addCatHeaderBtn, { borderColor: `${theme.danger}40`, backgroundColor: `${theme.danger}15` }]}
+                    >
+                      <Ionicons name="trash-outline" size={13} color={theme.danger} />
+                      <Text style={[styles.addCatHeaderText, { color: theme.danger }]}>
+                        Manage
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setShowAddCatModal(true)}
+                      style={styles.addCatHeaderBtn}
+                    >
+                      <Ionicons name="add-circle" size={14} color={theme.primaryLight} />
+                      <Text style={[styles.addCatHeaderText, { color: theme.primaryLight }]}>
+                        Add Category
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <ScrollView
@@ -302,12 +415,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
                 >
                   {friendCategories.map((cat) => {
                     const isSelected = categoryId === cat.id;
-                    const isCustom = !DEFAULT_FRIEND_CATEGORIES.some((d) => d.id === cat.id);
                     return (
                       <TouchableOpacity
                         key={cat.id}
                         onPress={() => setCategoryId(cat.id)}
-                        onLongPress={() => isCustom && handleDeleteCategory(cat)}
+                        onLongPress={() => handleDeleteCategory(cat)}
                         style={[
                           styles.catChip,
                           {
@@ -325,14 +437,13 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
                         >
                           {cat.name}
                         </Text>
-                        {isCustom && (
-                          <TouchableOpacity
-                            onPress={() => handleDeleteCategory(cat)}
-                            style={styles.delCatIcon}
-                          >
-                            <Ionicons name="close-circle" size={13} color={theme.textMuted} />
-                          </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                          onPress={() => handleDeleteCategory(cat)}
+                          style={styles.delCatIcon}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close-circle" size={14} color={theme.textMuted} />
+                        </TouchableOpacity>
                       </TouchableOpacity>
                     );
                   })}
@@ -410,7 +521,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
               >
                 <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
                 <Text style={styles.submitBtnText}>
-                  {type === 'lent' ? 'Record Money Given' : 'Record Money Received'}
+                  {initialData ? 'Save Changes' : type === 'lent' ? 'Record Money Given' : 'Record Money Received'}
                 </Text>
               </TouchableOpacity>
             </ScrollView>
@@ -518,6 +629,148 @@ export const LendingModal = ({ visible, onClose, initialFriend = '' }) => {
                 <Text style={{ color: '#FFF', fontWeight: '800' }}>Create Category</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal to Manage & Delete ANY Friend Category */}
+      <Modal
+        visible={showManageCatsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowManageCatsModal(false)}
+      >
+        <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '80%' }]}>
+            <View style={styles.subModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.danger}25` }]}>
+                  <Ionicons name="trash" size={16} color={theme.danger} />
+                </View>
+                <View>
+                  <Text style={[styles.subModalTitle, { color: theme.text }]}>Manage Friend Categories</Text>
+                  <Text style={[styles.subModalSub, { color: theme.textMuted }]}>
+                    Delete or reset friend categories
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowManageCatsModal(false)}>
+                <Ionicons name="close" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ marginVertical: 12, maxHeight: 280 }}>
+              {friendCategories.length === 0 ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: theme.textMuted }}>No categories remaining. Create one or reset to defaults.</Text>
+                </View>
+              ) : (
+                friendCategories.map((c) => (
+                  <View
+                    key={c.id}
+                    style={[
+                      styles.manageCatRow,
+                      { backgroundColor: theme.cardAlt, borderColor: theme.border },
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ fontSize: 20 }}>{c.emoji || '🤝'}</Text>
+                      <Text style={[styles.manageCatName, { color: theme.text }]}>{c.name}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteCategory(c)}
+                      style={[styles.manageDelBtn, { backgroundColor: `${theme.danger}20` }]}
+                    >
+                      <Ionicons name="trash-outline" size={15} color={theme.danger} />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (resetFriendCategoriesToDefault) {
+                    await resetFriendCategoriesToDefault();
+                  }
+                }}
+                style={[styles.cancelBtn, { borderColor: theme.border, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
+              >
+                <Ionicons name="refresh-outline" size={15} color={theme.textMuted} />
+                <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Reset Defaults</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowManageCatsModal(false)}
+                style={[styles.saveCatBtn, { backgroundColor: theme.primary, flex: 1 }]}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal to Choose Built-in Person Avatar */}
+      <Modal
+        visible={showAvatarPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAvatarPicker(false)}
+      >
+        <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.subModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.primary}25` }]}>
+                  <Ionicons name="happy" size={16} color={theme.primaryLight} />
+                </View>
+                <View>
+                  <Text style={[styles.subModalTitle, { color: theme.text }]}>Choose Built-in Avatar</Text>
+                  <Text style={[styles.subModalSub, { color: theme.textMuted }]}>Select an avatar for this person</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowAvatarPicker(false)}>
+                <Ionicons name="close" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.avatarGrid}>
+              {PERSON_AVATARS.map((av, idx) => (
+                <TouchableOpacity
+                  key={`avatar_${idx}`}
+                  onPress={() => {
+                    setAvatarEmoji(av);
+                    setPhotoUri(null);
+                    setShowAvatarPicker(false);
+                  }}
+                  style={[
+                    styles.avatarGridItem,
+                    {
+                      backgroundColor: avatarEmoji === av && !photoUri ? `${theme.primary}30` : theme.inputBg,
+                      borderColor: avatarEmoji === av && !photoUri ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <Text style={{ fontSize: 28 }}>{av}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {photoUri && (
+              <TouchableOpacity
+                onPress={() => {
+                  setPhotoUri(null);
+                  setAvatarEmoji('👤');
+                  setShowAvatarPicker(false);
+                }}
+                style={[styles.removePhotoBtn, { borderColor: theme.danger }]}
+              >
+                <Ionicons name="trash-outline" size={15} color={theme.danger} />
+                <Text style={{ color: theme.danger, fontWeight: '700', fontSize: 13 }}>Remove Gallery Photo</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -795,5 +1048,84 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     gap: 6,
+  },
+  personPhotoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  personAvatarPreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  personPhotoImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  photoActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+  },
+  photoActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  manageCatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  manageCatName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  manageDelBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+    marginVertical: 14,
+  },
+  avatarGridItem: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
   },
 });

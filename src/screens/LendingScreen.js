@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   BackHandler,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -27,6 +28,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [activeFriend, setActiveFriend] = useState('');
+  const [editingLendingTx, setEditingLendingTx] = useState(null);
   const [selectedFriendDetails, setSelectedFriendDetails] = useState(null);
   const [selectedReminderFriend, setSelectedReminderFriend] = useState(null);
   const [selectedShareFriend, setSelectedShareFriend] = useState(null);
@@ -206,9 +208,15 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
               <View style={styles.cardHeader}>
                 <View style={[styles.friendInfo, { flex: 1, marginRight: 8 }]}>
                   <View style={[styles.friendAvatar, { backgroundColor: `${theme.primary}25` }]}>
-                    <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
-                      {friend.name.charAt(0).toUpperCase()}
-                    </Text>
+                    {friend.photoUri ? (
+                      <Image source={{ uri: friend.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                    ) : friend.avatarEmoji ? (
+                      <Text style={{ fontSize: 24 }}>{friend.avatarEmoji}</Text>
+                    ) : (
+                      <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
+                        {friend.name.charAt(0).toUpperCase()}
+                      </Text>
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.friendName, { color: theme.text }]} numberOfLines={1}>
@@ -291,17 +299,26 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
       {/* Lending Modal */}
       <LendingModal
         visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        onClose={() => {
+          setModalVisible(false);
+          setEditingLendingTx(null);
+        }}
         initialFriend={activeFriend}
+        initialData={editingLendingTx}
       />
 
       {/* Friend Detail Dialogue Box */}
       <FriendDetailModal
         visible={!!selectedFriendDetails}
-        friend={selectedFriendDetails}
+        friend={lendingSummary.friends.find((f) => f.name === selectedFriendDetails?.name) || selectedFriendDetails}
         onClose={() => setSelectedFriendDetails(null)}
         onOpenAddEntry={handleOpenAddForFriend}
         onOpenReminder={(friend) => setSelectedReminderFriend(friend)}
+        onEditTransaction={(tx) => {
+          setEditingLendingTx(tx);
+          setActiveFriend(tx.friendName);
+          setModalVisible(true);
+        }}
       />
 
       {/* Dedicated Friend Payment Reminder Dialogue Box */}

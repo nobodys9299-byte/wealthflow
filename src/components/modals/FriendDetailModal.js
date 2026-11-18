@@ -10,6 +10,8 @@ import {
   Linking,
   Platform,
   SafeAreaView,
+  Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
@@ -33,6 +35,7 @@ export const FriendDetailModal = ({
   friend,
   onOpenAddEntry,
   onOpenReminder,
+  onEditTransaction,
 }) => {
   const {
     theme,
@@ -43,12 +46,14 @@ export const FriendDetailModal = ({
     friendCategories = DEFAULT_FRIEND_CATEGORIES,
     addFriendCategory,
     deleteFriendCategory,
+    resetFriendCategoriesToDefault,
   } = useFinance();
 
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
   const [showImageShare, setShowImageShare] = useState(false);
   const [selectedTxForImage, setSelectedTxForImage] = useState(null);
+  const [showManageCatsModal, setShowManageCatsModal] = useState(false);
 
   // Custom Friend Category Creator state (Friends tab only)
   const [showAddCatModal, setShowAddCatModal] = useState(false);
@@ -135,9 +140,15 @@ export const FriendDetailModal = ({
             <View style={styles.header}>
               <View style={[styles.friendInfo, { flex: 1 }]}>
                 <View style={[styles.avatar, { backgroundColor: `${theme.primary}25` }]}>
-                  <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
-                    {friend.name.charAt(0).toUpperCase()}
-                  </Text>
+                  {friend.photoUri ? (
+                    <Image source={{ uri: friend.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                  ) : friend.avatarEmoji ? (
+                    <Text style={{ fontSize: 24 }}>{friend.avatarEmoji}</Text>
+                  ) : (
+                    <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
+                      {friend.name.charAt(0).toUpperCase()}
+                    </Text>
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.friendName, { color: theme.text }]} numberOfLines={1}>
@@ -311,6 +322,22 @@ export const FriendDetailModal = ({
                 })}
 
                 <TouchableOpacity
+                  onPress={() => setShowManageCatsModal(true)}
+                  style={[
+                    styles.fCatFilterChip,
+                    {
+                      backgroundColor: `${theme.danger}15`,
+                      borderColor: `${theme.danger}40`,
+                    },
+                  ]}
+                >
+                  <Ionicons name="trash-outline" size={13} color={theme.danger} />
+                  <Text style={[styles.fCatFilterText, { color: theme.danger }]}>
+                    Manage
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   onPress={() => setShowAddCatModal(true)}
                   style={[
                     styles.fCatFilterChip,
@@ -414,6 +441,15 @@ export const FriendDetailModal = ({
 
                         {/* Action Icons */}
                         <View style={styles.txActions}>
+                          <TouchableOpacity
+                            onPress={() => onEditTransaction && onEditTransaction(t)}
+                            style={[styles.txIconBtn, { backgroundColor: `${theme.primary}18` }]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            accessibilityLabel="Edit Transaction"
+                          >
+                            <Ionicons name="create-outline" size={13} color={theme.primaryLight} />
+                          </TouchableOpacity>
+
                           <TouchableOpacity
                             onPress={() => setSelectedTxForImage({
                               ...t,
@@ -532,6 +568,109 @@ export const FriendDetailModal = ({
                 >
                   <Ionicons name="checkmark" size={16} color="#FFF" />
                   <Text style={{ color: '#FFF', fontWeight: '800' }}>Create Category</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Manage Friend Categories Overlay */}
+        {showManageCatsModal && (
+          <View style={[StyleSheet.absoluteFillObject, styles.subModalOverlay, { backgroundColor: theme.modalOverlay, zIndex: 102 }]}>
+            <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '80%' }]}>
+              {/* Top Drag Pill */}
+              <View style={styles.dragPillWrap}>
+                <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+              </View>
+
+              <View style={styles.subModalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.danger}25` }]}>
+                    <Ionicons name="trash" size={16} color={theme.danger} />
+                  </View>
+                  <View>
+                    <Text style={[styles.subModalTitle, { color: theme.text }]}>Manage Friend Categories</Text>
+                    <Text style={[styles.subModalSub, { color: theme.textMuted }]}>Delete or reset categories</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setShowManageCatsModal(false)}>
+                  <Ionicons name="close" size={20} color={theme.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ marginVertical: 12, maxHeight: 260 }}>
+                {friendCategories.length === 0 ? (
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ color: theme.textMuted }}>No categories remaining.</Text>
+                  </View>
+                ) : (
+                  friendCategories.map((c) => (
+                    <View
+                      key={c.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                        backgroundColor: theme.cardAlt,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 18 }}>{c.emoji || '🤝'}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>{c.name}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (Platform.OS === 'web') {
+                            if (window.confirm(`Delete friend category "${c.name}"?`)) {
+                              deleteFriendCategory(c.id);
+                            }
+                          } else {
+                            Alert.alert('Delete Category', `Are you sure you want to delete "${c.name}"?`, [
+                              { text: 'Cancel', style: 'cancel' },
+                              { text: 'Delete', style: 'destructive', onPress: () => deleteFriendCategory(c.id) },
+                            ]);
+                          }
+                        }}
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 8,
+                          backgroundColor: `${theme.danger}20`,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={14} color={theme.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (resetFriendCategoriesToDefault) {
+                      await resetFriendCategoriesToDefault();
+                    }
+                  }}
+                  style={[styles.cancelBtn, { borderColor: theme.border, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
+                >
+                  <Ionicons name="refresh-outline" size={14} color={theme.textMuted} />
+                  <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Reset Defaults</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowManageCatsModal(false)}
+                  style={[styles.saveCatBtn, { backgroundColor: theme.primary, flex: 1 }]}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
                 </TouchableOpacity>
               </View>
             </View>

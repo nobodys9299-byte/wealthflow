@@ -8,12 +8,15 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
+import { getCategoryById } from '../../constants/categories';
 
 export const ReceiptImageShareModal = ({
   visible,
@@ -24,6 +27,7 @@ export const ReceiptImageShareModal = ({
   const { theme, currency, accounts, categories, userUpiSettings } = useFinance();
   const cardRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   if (!visible || !data) return null;
 
@@ -53,6 +57,201 @@ export const ReceiptImageShareModal = ({
       alert('Could not generate receipt image: ' + (e.message || 'Unknown error'));
     } finally {
       setIsCapturing(false);
+    }
+  };
+
+  const handleExportA4Pdf = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      const title = type === 'friend'
+        ? `Lending Statement - ${data.name || 'Friend'}`
+        : type === 'account'
+        ? `Account Statement - ${data.name || 'Account'}`
+        : type === 'category'
+        ? `Category Statement - ${data.name || data.categoryId}`
+        : `Transaction Receipt - ${data.title || 'Record'}`;
+
+      const txs = data.transactions || (type === 'transaction' ? [data] : []);
+
+      const rowsHtml = txs.map((tx, idx) => {
+        const isLent = tx.type === 'lent';
+        const isIncome = tx.type === 'income';
+        const isPositive = isLent || isIncome;
+        const color = isPositive ? '#10B981' : '#EF4444';
+        const sign = isPositive ? '+' : '-';
+        const catName = tx.friendCategoryName || tx.categoryName || (tx.categoryId ? getCategoryById(tx.categoryId, tx.type)?.name : '') || tx.type?.toUpperCase() || '-';
+        const desc = tx.title || tx.note || (isLent ? 'Money Lent' : 'Money Borrowed');
+
+        return `
+          <tr style="border-bottom: 1px solid #E2E8F0; page-break-inside: avoid;">
+            <td style="padding: 10px 8px; font-size: 11px; color: #64748B;">#${idx + 1}</td>
+            <td style="padding: 10px 8px; font-size: 12px; font-weight: 600; color: #1E293B;">${formatDateDisplay(tx.date)}</td>
+            <td style="padding: 10px 8px; font-size: 12px; font-weight: 500; color: #334155;">${desc}</td>
+            <td style="padding: 10px 8px; font-size: 11px; color: #64748B;">${catName}</td>
+            <td style="padding: 10px 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748B;">${tx.type || '-'}</td>
+            <td style="padding: 10px 8px; font-size: 13px; font-weight: 700; text-align: right; color: ${color};">
+              ${sign}${formatCurrency(tx.amount, currency.symbol)}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const balanceText = type === 'friend'
+        ? `${data.balance >= 0 ? 'Owed to you: +' : 'You owe: -'}${formatCurrency(Math.abs(data.balance || 0), currency.symbol)}`
+        : type === 'account'
+        ? `Balance: ${formatCurrency(data.currentBalance !== undefined ? data.currentBalance : data.balance || 0, currency.symbol)}`
+        : type === 'category'
+        ? `Total Spent/Received: ${formatCurrency(data.totalAmount || data.amount || 0, currency.symbol)}`
+        : `Amount: ${formatCurrency(data.amount, currency.symbol)}`;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>${title}</title>
+            <style>
+              @page {
+                size: A4 portrait;
+                margin: 15mm;
+              }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                color: #0F172A;
+                margin: 0;
+                padding: 0;
+                background-color: #FFFFFF;
+                -webkit-print-color-adjust: exact;
+              }
+              .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #0F172A;
+                padding-bottom: 14px;
+                margin-bottom: 20px;
+              }
+              .brand {
+                font-size: 20px;
+                font-weight: 900;
+                letter-spacing: 1px;
+                color: #0F172A;
+              }
+              .doc-type {
+                font-size: 11px;
+                font-weight: 800;
+                background-color: #0F172A;
+                color: #FFFFFF;
+                padding: 4px 10px;
+                border-radius: 4px;
+                letter-spacing: 0.5px;
+              }
+              .meta-box {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                padding: 14px 18px;
+                margin-bottom: 24px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              }
+              .meta-title {
+                font-size: 18px;
+                font-weight: 800;
+                color: #0F172A;
+              }
+              .meta-sub {
+                font-size: 12px;
+                color: #64748B;
+                margin-top: 4px;
+              }
+              .meta-bal {
+                font-size: 20px;
+                font-weight: 900;
+                color: #0F172A;
+                text-align: right;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 30px;
+              }
+              th {
+                background-color: #F1F5F9;
+                color: #475569;
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                padding: 10px 8px;
+                text-align: left;
+                border-bottom: 2px solid #CBD5E1;
+              }
+              .footer {
+                margin-top: 20px;
+                border-top: 1px solid #E2E8F0;
+                padding-top: 12px;
+                display: flex;
+                justify-content: space-between;
+                font-size: 11px;
+                color: #94A3B8;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="brand">WEALTHFLOW FINANCE</div>
+              <div class="doc-type">${type.toUpperCase()} STATEMENT</div>
+            </div>
+
+            <div class="meta-box">
+              <div>
+                <div class="meta-title">${data.name || data.title || 'Statement'}</div>
+                <div class="meta-sub">Generated on ${new Date().toLocaleDateString()} • ${txs.length} total records</div>
+              </div>
+              <div class="meta-bal">${balanceText}</div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 35px;">#</th>
+                  <th style="width: 85px;">Date</th>
+                  <th>Description / Note</th>
+                  <th style="width: 120px;">Category</th>
+                  <th style="width: 75px;">Type</th>
+                  <th style="width: 110px; text-align: right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml || '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #94A3B8;">No records found</td></tr>'}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              <div>WealthFlow Personal Finance App</div>
+              <div>All transactions included • Valid Financial Statement</div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Share ${title} (A4 PDF)`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        alert('Sharing is not available on this device');
+      }
+    } catch (e) {
+      console.warn('PDF export error:', e);
+      alert('Could not export PDF: ' + (e.message || 'Unknown error'));
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -241,7 +440,7 @@ export const ReceiptImageShareModal = ({
                   <Text style={styles.recentTxHeading}>
                     LENDING LEDGER ({data.transactions?.length || 0} RECORDS)
                   </Text>
-                  {(data.transactions || []).slice(0, 4).map((tx, idx) => (
+                  {(data.transactions || []).map((tx, idx) => (
                     <View key={`tx_${idx}`} style={styles.ledgerRow}>
                       <View style={{ flex: 1, marginRight: 8 }}>
                         <Text style={styles.ledgerNote} numberOfLines={1}>
@@ -304,7 +503,7 @@ export const ReceiptImageShareModal = ({
                       No transactions recorded in this account yet.
                     </Text>
                   ) : (
-                    (data.transactions || []).slice(0, 15).map((tx, idx) => (
+                    (data.transactions || []).map((tx, idx) => (
                       <View key={`acc_tx_${idx}`} style={styles.ledgerRow}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={styles.ledgerNote} numberOfLines={1}>
@@ -368,7 +567,7 @@ export const ReceiptImageShareModal = ({
                       No transactions recorded in this category yet.
                     </Text>
                   ) : (
-                    (data.transactions || []).slice(0, 15).map((tx, idx) => (
+                    (data.transactions || []).map((tx, idx) => (
                       <View key={`cat_tx_${idx}`} style={styles.ledgerRow}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={styles.ledgerNote} numberOfLines={1}>
@@ -402,21 +601,38 @@ export const ReceiptImageShareModal = ({
               </View>
             </View>
 
-            {/* Action Button */}
-            <TouchableOpacity
-              onPress={handleShareImage}
-              disabled={isCapturing}
-              style={[styles.shareWhatsAppBtn, { backgroundColor: '#25D366' }]}
-            >
-              {isCapturing ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="logo-whatsapp" size={20} color="#FFF" />
-                  <Text style={styles.shareWhatsAppText}>Share Image to WhatsApp</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Action Buttons: WhatsApp Image & Multi-Page A4 PDF Export */}
+            <View style={styles.actionBtnRow}>
+              <TouchableOpacity
+                onPress={handleShareImage}
+                disabled={isCapturing || isGeneratingPdf}
+                style={[styles.shareWhatsAppBtn, { backgroundColor: '#25D366' }]}
+              >
+                {isCapturing ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
+                    <Text style={styles.shareWhatsAppText}>Share Image</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleExportA4Pdf}
+                disabled={isCapturing || isGeneratingPdf}
+                style={[styles.exportPdfBtn, { backgroundColor: theme.primary }]}
+              >
+                {isGeneratingPdf ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="document-text-outline" size={18} color="#FFF" />
+                    <Text style={styles.exportPdfText}>Export A4 PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -691,19 +907,39 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: 0.5,
   },
-  shareWhatsAppBtn: {
+  actionBtnRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     width: '100%',
+    marginBottom: 10,
+  },
+  shareWhatsAppBtn: {
+    flex: 1,
+    flexDirection: 'row',
     height: 48,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
   },
   shareWhatsAppText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  exportPdfBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  exportPdfText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '800',
   },
   shareOtherBtn: {

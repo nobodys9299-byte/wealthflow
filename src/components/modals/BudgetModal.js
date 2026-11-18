@@ -15,20 +15,24 @@ import { useFinance } from '../../context/FinanceContext';
 import { EXPENSE_CATEGORIES } from '../../constants/categories';
 
 export const BudgetModal = ({ visible, onClose, initialData = null }) => {
-  const { theme, currency, setCategoryBudget } = useFinance();
+  const { theme, currency, setCategoryBudget, categories } = useFinance();
+
+  const availableCategories = (categories?.expense && categories.expense.length > 0)
+    ? categories.expense
+    : EXPENSE_CATEGORIES;
 
   const [categoryId, setCategoryId] = useState('food');
   const [limit, setLimit] = useState('');
 
   useEffect(() => {
     if (initialData) {
-      setCategoryId(initialData.categoryId || 'food');
+      setCategoryId(initialData.categoryId || availableCategories[0]?.id || 'food');
       setLimit(initialData.limit ? String(initialData.limit) : '');
     } else {
-      setCategoryId('food');
+      setCategoryId(availableCategories[0]?.id || 'food');
       setLimit('');
     }
-  }, [initialData, visible]);
+  }, [initialData, visible, categories]);
 
   const handleSave = () => {
     const num = parseFloat(limit);
@@ -66,7 +70,7 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
           <View style={styles.group}>
             <Text style={[styles.label, { color: theme.textMuted }]}>Select Category</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
-              {EXPENSE_CATEGORIES.map((cat) => {
+              {availableCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
                 return (
                   <TouchableOpacity
@@ -75,16 +79,20 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
                     style={[
                       styles.catChip,
                       {
-                        backgroundColor: isSelected ? `${cat.color}25` : theme.inputBg,
-                        borderColor: isSelected ? cat.color : theme.border,
+                        backgroundColor: isSelected ? `${cat.color || theme.primary}25` : theme.inputBg,
+                        borderColor: isSelected ? (cat.color || theme.primary) : theme.border,
                       },
                     ]}
                   >
-                    <Ionicons name={cat.icon} size={16} color={isSelected ? cat.color : theme.textMuted} />
+                    {cat.emoji ? (
+                      <Text style={{ fontSize: 16 }}>{cat.emoji}</Text>
+                    ) : (
+                      <Ionicons name={cat.icon || 'pricetag-outline'} size={16} color={isSelected ? (cat.color || theme.primary) : theme.textMuted} />
+                    )}
                     <Text
                       style={[
                         styles.catChipText,
-                        { color: isSelected ? cat.color : theme.text },
+                        { color: isSelected ? (cat.color || theme.primaryLight) : theme.text },
                       ]}
                     >
                       {cat.name}

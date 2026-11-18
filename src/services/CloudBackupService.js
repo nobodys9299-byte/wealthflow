@@ -98,14 +98,21 @@ export const CloudBackupService = {
       if (Platform.OS === 'web' && file.file) {
         content = await file.file.text();
       } else {
+        // First try fetch() which natively supports content:// and file:// on Android
         try {
-          content = await FileSystem.readAsStringAsync(file.uri, {
-            encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-          });
-        } catch (fsErr) {
-          console.warn('FileSystem.readAsStringAsync failed, falling back to fetch:', fsErr);
           const res = await fetch(file.uri);
           content = await res.text();
+        } catch (fetchErr) {
+          try {
+            if (FileSystem?.readAsStringAsync) {
+              content = await FileSystem.readAsStringAsync(file.uri, {
+                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+              });
+            }
+          } catch (fsErr) {
+            console.warn('FileSystem.readAsStringAsync failed:', fsErr);
+            throw fsErr;
+          }
         }
       }
 

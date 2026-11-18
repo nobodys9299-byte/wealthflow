@@ -75,21 +75,13 @@ export const AccountsScreen = ({
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>
-              Accounts & Wallets
+              Account & Categories
             </Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
-              Multi-currency cash, banks, and statements
+              Manage bank accounts, wallets, and custom categories
             </Text>
           </View>
         </View>
-
-        <TouchableOpacity
-          onPress={onOpenAddAccount}
-          style={[styles.addBtn, { backgroundColor: theme.primary }]}
-        >
-          <Ionicons name="add" size={18} color="#FFF" />
-          <Text style={styles.addBtnText}>Add Account</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Net Worth Summary Strip */}
@@ -110,25 +102,48 @@ export const AccountsScreen = ({
         </TouchableOpacity>
       </View>
 
-      {/* Add / Manage Categories Section */}
-      <TouchableOpacity
-        onPress={() => setCategoryModalVisible(true)}
-        style={[styles.categoryCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
-        activeOpacity={0.8}
-      >
-        <View style={styles.catCardLeft}>
-          <View style={[styles.catCardIcon, { backgroundColor: '#8B5CF625' }]}>
-            <Ionicons name="pricetags-outline" size={20} color="#8B5CF6" />
+      {/* Management Action Cards */}
+      <View style={styles.actionCardsWrap}>
+        {/* Add Account Option (Placed above Add & Manage Categories) */}
+        <TouchableOpacity
+          onPress={onOpenAddAccount}
+          style={[styles.categoryCard, { backgroundColor: theme.cardAlt, borderColor: theme.border, marginBottom: 10 }]}
+          activeOpacity={0.8}
+        >
+          <View style={styles.catCardLeft}>
+            <View style={[styles.catCardIcon, { backgroundColor: `${theme.primary}25` }]}>
+              <Ionicons name="wallet-outline" size={20} color={theme.primaryLight} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.catCardTitle, { color: theme.text }]}>Add New Account / Wallet</Text>
+              <Text style={[styles.catCardSub, { color: theme.textMuted }]}>
+                Add bank, cash wallet, credit card, or savings vault
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.catCardTitle, { color: theme.text }]}>Add & Manage Categories</Text>
-            <Text style={[styles.catCardSub, { color: theme.textMuted }]}>
-              Create or remove custom expense and income categories
-            </Text>
+          <Ionicons name="add-circle" size={22} color={theme.primaryLight} />
+        </TouchableOpacity>
+
+        {/* Add & Manage Categories Option */}
+        <TouchableOpacity
+          onPress={() => setCategoryModalVisible(true)}
+          style={[styles.categoryCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}
+          activeOpacity={0.8}
+        >
+          <View style={styles.catCardLeft}>
+            <View style={[styles.catCardIcon, { backgroundColor: '#8B5CF625' }]}>
+              <Ionicons name="pricetags-outline" size={20} color="#8B5CF6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.catCardTitle, { color: theme.text }]}>Add & Manage Categories</Text>
+              <Text style={[styles.catCardSub, { color: theme.textMuted }]}>
+                Create, edit, or delete custom expense and income categories
+              </Text>
+            </View>
           </View>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-      </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+        </TouchableOpacity>
+      </View>
 
       {/* List of Accounts */}
       <View style={styles.sectionHeader}>

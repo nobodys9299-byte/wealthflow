@@ -254,7 +254,7 @@ function MainApp() {
     { id: 'analytics', label: 'Analysis', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
     { id: 'lending', label: 'Friends', icon: 'swap-horizontal-outline', activeIcon: 'swap-horizontal' },
     { id: 'budgets', label: 'Budgets', icon: 'shield-outline', activeIcon: 'shield' },
-    { id: 'accounts', label: 'Wallets', icon: 'wallet-outline', activeIcon: 'wallet' },
+    { id: 'accounts', label: 'Account', icon: 'wallet-outline', activeIcon: 'wallet' },
   ];
 
   return (

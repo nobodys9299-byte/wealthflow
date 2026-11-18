@@ -20,7 +20,14 @@ const STORAGE_KEYS = {
   FRIEND_CATEGORIES: '@wealthflow_friend_categories_v1',
   GOOGLE_USER: '@wealthflow_google_user_v1',
   CLOUD_BACKUP: '@wealthflow_cloud_backup_v1',
+  HOME_SECTIONS: '@wealthflow_home_sections_v2',
 };
+
+export const DEFAULT_HOME_SECTIONS = [
+  { id: 'accounts', label: 'Accounts & Wallets', desc: 'Active bank accounts & balances strip', enabled: true },
+  { id: 'recurring', label: 'Recurring Pay & Bills', desc: 'Subscriptions, bills & auto-pay schedules', enabled: true },
+  { id: 'transactions', label: 'All Transactions Ledger', desc: 'Recent money inflow and expense history', enabled: true },
+];
 
 export const DEFAULT_FRIEND_CATEGORIES = [
   { id: 'fcat_dinner', name: 'Dinner & Food Split', emoji: '🍽️', color: '#F97316' },
@@ -72,6 +79,9 @@ export const FinanceProvider = ({ children }) => {
 
   // Dedicated Friend Categories (specific only to the Friends tab)
   const [friendCategories, setFriendCategories] = useState(DEFAULT_FRIEND_CATEGORIES);
+
+  // Home Dashboard customizable sections order & visibility
+  const [homeSections, setHomeSections] = useState(DEFAULT_HOME_SECTIONS);
 
   // Custom Categories
   const [categories, setCategories] = useState({
@@ -218,6 +228,13 @@ export const FinanceProvider = ({ children }) => {
           setFriendCategories(JSON.parse(savedFriendCats));
         } else {
           setFriendCategories(DEFAULT_FRIEND_CATEGORIES);
+        }
+
+        const savedHomeSec = await AsyncStorage.getItem(STORAGE_KEYS.HOME_SECTIONS);
+        if (savedHomeSec) {
+          try {
+            setHomeSections(JSON.parse(savedHomeSec));
+          } catch (e) {}
         }
 
         const savedGUser = await AsyncStorage.getItem(STORAGE_KEYS.GOOGLE_USER);
@@ -803,7 +820,9 @@ export const FinanceProvider = ({ children }) => {
       type: item.type || 'expense',
       nextDueDate: item.nextDueDate || new Date().toISOString().split('T')[0],
     };
-    persistRecurring([...recurring, newItem]);
+    const updated = [...recurring, newItem];
+    persistRecurring(updated);
+    checkAndLogRecurringBills(updated, transactions, accounts);
   };
 
   const editRecurring = (id, fields) => {
@@ -818,6 +837,30 @@ export const FinanceProvider = ({ children }) => {
         : r
     );
     persistRecurring(updated);
+    checkAndLogRecurringBills(updated, transactions, accounts);
+  };
+
+  const logRecurringPaymentNow = (recId) => {
+    const r = recurring.find((rec) => rec.id === recId);
+    if (!r) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const autoTx = {
+      id: `tx_rec_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      type: r.type || 'expense',
+      amount: parseFloat(r.amount) || 0,
+      title: r.title || 'Recurring Bill',
+      categoryId: r.categoryId || 'bills',
+      accountId: r.accountId || accounts[0]?.id || 'acc_checking',
+      date: todayStr,
+      note: `Paid recurring bill (${r.frequency || 'Monthly'})`,
+      isRecurring: true,
+    };
+    persistTransactions([autoTx, ...transactions]);
+    const updatedRec = recurring.map((item) =>
+      item.id === recId ? { ...item, lastLoggedDate: todayStr } : item
+    );
+    persistRecurring(updatedRec);
+    alert(`Payment recorded for "${r.title}". It has been deducted from your account and net worth.`);
   };
 
   const requestDeleteRecurring = (id) => {
@@ -832,6 +875,16 @@ export const FinanceProvider = ({ children }) => {
     });
   };
 
+  // Home Dashboard Section Customizer
+  const updateHomeSections = async (newSections) => {
+    setHomeSections(newSections);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.HOME_SECTIONS, JSON.stringify(newSections));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   // Lending & Borrowing Actions
   const addLendingRecord = (item) => {
     const newRecord = {
@@ -841,6 +894,19 @@ export const FinanceProvider = ({ children }) => {
       status: 'pending',
     };
     persistLending([newRecord, ...lendingRecords]);
+  };
+
+  const editLendingRecord = (updatedRecord) => {
+    const updated = lendingRecords.map((r) =>
+      r.id === updatedRecord.id
+        ? {
+            ...r,
+            ...updatedRecord,
+            amount: parseFloat(updatedRecord.amount) || r.amount,
+          }
+        : r
+    );
+    persistLending(updated);
   };
 
   const settleFriendDebt = (friendName) => {
@@ -888,11 +954,39 @@ export const FinanceProvider = ({ children }) => {
     return newCat;
   };
 
+  const editFriendCategory = async ({ id, name, emoji, color }) => {
+    const updated = friendCategories.map((c) =>
+      c.id === id
+        ? {
+            ...c,
+            name: name ? name.trim() : c.name,
+            emoji: emoji || c.emoji || '🤝',
+            color: color || c.color || '#3B82F6',
+          }
+        : c
+    );
+    setFriendCategories(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(updated));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const deleteFriendCategory = async (id) => {
     const updated = friendCategories.filter((c) => c.id !== id);
     setFriendCategories(updated);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(updated));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const resetFriendCategoriesToDefault = async () => {
+    setFriendCategories(DEFAULT_FRIEND_CATEGORIES);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(DEFAULT_FRIEND_CATEGORIES));
     } catch (e) {
       console.warn(e);
     }
@@ -917,9 +1011,17 @@ export const FinanceProvider = ({ children }) => {
           balance: 0,
           pendingCount: 0,
           transactions: [],
+          photoUri: r.photoUri || null,
+          avatarEmoji: r.avatarEmoji || null,
         };
       }
       map[name].transactions.push(r);
+      if (r.photoUri && !map[name].photoUri) {
+        map[name].photoUri = r.photoUri;
+      }
+      if (r.avatarEmoji && !map[name].avatarEmoji) {
+        map[name].avatarEmoji = r.avatarEmoji;
+      }
       if (r.status === 'pending') {
         map[name].pendingCount++;
         const amt = parseFloat(r.amount) || 0;
@@ -1164,16 +1266,23 @@ export const FinanceProvider = ({ children }) => {
         addRecurring,
         editRecurring,
         deleteRecurring: requestDeleteRecurring,
+        logRecurringPaymentNow,
         lendingRecords,
         lendingSummary,
         addLendingRecord,
+        editLendingRecord,
         settleFriendDebt,
         deleteFriendAccount,
         deleteLendingRecord: requestDeleteLendingRecord,
         // Dedicated Friend Categories (Friends tab only)
         friendCategories,
         addFriendCategory,
+        editFriendCategory,
         deleteFriendCategory,
+        resetFriendCategoriesToDefault,
+        // Home dashboard section preferences
+        homeSections,
+        updateHomeSections,
         // Categories Management
         categories,
         addCategory,
