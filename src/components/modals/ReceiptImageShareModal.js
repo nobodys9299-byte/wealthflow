@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
@@ -30,6 +31,15 @@ export const ReceiptImageShareModal = ({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   if (!visible || !data) return null;
+
+  const targetAmount = Math.abs(parseFloat(data?.amount !== undefined ? data.amount : (data?.balance !== undefined ? data.balance : 0))) || 0;
+  const upiId = userUpiSettings?.upiId || 'wealthflow@upi';
+  const payeeName = userUpiSettings?.payeeName || 'WealthFlow';
+  const txTitle = data?.title || data?.note || data?.name || 'WealthFlow Payment';
+  const upiLink = targetAmount > 0
+    ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${targetAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
+    : `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&cu=INR`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}&margin=2`;
 
   const handleShareImage = async () => {
     try {
@@ -208,7 +218,7 @@ export const ReceiptImageShareModal = ({
             <div class="meta-box">
               <div>
                 <div class="meta-title">${data.name || data.title || 'Statement'}</div>
-                <div class="meta-sub">Generated on ${new Date().toLocaleDateString()} • ${txs.length} total records</div>
+                <div class="meta-sub">Generated on ${formatDateDisplay(new Date().toISOString().split('T')[0])} • ${txs.length} total records</div>
               </div>
               <div class="meta-bal">${balanceText}</div>
             </div>
@@ -228,6 +238,22 @@ export const ReceiptImageShareModal = ({
                 ${rowsHtml || '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #94A3B8;">No records found</td></tr>'}
               </tbody>
             </table>
+
+            <!-- Instant UPI Payment Details with Payment Link & Dynamic QR Code -->
+            <div style="margin-top: 20px; padding: 14px 18px; background-color: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid;">
+              <div style="flex: 1; padding-right: 18px;">
+                <div style="font-size: 11px; font-weight: 800; color: #0284C7; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Instant UPI Payment Details</div>
+                <div style="font-size: 16px; font-weight: 800; color: #0F172A; margin-top: 3px;">Amount: ${currency.symbol}${targetAmount.toFixed(2)}</div>
+                <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
+                <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
+                <div style="font-size: 11px; color: #2563EB; margin-top: 5px; word-break: break-all;"><strong>Payment Link:</strong> <a href="${upiLink}" style="color: #2563EB;">${upiLink}</a></div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 5px;">Scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
+              </div>
+              <div style="text-align: center;">
+                <img src="${qrCodeUrl}" width="115" height="115" style="border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF;" alt="UPI QR" />
+                <div style="font-size: 9px; font-weight: 800; color: #0284C7; margin-top: 3px;">SCAN & PAY</div>
+              </div>
+            </div>
 
             <div class="footer">
               <div>WealthFlow Personal Finance App</div>
@@ -365,6 +391,29 @@ export const ReceiptImageShareModal = ({
                       </View>
                     </View>
                   </View>
+
+                  {/* Payment Details with Payment Link & Dynamic QR Code */}
+                  <View style={styles.paymentBox}>
+                    <View style={styles.paymentBoxHeader}>
+                      <Ionicons name="flash" size={13} color="#38BDF8" />
+                      <Text style={styles.paymentBoxHeaderTitle}>PAYMENT DETAILS & UPI QR</Text>
+                    </View>
+                    <View style={styles.paymentRow}>
+                      <View style={styles.paymentDetailsCol}>
+                        <Text style={styles.paymentAmountLabel}>Amount to Pay</Text>
+                        <Text style={styles.paymentAmountValue}>
+                          {currency.symbol}{targetAmount.toFixed(2)}
+                        </Text>
+                        <Text style={styles.paymentUpiLabel}>UPI ID: <Text style={styles.paymentUpiText}>{upiId}</Text></Text>
+                        <Text style={styles.paymentPayeeLabel}>Payee: <Text style={styles.paymentUpiText}>{payeeName}</Text></Text>
+                        <Text style={styles.paymentLinkLabel} numberOfLines={1}>Link: {upiLink}</Text>
+                      </View>
+                      <View style={styles.qrCol}>
+                        <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
+                        <Text style={styles.qrTag}>SCAN TO PAY</Text>
+                      </View>
+                    </View>
+                  </View>
                 </View>
               )}
 
@@ -428,11 +477,28 @@ export const ReceiptImageShareModal = ({
                     </View>
                   </View>
 
-                  {/* UPI Pay Note if owed */}
-                  {userUpiSettings?.upiId && data.balance > 0 && (
-                    <View style={styles.upiCard}>
-                      <Text style={styles.upiLabel}>Pay Directly via UPI ID:</Text>
-                      <Text style={styles.upiIdText}>{userUpiSettings.upiId}</Text>
+                  {/* Payment Details with Payment Link & Dynamic QR Code */}
+                  {targetAmount > 0 && (
+                    <View style={styles.paymentBox}>
+                      <View style={styles.paymentBoxHeader}>
+                        <Ionicons name="flash" size={13} color="#38BDF8" />
+                        <Text style={styles.paymentBoxHeaderTitle}>PAYMENT DETAILS & UPI QR</Text>
+                      </View>
+                      <View style={styles.paymentRow}>
+                        <View style={styles.paymentDetailsCol}>
+                          <Text style={styles.paymentAmountLabel}>Amount Due / Settle</Text>
+                          <Text style={styles.paymentAmountValue}>
+                            {currency.symbol}{targetAmount.toFixed(2)}
+                          </Text>
+                          <Text style={styles.paymentUpiLabel}>UPI ID: <Text style={styles.paymentUpiText}>{upiId}</Text></Text>
+                          <Text style={styles.paymentPayeeLabel}>Payee: <Text style={styles.paymentUpiText}>{payeeName}</Text></Text>
+                          <Text style={styles.paymentLinkLabel} numberOfLines={1}>Link: {upiLink}</Text>
+                        </View>
+                        <View style={styles.qrCol}>
+                          <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
+                          <Text style={styles.qrTag}>SCAN TO PAY</Text>
+                        </View>
+                      </View>
                     </View>
                   )}
 
@@ -838,6 +904,87 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     marginTop: 2,
+  },
+  paymentBox: {
+    width: '100%',
+    backgroundColor: '#1E293B',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#38BDF850',
+  },
+  paymentBoxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+    paddingBottom: 6,
+  },
+  paymentBoxHeaderTitle: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  paymentDetailsCol: {
+    flex: 1,
+  },
+  paymentAmountLabel: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  paymentAmountValue: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  paymentUpiLabel: {
+    color: '#94A3B8',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  paymentPayeeLabel: {
+    color: '#94A3B8',
+    fontSize: 10,
+    marginTop: 1,
+  },
+  paymentUpiText: {
+    color: '#38BDF8',
+    fontWeight: '700',
+  },
+  paymentLinkLabel: {
+    color: '#64748B',
+    fontSize: 9,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginTop: 4,
+  },
+  qrCol: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 6,
+    borderRadius: 10,
+  },
+  qrImage: {
+    width: 95,
+    height: 95,
+  },
+  qrTag: {
+    color: '#0F172A',
+    fontSize: 8,
+    fontWeight: '900',
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   upiCard: {
     width: '100%',

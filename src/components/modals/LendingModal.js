@@ -17,6 +17,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
 import { formatDateDisplay } from '../../utils/formatters';
 import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 const POPULAR_EMOJIS = [
   '🍽️', '🚗', '🎬', '🛒', '⚡', '💵', '🎁', '🤝',
@@ -65,6 +66,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
 
   // Custom Friend Category Creator state
   const [showAddCatModal, setShowAddCatModal] = useState(false);
+  const [deletingFriendCategory, setDeletingFriendCategory] = useState(null);
   const [newCatName, setNewCatName] = useState('');
   const [newCatEmoji, setNewCatEmoji] = useState('🍽️');
   const [newCatColor, setNewCatColor] = useState('#3B82F6');
@@ -194,32 +196,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
   };
 
   const handleDeleteCategory = (cat) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Delete friend category "${cat.name}"?`)) {
-        deleteFriendCategory(cat.id);
-        if (categoryId === cat.id) {
-          setCategoryId(friendCategories.find((c) => c.id !== cat.id)?.id || '');
-        }
-      }
-    } else {
-      Alert.alert(
-        'Delete Category',
-        `Are you sure you want to delete "${cat.name}"?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              deleteFriendCategory(cat.id);
-              if (categoryId === cat.id) {
-                setCategoryId(friendCategories.find((c) => c.id !== cat.id)?.id || '');
-              }
-            },
-          },
-        ]
-      );
-    }
+    setDeletingFriendCategory(cat);
   };
 
   return (
@@ -774,6 +751,24 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
           </View>
         </View>
       </Modal>
+
+      {/* Styled Delete Confirmation Dialog */}
+      <ConfirmDeleteModal
+        visible={!!deletingFriendCategory}
+        onClose={() => setDeletingFriendCategory(null)}
+        onConfirm={() => {
+          if (deletingFriendCategory) {
+            deleteFriendCategory(deletingFriendCategory.id);
+            if (categoryId === deletingFriendCategory.id) {
+              setCategoryId(friendCategories.find((c) => c.id !== deletingFriendCategory.id)?.id || '');
+            }
+            setDeletingFriendCategory(null);
+          }
+        }}
+        title="Delete Category?"
+        message={`Are you sure you want to delete "${deletingFriendCategory?.name}"?`}
+        confirmText="Yes, Delete"
+      />
     </>
   );
 };

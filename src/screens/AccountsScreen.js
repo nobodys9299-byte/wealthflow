@@ -84,21 +84,21 @@ export const AccountsScreen = ({
         </View>
       </View>
 
-      {/* Net Worth Summary Strip */}
-      <View style={[styles.netWorthCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      {/* Net Worth Summary Strip - Colored Hero Panel */}
+      <View style={[styles.netWorthCard, { backgroundColor: '#064E3B', borderColor: '#059669', borderWidth: 1.5 }]}>
         <View style={styles.netWorthLeft}>
-          <Text style={[styles.netWorthLabel, { color: theme.textMuted }]}>CONSOLIDATED NET WORTH</Text>
-          <Text style={[styles.netWorthValue, { color: theme.text }]}>
+          <Text style={[styles.netWorthLabel, { color: '#6EE7B7' }]}>TOTAL CONSOLIDATED WEALTH</Text>
+          <Text style={[styles.netWorthValue, { color: '#FFFFFF' }]}>
             {formatCurrency(netWorth, currency.symbol)}
           </Text>
         </View>
 
         <TouchableOpacity
           onPress={onOpenTransfer}
-          style={[styles.transferBtn, { backgroundColor: theme.primaryBg }]}
+          style={[styles.transferBtn, { backgroundColor: '#047857', borderColor: '#34D399', borderWidth: 1 }]}
         >
-          <Ionicons name="swap-horizontal" size={18} color={theme.primary} />
-          <Text style={[styles.transferBtnText, { color: theme.primary }]}>Transfer</Text>
+          <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
+          <Text style={[styles.transferBtnText, { color: '#FFFFFF' }]}>Transfer</Text>
         </TouchableOpacity>
       </View>
 
@@ -115,7 +115,7 @@ export const AccountsScreen = ({
               <Ionicons name="wallet-outline" size={20} color={theme.primaryLight} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.catCardTitle, { color: theme.text }]}>Add New Account / Wallet</Text>
+              <Text style={[styles.catCardTitle, { color: theme.text }]}>Add Account</Text>
               <Text style={[styles.catCardSub, { color: theme.textMuted }]}>
                 Add bank, cash wallet, credit card, or savings vault
               </Text>

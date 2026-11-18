@@ -5,7 +5,7 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils/formatters';
 import { AccountVisual } from './common/CategoryVisual';
 
-export const AccountCard = ({ account, onEdit, onDelete, compact = false, onPress, isSelected = false }) => {
+const AccountCardComponent = ({ account, onEdit, onDelete, compact = false, onPress, isSelected = false }) => {
   const { theme, currency } = useFinance();
   const isNegative = account.currentBalance < 0;
 
@@ -202,3 +202,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+
+export const AccountCard = React.memo(AccountCardComponent);

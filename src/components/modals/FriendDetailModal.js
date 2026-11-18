@@ -411,23 +411,25 @@ export const FriendDetailModal = ({
                             {formatDateDisplay(t.date)}
                           </Text>
 
-                          <View
-                            style={[
-                              styles.statusPill,
-                              {
-                                backgroundColor: t.status === 'settled' ? `${theme.success}18` : `${theme.warning}18`,
-                              },
-                            ]}
-                          >
-                            <Text
+                          {t.status === 'settled' && (
+                            <View
                               style={[
-                                styles.statusPillText,
-                                { color: t.status === 'settled' ? theme.success : theme.warning },
+                                styles.statusPill,
+                                {
+                                  backgroundColor: `${theme.success}18`,
+                                },
                               ]}
                             >
-                              {t.status?.toUpperCase() || 'PENDING'}
-                            </Text>
-                          </View>
+                              <Text
+                                style={[
+                                  styles.statusPillText,
+                                  { color: theme.success },
+                                ]}
+                              >
+                                SETTLED
+                              </Text>
+                            </View>
+                          )}
 
                           {(t.friendCategoryName || t.categoryName) && (
                             <View style={[styles.fCatBadge, { backgroundColor: `${theme.primary}20` }]}>

@@ -30,7 +30,7 @@ export const generateTransactionPDF = async (transaction, category, account, cur
       <body>
         <div class="header">
           <div class="logo">WealthFlow</div>
-          <div class="sub">Official Transaction Receipt • Generated on ${new Date().toLocaleDateString()}</div>
+          <div class="sub">Official Transaction Receipt • Generated on ${formatDateDisplay(new Date().toISOString().split('T')[0])}</div>
         </div>
 
         <div class="amount-box">
@@ -53,7 +53,7 @@ export const generateTransactionPDF = async (transaction, category, account, cur
           </tr>
           <tr>
             <td class="label">Date</td>
-            <td class="value">${formatDateDisplay(transaction.date)} (${transaction.date})</td>
+            <td class="value">${formatDateDisplay(transaction.date)}</td>
           </tr>
           <tr>
             <td class="label">Transaction ID</td>
@@ -86,7 +86,7 @@ export const generateAccountStatementPDF = async (account, transactions, currenc
     const isInc = t.type === 'income';
     return `
       <tr>
-        <td>${t.date}</td>
+        <td>${formatDateDisplay(t.date)}</td>
         <td><strong>${t.title}</strong><br><span style="font-size:11px;color:#64748b">${t.note || t.categoryId}</span></td>
         <td><span style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px">${t.categoryId}</span></td>
         <td style="text-align:right; font-weight:800; color:${isInc ? '#059669' : '#e11d48'}">
@@ -176,7 +176,7 @@ export const generateLendingStatementPDF = async (friend, currencySymbol = '$') 
     const isLent = t.type === 'lent';
     return `
       <tr>
-        <td>${t.date}</td>
+        <td>${formatDateDisplay(t.date)}</td>
         <td><strong>${t.note || (isLent ? 'Money Lent' : 'Money Borrowed')}</strong></td>
         <td><span style="font-size:11px;padding:3px 8px;border-radius:4px;background:${isLent ? '#ecfdf5' : '#fff1f2'};color:${isLent ? '#059669' : '#e11d48'};font-weight:700">${isLent ? 'LENT' : 'BORROWED'}</span></td>
         <td style="text-align:right; font-weight:800; color:${isLent ? '#059669' : '#e11d48'}">
@@ -209,7 +209,7 @@ export const generateLendingStatementPDF = async (friend, currencySymbol = '$') 
         <div class="header">
           <div class="brand">WealthFlow</div>
           <div style="font-size:16px;font-weight:700;margin-top:4px">Lending Statement with ${friend.name}</div>
-          <div style="font-size:12px;color:#64748b">Generated on ${new Date().toLocaleDateString()}</div>
+          <div style="font-size:12px;color:#64748b">Generated on ${formatDateDisplay(new Date().toISOString().split('T')[0])}</div>
         </div>
 
         <div class="hero-box">

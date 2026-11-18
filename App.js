@@ -36,6 +36,7 @@ function MainApp() {
     securitySettings,
     isAppUnlocked,
     setIsAppUnlocked,
+    isLoading,
     confirmDialog,
     closeConfirmDialog,
   } = useFinance();
@@ -105,6 +106,22 @@ function MainApp() {
     drawerOpen,
     activeTab,
   ]);
+
+  // Prevent any startup glitch: Never render dashboard until storage finishes loading
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 68, height: 68, borderRadius: 22, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <Ionicons name="wallet" size={36} color="#FFF" />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: theme.text, letterSpacing: 0.5 }}>WealthFlow</Text>
+          <Text style={{ fontSize: 13, color: theme.textMuted, marginTop: 6 }}>Loading financial database...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // If security is enabled and app is locked, present LockScreen
   if (securitySettings.enabled && !isAppUnlocked) {
@@ -484,7 +501,7 @@ function MainApp() {
               >
                 <Ionicons name="settings-outline" size={20} color={activeTab === 'settings' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'settings' ? theme.primaryLight : theme.text }]}>
-                  Settings & Security
+                  Setting
                 </Text>
               </TouchableOpacity>
 

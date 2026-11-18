@@ -8,8 +8,8 @@ export const formatCurrency = (amount, symbol = '$') => {
   return `${isNegative ? '-' : ''}${symbol}${absFormatted}`;
 };
 
-// Formats YYYY-MM-DD or Date object strictly into DD/MM/YY (e.g. 09/11/26)
-export const formatDateDisplay = (dateString, includeRelative = false) => {
+// Formats YYYY-MM-DD or Date object strictly into DD/MM/YY (e.g. 18/11/26)
+export const formatDateDisplay = (dateString) => {
   if (!dateString) return '';
   
   // If in YYYY-MM-DD format
@@ -18,19 +18,6 @@ export const formatDateDisplay = (dateString, includeRelative = false) => {
     const year = parts[0].slice(-2); // last 2 digits
     const month = String(parts[1]).padStart(2, '0');
     const day = String(parts[2]).padStart(2, '0');
-
-    if (includeRelative) {
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      
-      const yest = new Date(today);
-      yest.setDate(yest.getDate() - 1);
-      const yestStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
-
-      if (dateString === todayStr) return `Today (${day}/${month}/${year})`;
-      if (dateString === yestStr) return `Yesterday (${day}/${month}/${year})`;
-    }
-
     return `${day}/${month}/${year}`;
   }
 

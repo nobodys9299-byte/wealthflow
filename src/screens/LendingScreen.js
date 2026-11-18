@@ -114,23 +114,26 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Hero Debt Balance Summary */}
+      {/* Hero Debt Balance Summary - Colored Display Panel */}
       <View
         style={[
           styles.heroCard,
           {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
+            backgroundColor: lendingSummary.netBalance >= 0 ? '#064E3B' : '#450A0A',
+            borderColor: lendingSummary.netBalance >= 0 ? '#059669' : '#991B1B',
+            borderWidth: 1.5,
           },
         ]}
       >
         <View style={styles.heroTop}>
           <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={[styles.heroLabel, { color: theme.textMuted }]}>NET DEBT POSITION</Text>
+            <Text style={[styles.heroLabel, { color: lendingSummary.netBalance >= 0 ? '#6EE7B7' : '#FCA5A5' }]}>
+              NET DEBT POSITION
+            </Text>
             <Text
               style={[
                 styles.heroNetValue,
-                { color: lendingSummary.netBalance >= 0 ? theme.success : theme.danger },
+                { color: '#FFFFFF' },
               ]}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -140,28 +143,28 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
             </Text>
           </View>
           {/* Modern Financial Split/Exchange Logo */}
-          <View style={[styles.heroBadge, { backgroundColor: `${theme.primary}25` }]}>
-            <Ionicons name="swap-horizontal" size={24} color={theme.primaryLight} />
+          <View style={[styles.heroBadge, { backgroundColor: lendingSummary.netBalance >= 0 ? '#047857' : '#7F1D1D' }]}>
+            <Ionicons name="swap-horizontal" size={24} color="#FFFFFF" />
           </View>
         </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <View style={[styles.divider, { backgroundColor: lendingSummary.netBalance >= 0 ? '#047857' : '#7F1D1D' }]} />
 
         <View style={styles.heroBreakdown}>
           <View style={styles.breakdownCol}>
-            <Text style={[styles.breakdownLabel, { color: theme.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.breakdownLabel, { color: lendingSummary.netBalance >= 0 ? '#A7F3D0' : '#FECDD3' }]} numberOfLines={1}>
               You Are Owed (Lent)
             </Text>
-            <Text style={[styles.breakdownVal, { color: theme.success }]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.breakdownVal, { color: '#34D399' }]} numberOfLines={1} adjustsFontSizeToFit>
               +{formatCurrency(lendingSummary.totalLent, currency.symbol)}
             </Text>
           </View>
 
           <View style={styles.breakdownCol}>
-            <Text style={[styles.breakdownLabel, { color: theme.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.breakdownLabel, { color: lendingSummary.netBalance >= 0 ? '#A7F3D0' : '#FECDD3' }]} numberOfLines={1}>
               You Owe (Borrowed)
             </Text>
-            <Text style={[styles.breakdownVal, { color: theme.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.breakdownVal, { color: '#F87171' }]} numberOfLines={1} adjustsFontSizeToFit>
               -{formatCurrency(lendingSummary.totalBorrowed, currency.symbol)}
             </Text>
           </View>

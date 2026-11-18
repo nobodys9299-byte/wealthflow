@@ -17,6 +17,7 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
+import { formatDateDisplay } from '../utils/formatters';
 
 export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore }) => {
   const {
@@ -243,7 +244,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
     if (result?.remoteCheck?.exists) {
       const { txCount, accCount, updatedAt } = result.remoteCheck;
-      const dateFormatted = new Date(updatedAt).toLocaleDateString();
+      const dateFormatted = formatDateDisplay(updatedAt);
       alert(`Welcome back! We found an existing Cloud Vault backup for ${cleanEmail} from ${dateFormatted} with ${txCount} transactions and ${accCount} accounts.\n\nTap "Cloud Restore" anytime to recover all data.`);
     } else {
       alert('Connected with Google! Automatic backup to Google Cloud Vault enabled.');
@@ -339,7 +340,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
           <Ionicons name="menu-outline" size={24} color={theme.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.screenTitle, { color: theme.text }]}>Settings & Security</Text>
+          <Text style={[styles.screenTitle, { color: theme.text }]}>Setting</Text>
           <Text style={[styles.subText, { color: theme.textMuted }]}>
             Passcode, UPI WhatsApp requests, custom categories & CSV
           </Text>
@@ -577,7 +578,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
               <Text style={{ fontSize: 11, color: theme.textMuted, marginBottom: 12 }}>
                 {googleUser.lastBackup
-                  ? `Last Cloud Backup: ${new Date(googleUser.lastBackup).toLocaleDateString()} ${new Date(googleUser.lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  ? `Last Cloud Backup: ${formatDateDisplay(googleUser.lastBackup)} ${new Date(googleUser.lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                   : 'Auto-Backup enabled: Will sync changes to your Google Cloud Vault'}
               </Text>
 

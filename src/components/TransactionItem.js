@@ -6,7 +6,7 @@ import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
 import { CategoryVisual } from './common/CategoryVisual';
 
-export const TransactionItem = ({ transaction, onPress, onEdit, onDelete }) => {
+const TransactionItemComponent = ({ transaction, onPress, onEdit, onDelete }) => {
   const { theme, currency, accounts } = useFinance();
   const isIncome = transaction.type === 'income';
   const category = getCategoryById(transaction.categoryId, transaction.type);
@@ -160,3 +160,5 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
 });
+
+export const TransactionItem = React.memo(TransactionItemComponent);

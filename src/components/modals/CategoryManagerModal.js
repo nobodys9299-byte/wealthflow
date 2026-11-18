@@ -7,15 +7,32 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 const EMOJI_OPTIONS = [
-  '🍔', '🥦', '🏡', '🚗', '⚡', '🛍️', '🎬', '🩺', '🎓', '✈️', '✨', '🏷️',
-  '💰', '💻', '📈', '🏢', '🎁', '🔄', '💵', '🍕', '☕', '👗', '🎮', '🏋️',
-  '📚', '🚕', '⛽', '🍿', '👶', '🐾', '💈', '🏖️', '🛠️', '📱', '🎵', '🪙',
+  // Food & Dining
+  '🍔', '🍕', '🍜', '🍣', '🥗', '☕', '🥪', '🍰', '🍩', '🍦',
+  // Groceries & Market
+  '🥦', '🍎', '🛒', '🍞', '🥩', '🥚', '🥛',
+  // Shopping & Apparel
+  '🛍️', '👕', '👗', '👠', '👟', '👜', '💄', '💍',
+  // Home, Bills & Utilities
+  '🏡', '🛋️', '⚡', '💡', '💧', '📶', '📱', '🧹', '🔧',
+  // Transportation & Travel
+  '🚗', '⛽', '🚕', '🚌', '🚆', '✈️', '🛵', '🚲', '🏖️',
+  // Entertainment & Leisure
+  '🎬', '🍿', '🎮', '🎧', '🎵', '🎟️', '🎨', '📸',
+  // Health & Personal Care
+  '🩺', '💊', '🏋️', '🧘', '💈', '💅', '🦷',
+  // Education & Learning
+  '📚', '🎓', '✏️', '🔬',
+  // Kids, Pets & Social
+  '👶', '🐾', '🎁', '🎉', '💐',
+  // Income & Earning
+  '💰', '💵', '💻', '📈', '🏢', '🔄', '🏷️',
 ];
 
 const COLOR_OPTIONS = [
@@ -91,12 +108,10 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
 
   const handleConfirmDelete = () => {
     if (!deletingCategory) return;
-    const catNameToDel = deletingCategory.name;
     const catId = deletingCategory.id;
 
     deleteCategory(activeTab, catId);
     setDeletingCategory(null);
-    alert(`Category "${catNameToDel}" deleted successfully.`);
   };
 
   const handleResetDefaults = () => {
@@ -178,37 +193,15 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
             </TouchableOpacity>
           </View>
 
-          {/* In-Modal Delete Confirmation Box */}
-          {deletingCategory && (
-            <View style={[styles.confirmBox, { backgroundColor: `${theme.danger}15`, borderColor: theme.danger }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="warning-outline" size={22} color={theme.danger} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.confirmTitle, { color: theme.danger }]}>
-                    Delete "{deletingCategory.name}"?
-                  </Text>
-                  <Text style={[styles.confirmSub, { color: theme.textMuted }]}>
-                    Are you sure you want to remove this category? Existing transactions will retain their history.
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.confirmRow}>
-                <TouchableOpacity
-                  onPress={() => setDeletingCategory(null)}
-                  style={[styles.confirmCancelBtn, { borderColor: theme.border, backgroundColor: theme.card }]}
-                >
-                  <Text style={[styles.confirmBtnText, { color: theme.text }]}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleConfirmDelete}
-                  style={[styles.confirmDeleteBtn, { backgroundColor: theme.danger }]}
-                >
-                  <Ionicons name="trash" size={14} color="#FFF" style={{ marginRight: 4 }} />
-                  <Text style={[styles.confirmBtnText, { color: '#FFF' }]}>Yes, Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+          {/* Universal Styled Delete Confirmation Dialog */}
+          <ConfirmDeleteModal
+            visible={!!deletingCategory}
+            onClose={() => setDeletingCategory(null)}
+            onConfirm={handleConfirmDelete}
+            title={`Delete "${deletingCategory?.name}"?`}
+            message="Are you sure you want to remove this category? Existing transactions will retain their history."
+            confirmText="Yes, Delete"
+          />
 
           {/* Inline Edit Form */}
           {editingCategory && (

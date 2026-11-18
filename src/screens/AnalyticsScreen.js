@@ -553,33 +553,33 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       {/* ======================================================== */}
       {activeView === 'account' && (
         <View style={styles.viewSection}>
-          {/* Consolidated Net Worth Card */}
-          <View style={[styles.heroCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Consolidated Net Worth Card - Colored Display Panel */}
+          <View style={[styles.heroCard, { backgroundColor: '#064E3B', borderColor: '#059669', borderWidth: 1.5 }]}>
             <View style={styles.heroTop}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.heroLabel, { color: theme.textMuted }]}>TOTAL CONSOLIDATED WEALTH</Text>
-                <Text style={[styles.heroValue, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                <Text style={[styles.heroLabel, { color: '#6EE7B7' }]}>TOTAL CONSOLIDATED WEALTH</Text>
+                <Text style={[styles.heroValue, { color: '#FFFFFF' }]} numberOfLines={1} adjustsFontSizeToFit>
                   {formatCurrency(netWorth, currency.symbol)}
                 </Text>
               </View>
-              <View style={[styles.heroBadge, { backgroundColor: `${theme.primary}25` }]}>
-                <Ionicons name="shield-checkmark" size={24} color={theme.primaryLight} />
+              <View style={[styles.heroBadge, { backgroundColor: '#047857' }]}>
+                <Ionicons name="shield-checkmark" size={24} color="#FFFFFF" />
               </View>
             </View>
 
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <View style={[styles.divider, { backgroundColor: '#047857' }]} />
 
             <View style={styles.metricsRow}>
               <View style={styles.metricItem}>
-                <Text style={[styles.metricLabel, { color: theme.textMuted }]}>Period Inflows (+)</Text>
-                <Text style={[styles.metricVal, { color: theme.success }]}>
+                <Text style={[styles.metricLabel, { color: '#A7F3D0' }]}>Period Inflows (+)</Text>
+                <Text style={[styles.metricVal, { color: '#34D399' }]}>
                   +{formatCurrency(totalIncome, currency.symbol)}
                 </Text>
               </View>
-              <View style={[styles.metricDivider, { backgroundColor: theme.border }]} />
+              <View style={[styles.metricDivider, { backgroundColor: '#047857' }]} />
               <View style={styles.metricItem}>
-                <Text style={[styles.metricLabel, { color: theme.textMuted }]}>Period Outflows (-)</Text>
-                <Text style={[styles.metricVal, { color: theme.danger }]}>
+                <Text style={[styles.metricLabel, { color: '#A7F3D0' }]}>Period Outflows (-)</Text>
+                <Text style={[styles.metricVal, { color: '#F87171' }]}>
                   -{formatCurrency(totalExpense, currency.symbol)}
                 </Text>
               </View>

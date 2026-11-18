@@ -6,7 +6,7 @@ import { formatCurrency } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
 import { CategoryVisual } from './common/CategoryVisual';
 
-export const BudgetCard = ({ budget, onEdit, onDelete }) => {
+const BudgetCardComponent = ({ budget, onEdit, onDelete }) => {
   const { theme, currency } = useFinance();
   const category = getCategoryById(budget.categoryId, 'expense');
 
@@ -164,3 +164,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+
+export const BudgetCard = React.memo(BudgetCardComponent);

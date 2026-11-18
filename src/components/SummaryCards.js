@@ -28,11 +28,11 @@ export const SummaryCards = () => {
             <Text
               style={[
                 styles.netWorthLabel,
-                { color: theme.primaryLight || '#C7D2FE' },
+                { color: '#A5B4FC' },
               ]}
               numberOfLines={1}
             >
-              TOTAL NET WORTH
+              CONSOLIDATED NET WORTH
             </Text>
             <Text style={styles.netWorthValue} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(netWorth, currency.symbol)}

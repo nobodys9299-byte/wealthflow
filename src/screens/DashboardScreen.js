@@ -121,23 +121,6 @@ export const DashboardScreen = ({
     setShowCustomizeModal(false);
   };
 
-  const handlePayRecurringNow = (rec) => {
-    if (!logRecurringPaymentNow) return;
-    const res = logRecurringPaymentNow(rec.id);
-    if (res && res.success) {
-      const msg = `Bill Paid: ${formatCurrency(rec.amount, currency.symbol)} for "${rec.title}" has been deducted from your account and Net Worth updated.`;
-      if (Platform.OS === 'web') {
-        alert(msg);
-      } else {
-        Alert.alert('Payment Deducted', msg);
-      }
-    } else {
-      const err = res?.error || 'Could not deduct recurring payment';
-      if (Platform.OS === 'web') alert(err);
-      else Alert.alert('Error', err);
-    }
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView
@@ -161,9 +144,18 @@ export const DashboardScreen = ({
             <Text style={[styles.welcomeSub, { color: theme.textMuted }]}>
               Welcome back,
             </Text>
-            <Text style={[styles.welcomeTitle, { color: theme.text }]}>
-              WealthFlow
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.welcomeTitle, { color: theme.text }]}>
+                Home Dashboard
+              </Text>
+              <TouchableOpacity
+                onPress={handleOpenCustomize}
+                style={{ padding: 4 }}
+                accessibilityLabel="Edit Home Dashboard"
+              >
+                <Ionicons name="pencil-outline" size={16} color={theme.primaryLight} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -187,13 +179,13 @@ export const DashboardScreen = ({
             />
           </TouchableOpacity>
 
-          {/* Top Right 3-Dots More Options Menu */}
+          {/* Edit Home Dashboard Pencil Button (Replaced 3-dots more menu) */}
           <TouchableOpacity
-            onPress={() => setShowMoreMenu(true)}
+            onPress={handleOpenCustomize}
             style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: 8 }]}
-            accessibilityLabel="Dashboard Options"
+            accessibilityLabel="Edit Home Dashboard"
           >
-            <Ionicons name="ellipsis-vertical" size={19} color={theme.text} />
+            <Ionicons name="pencil-outline" size={19} color={theme.primaryLight} />
           </TouchableOpacity>
         </View>
       </View>
@@ -316,29 +308,34 @@ export const DashboardScreen = ({
       </View>
 
       {/* Budget Alerts Banner */}
-      {alertedBudgets.length > 0 && (
-        <TouchableOpacity
-          onPress={() => onNavigateTab('budgets')}
-          style={[
-            styles.alertBanner,
-            {
-              backgroundColor: theme.warningBg,
-              borderColor: theme.warning,
-            },
-          ]}
-        >
-          <Ionicons name="warning-outline" size={20} color={theme.warning} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.alertTitle, { color: theme.warning }]}>
-              Budget Alert ({alertedBudgets.length} Category)
-            </Text>
-            <Text style={[styles.alertDesc, { color: theme.text }]} numberOfLines={1}>
-              {alertedBudgets[0].rawPercent}% of budget spent on {alertedBudgets[0].categoryId}. Tap to view.
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.warning} />
-        </TouchableOpacity>
-      )}
+      {alertedBudgets.length > 0 && (() => {
+        const firstAlert = alertedBudgets[0];
+        const catObj = getCategoryById(firstAlert.categoryId, 'expense');
+        const catDisplayName = catObj ? `${catObj.emoji || '🏷️'} ${catObj.name}` : firstAlert.categoryId;
+        return (
+          <TouchableOpacity
+            onPress={() => onNavigateTab('budgets')}
+            style={[
+              styles.alertBanner,
+              {
+                backgroundColor: theme.warningBg,
+                borderColor: theme.warning,
+              },
+            ]}
+          >
+            <Ionicons name="warning-outline" size={20} color={theme.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.alertTitle, { color: theme.warning }]}>
+                Budget Alert ({alertedBudgets.length} {alertedBudgets.length === 1 ? 'Category' : 'Categories'})
+              </Text>
+              <Text style={[styles.alertDesc, { color: theme.text }]} numberOfLines={1}>
+                {firstAlert.rawPercent}% of budget spent on {catDisplayName}. Tap to view.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.warning} />
+          </TouchableOpacity>
+        );
+      })()}
 
       {/* Dynamic Sections (Accounts, Recurring bills, All transactions in user-defined order) */}
       {(homeSections || DEFAULT_HOME_SECTIONS).map((section) => {
@@ -473,20 +470,6 @@ export const DashboardScreen = ({
                             </Text>
                           </View>
                         </View>
-
-                        {/* 1-Tap Deduct / Pay Now Button to immediately deduct from wallet & Net Worth */}
-                        {!isIncome && (
-                          <TouchableOpacity
-                            onPress={() => handlePayRecurringNow(rec)}
-                            style={[styles.recPayNowBtn, { backgroundColor: `${accentColor}18`, borderColor: `${accentColor}40` }]}
-                            activeOpacity={0.7}
-                          >
-                            <Ionicons name="card-outline" size={12} color={accentColor} />
-                            <Text style={[styles.recPayNowText, { color: accentColor }]}>
-                              Deduct / Pay Now
-                            </Text>
-                          </TouchableOpacity>
-                        )}
                       </View>
                     );
                   })}
