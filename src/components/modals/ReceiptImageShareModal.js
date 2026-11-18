@@ -50,6 +50,28 @@ export const ReceiptImageShareModal = ({
     ? friendTxs.filter((t) => t.type === 'borrowed').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
     : (parseFloat(data?.totalBorrowed) || 0);
 
+  const handlePayNow = async () => {
+    try {
+      const supported = await Linking.canOpenURL(upiLink);
+      if (supported) {
+        await Linking.openURL(upiLink);
+      } else {
+        await Linking.openURL(upiLink).catch(() => {
+          Alert.alert(
+            'UPI Payment',
+            `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).\n\nPlease ensure a UPI app like Google Pay, PhonePe, Paytm, or BHIM is installed.`,
+            [{ text: 'OK' }]
+          );
+        });
+      }
+    } catch (e) {
+      Alert.alert(
+        'UPI Payment',
+        `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).`
+      );
+    }
+  };
+
   const handleShareImage = async () => {
     try {
       setIsCapturing(true);
@@ -255,8 +277,12 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 16px; font-weight: 800; color: #0F172A; margin-top: 3px;">Amount: ${currency.symbol}${targetAmount.toFixed(2)}</div>
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
-                <div style="font-size: 11px; color: #2563EB; margin-top: 5px; word-break: break-all;"><strong>Payment Link (Click to Pay):</strong> <a href="${upiLink}" target="_blank" style="color: #0284C7; font-weight: 700; text-decoration: underline;">${upiLink}</a></div>
-                <div style="font-size: 10px; color: #64748B; margin-top: 5px;">Scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
+                <div style="margin-top: 10px;">
+                  <a href="${upiLink}" target="_blank" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">
+                    ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)})
+                  </a>
+                </div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap button above or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
               </div>
               <div style="text-align: center;">
                 <img src="${qrCodeUrl}" width="115" height="115" style="border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF;" alt="UPI QR" />
@@ -401,11 +427,11 @@ export const ReceiptImageShareModal = ({
                     </View>
                   </View>
 
-                  {/* Payment Details with Payment Link & Dynamic QR Code */}
+                  {/* Instant UPI Payment Box with Prominent Clickable Pay Now Button & Dynamic QR */}
                   <View style={styles.paymentBox}>
                     <View style={styles.paymentBoxHeader}>
                       <Ionicons name="flash" size={13} color="#38BDF8" />
-                      <Text style={styles.paymentBoxHeaderTitle}>PAYMENT DETAILS & UPI QR</Text>
+                      <Text style={styles.paymentBoxHeaderTitle}>INSTANT UPI PAYMENT</Text>
                     </View>
                     <View style={styles.paymentRow}>
                       <View style={styles.paymentDetailsCol}>
@@ -415,20 +441,25 @@ export const ReceiptImageShareModal = ({
                         </Text>
                         <Text style={styles.paymentUpiLabel}>UPI ID: <Text style={styles.paymentUpiText}>{upiId}</Text></Text>
                         <Text style={styles.paymentPayeeLabel}>Payee: <Text style={styles.paymentUpiText}>{payeeName}</Text></Text>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => Linking.openURL(upiLink).catch(() => Alert.alert('Payment Link', upiLink))}
-                          style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                        >
-                          <Ionicons name="link-outline" size={12} color="#38BDF8" />
-                          <Text style={styles.paymentLinkLabel} numberOfLines={1}>Tap to Open Link: {upiLink}</Text>
-                        </TouchableOpacity>
                       </View>
                       <View style={styles.qrCol}>
                         <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
-                        <Text style={styles.qrTag}>SCAN TO PAY</Text>
+                        <Text style={styles.qrTag}>SCAN & PAY</Text>
                       </View>
                     </View>
+
+                    {/* Prominent Clickable "Pay Now" Button inside the receipt image */}
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={handlePayNow}
+                      style={styles.payNowBtn}
+                    >
+                      <Ionicons name="flash" size={15} color="#FFFFFF" />
+                      <Text style={styles.payNowBtnText}>
+                        Pay Now ({currency.symbol}{targetAmount.toFixed(2)})
+                      </Text>
+                      <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                    </TouchableOpacity>
                   </View>
                 </View>
               )}
@@ -493,12 +524,12 @@ export const ReceiptImageShareModal = ({
                     </View>
                   </View>
 
-                  {/* Payment Details with Payment Link & Dynamic QR Code */}
+                  {/* Instant UPI Payment Box with Prominent Clickable Pay Now Button & Dynamic QR */}
                   {targetAmount > 0 && (
                     <View style={styles.paymentBox}>
                       <View style={styles.paymentBoxHeader}>
                         <Ionicons name="flash" size={13} color="#38BDF8" />
-                        <Text style={styles.paymentBoxHeaderTitle}>PAYMENT DETAILS & UPI QR</Text>
+                        <Text style={styles.paymentBoxHeaderTitle}>INSTANT UPI PAYMENT</Text>
                       </View>
                       <View style={styles.paymentRow}>
                         <View style={styles.paymentDetailsCol}>
@@ -508,20 +539,25 @@ export const ReceiptImageShareModal = ({
                           </Text>
                           <Text style={styles.paymentUpiLabel}>UPI ID: <Text style={styles.paymentUpiText}>{upiId}</Text></Text>
                           <Text style={styles.paymentPayeeLabel}>Payee: <Text style={styles.paymentUpiText}>{payeeName}</Text></Text>
-                          <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => Linking.openURL(upiLink).catch(() => Alert.alert('Payment Link', upiLink))}
-                            style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                          >
-                            <Ionicons name="link-outline" size={12} color="#38BDF8" />
-                            <Text style={styles.paymentLinkLabel} numberOfLines={1}>Tap to Open Link: {upiLink}</Text>
-                          </TouchableOpacity>
                         </View>
                         <View style={styles.qrCol}>
                           <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
-                          <Text style={styles.qrTag}>SCAN TO PAY</Text>
+                          <Text style={styles.qrTag}>SCAN & PAY</Text>
                         </View>
                       </View>
+
+                      {/* Prominent Clickable "Pay Now" Button inside the receipt image */}
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={handlePayNow}
+                        style={styles.payNowBtn}
+                      >
+                        <Ionicons name="flash" size={15} color="#FFFFFF" />
+                        <Text style={styles.payNowBtnText}>
+                          Pay Now ({currency.symbol}{targetAmount.toFixed(2)})
+                        </Text>
+                        <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
                     </View>
                   )}
 
@@ -722,6 +758,27 @@ export const ReceiptImageShareModal = ({
                 )}
               </TouchableOpacity>
             </View>
+
+            {/* Quick One-Tap Pay Now Button in Modal Footer */}
+            {targetAmount > 0 && (
+              <TouchableOpacity
+                onPress={handlePayNow}
+                style={[
+                  styles.shareOtherBtn,
+                  {
+                    backgroundColor: '#0284C7',
+                    borderColor: '#38BDF8',
+                    marginTop: 0,
+                    marginBottom: 10,
+                  },
+                ]}
+              >
+                <Ionicons name="flash" size={16} color="#FFF" />
+                <Text style={[styles.shareOtherText, { color: '#FFF' }]}>
+                  Pay Now via UPI ({currency.symbol}{targetAmount.toFixed(2)})
+                </Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -986,11 +1043,29 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
     fontWeight: '700',
   },
-  paymentLinkLabel: {
-    color: '#64748B',
-    fontSize: 9,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 4,
+  payNowBtn: {
+    backgroundColor: '#0284C7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  payNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   qrCol: {
     alignItems: 'center',
