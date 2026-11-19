@@ -16,7 +16,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../../context/FinanceContext';
 
 const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
-const DONATION_UPI_ID = 's8675748237@sic';
+const DONATION_UPI_ID = 's8675748237@slc';
 const DONATION_PAYEE = 'Ashwini Kumar';
 const BANK_DETAILS = {
   holderName: 'Ashwini Kumar',

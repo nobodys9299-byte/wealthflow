@@ -277,10 +277,12 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     setCloudSyncing(true);
     try {
       const res = await restoreFromGoogleCloud();
-      if (res.success) {
-        alert('Database successfully restored from Cloud Vault!');
+      if (res.success && res.count > 0) {
+        alert(`Success! Restored ${res.count} transactions and ${res.accountsCount || 0} accounts from Cloud Vault!`);
+      } else if (res.success && (!res.count || res.count === 0)) {
+        alert('Cloud restore completed, but 0 transactions were found in the current cloud slot.\n\nIf you have a saved backup file on your phone or Google Drive, tap "Import Drive File" or "Import from CSV File" below to restore your complete transaction ledger.');
       } else {
-        alert('Cloud restore failed: ' + (res.error || 'No backup found'));
+        alert(res.error || 'No backup found. If you saved a backup file to Google Drive, tap "Import Drive File" below to restore.');
       }
     } finally {
       setCloudSyncing(false);
@@ -310,7 +312,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       if (res.success && res.data) {
         const importRes = await importFromJSON(res.rawJson);
         if (importRes.success) {
-          alert(`Success! 100% of data restored from "${res.fileName}".`);
+          alert(`Success! Restored ${importRes.count || 0} transactions and ${importRes.accountsCount || 0} accounts from "${res.fileName}".`);
         } else {
           alert('Failed to parse Google Drive file: ' + importRes.error);
         }

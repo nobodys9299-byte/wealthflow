@@ -471,8 +471,11 @@ export const FinanceProvider = ({ children }) => {
     setGoogleUser(userObj);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(userObj));
-      const snapshot = exportAsJSON();
-      await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshot);
+      // Only cache snapshot if there are actual transactions locally to avoid wiping cloud cache with an empty database
+      if (transactions && transactions.length > 0) {
+        const snapshot = exportAsJSON();
+        await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshot);
+      }
 
       // Check if remote cloud backup exists for this account (e.g. after fresh reinstall)
       const remoteCheck = await CloudBackupService.checkCloudBackupExists(customEmail);
@@ -540,7 +543,8 @@ export const FinanceProvider = ({ children }) => {
       // First try cloud vault
       const remote = await CloudBackupService.fetchFromCloudVault(email);
       if (remote.success && remote.data) {
-        return await importFromJSON(JSON.stringify(remote.data));
+        const res = await importFromJSON(JSON.stringify(remote.data));
+        return { ...res, source: 'cloud_vault' };
       }
 
       // Fallback to local snapshot
@@ -548,7 +552,21 @@ export const FinanceProvider = ({ children }) => {
       if (!snapshot) {
         return { success: false, error: 'No cloud backup snapshot found on Google Drive yet.' };
       }
-      return await importFromJSON(snapshot);
+      try {
+        const parsed = JSON.parse(snapshot);
+        const txCount = Array.isArray(parsed?.transactions) ? parsed.transactions.length : 0;
+        if (txCount === 0) {
+          return {
+            success: false,
+            error: 'No transactions found in this cloud slot.\n\nIf you have a saved backup file on your phone or Google Drive, tap "Import Drive File" below to restore your transactions.',
+          };
+        }
+      } catch (parseErr) {
+        // Continue to importFromJSON
+      }
+
+      const res = await importFromJSON(snapshot);
+      return { ...res, source: 'local_cache' };
     } catch (e) {
       return { success: false, error: e.message };
     }
@@ -1174,11 +1192,15 @@ export const FinanceProvider = ({ children }) => {
   const importFromJSON = async (jsonString) => {
     try {
       const data = JSON.parse(jsonString);
+      let count = 0;
+      let accountsCount = 0;
       if (data.transactions && Array.isArray(data.transactions)) {
         await persistTransactions(data.transactions);
+        count = data.transactions.length;
       }
       if (data.accounts && Array.isArray(data.accounts)) {
         await persistAccounts(data.accounts);
+        accountsCount = data.accounts.length;
       }
       if (data.budgets && Array.isArray(data.budgets)) {
         await persistBudgets(data.budgets);
@@ -1195,7 +1217,7 @@ export const FinanceProvider = ({ children }) => {
       if (data.themeId) {
         await changeTheme(data.themeId);
       }
-      return { success: true };
+      return { success: true, count, accountsCount };
     } catch (e) {
       return { success: false, error: e.message };
     }

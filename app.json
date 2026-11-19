@@ -16,10 +16,11 @@
     "android": {
       "package": "com.wealthflow.moneytracker",
       "permissions": [
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT",
-        "READ_MEDIA_IMAGES",
-        "READ_EXTERNAL_STORAGE"
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#0F172A",
@@ -38,6 +39,12 @@
     ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "03c430e0-dd02-415c-9313-d7e4d850feaa"
+      }
+    },
+    "owner": "raonein"
   }
 }
