@@ -18,7 +18,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 import { formatDateDisplay } from '../utils/formatters';
-import { LanguageModal } from '../components/modals/LanguageModal';
 import { FeedbackModal } from '../components/modals/FeedbackModal';
 
 export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore }) => {
@@ -28,9 +27,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     changeTheme,
     currency,
     setCurrency,
-    language,
     t,
-    SUPPORTED_LANGUAGES,
     securitySettings,
     updateSecurity,
     userUpiSettings,
@@ -55,10 +52,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
-  const [langModalVisible, setLangModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
-
-  const currentLangObj = SUPPORTED_LANGUAGES?.find((l) => l.id === language) || { nativeName: 'English', flag: '🇬🇧' };
 
   // Google Cloud Modal state
   const [googleModalVisible, setGoogleModalVisible] = useState(false);
@@ -71,10 +65,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     const handleBackPress = () => {
       if (currencyModalVisible) {
         setCurrencyModalVisible(false);
-        return true;
-      }
-      if (langModalVisible) {
-        setLangModalVisible(false);
         return true;
       }
       if (feedbackModalVisible) {
@@ -112,7 +102,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     return () => sub.remove();
   }, [
     currencyModalVisible,
-    langModalVisible,
     feedbackModalVisible,
     googleModalVisible,
     csvModalVisible,
@@ -555,37 +544,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 <Text style={[styles.rowTitle, { color: theme.text }]}>{t('base_currency', 'Base Currency')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   {currency.code} ({currency.name})
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* App Language Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-          {t('app_language', 'APP LANGUAGE')}
-        </Text>
-
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            onPress={() => setLangModalVisible(true)}
-            style={styles.row}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: theme.cardAlt }]}>
-                <Text style={{ fontSize: 18 }}>
-                  {currentLangObj?.flag || '🌐'}
-                </Text>
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>
-                  {currentLangObj?.nativeName || 'English'}
-                </Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {currentLangObj?.name || 'English'} • {t('select_language', 'Tap to switch language')}
                 </Text>
               </View>
             </View>
@@ -1264,12 +1222,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
           </View>
         </View>
       </Modal>
-
-      {/* Language Selection Modal */}
-      <LanguageModal
-        visible={langModalVisible}
-        onClose={() => setLangModalVisible(false)}
-      />
 
       {/* Developer Feedback Modal */}
       <FeedbackModal

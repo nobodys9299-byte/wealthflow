@@ -28,7 +28,6 @@ import { BudgetModal } from './src/components/modals/BudgetModal';
 import { RecurringModal } from './src/components/modals/RecurringModal';
 import { AccountModal } from './src/components/modals/AccountModal';
 import { DonationModal } from './src/components/modals/DonationModal';
-import { LanguageModal } from './src/components/modals/LanguageModal';
 import { FeedbackModal } from './src/components/modals/FeedbackModal';
 import { ConfirmDeleteModal } from './src/components/modals/ConfirmDeleteModal';
 import { LockScreen } from './src/components/security/LockScreen';
@@ -42,9 +41,7 @@ function MainApp() {
     isLoading,
     confirmDialog,
     closeConfirmDialog,
-    language,
     t,
-    SUPPORTED_LANGUAGES,
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -66,10 +63,7 @@ function MainApp() {
   const [editingRecurring, setEditingRecurring] = useState(null);
 
   const [donationModalVisible, setDonationModalVisible] = useState(false);
-  const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
-
-  const currentLangObj = SUPPORTED_LANGUAGES?.find((l) => l.id === language) || { nativeName: 'English', flag: '🇬🇧' };
 
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {
@@ -99,10 +93,6 @@ function MainApp() {
         setDonationModalVisible(false);
         return true;
       }
-      if (languageModalVisible) {
-        setLanguageModalVisible(false);
-        return true;
-      }
       if (feedbackModalVisible) {
         setFeedbackModalVisible(false);
         return true;
@@ -128,7 +118,6 @@ function MainApp() {
     accountModalVisible,
     recurringModalVisible,
     donationModalVisible,
-    languageModalVisible,
     feedbackModalVisible,
     drawerOpen,
     activeTab,
@@ -414,12 +403,6 @@ function MainApp() {
         onClose={() => setDonationModalVisible(false)}
       />
 
-      {/* App Language Selection Modal */}
-      <LanguageModal
-        visible={languageModalVisible}
-        onClose={() => setLanguageModalVisible(false)}
-      />
-
       {/* User Feedback Modal */}
       <FeedbackModal
         visible={feedbackModalVisible}
@@ -563,27 +546,28 @@ function MainApp() {
                 </Text>
               </TouchableOpacity>
 
-              {/* App Language Option directly below Donate & Support */}
+              {/* Send Feedback Option in Red Color, placed directly ABOVE Lock App Now */}
               <TouchableOpacity
                 onPress={() => {
                   setDrawerOpen(false);
-                  setLanguageModalVisible(true);
+                  setFeedbackModalVisible(true);
                 }}
                 style={styles.drawerItem}
               >
-                <Ionicons name="language" size={20} color="#06B6D4" />
+                <Ionicons name="chatbox-ellipses-outline" size={20} color="#EF4444" />
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginRight: 4 }}>
-                  <Text style={[styles.drawerItemText, { color: theme.text }]}>
-                    {t('app_language', 'App Language')} 🌐
+                  <Text style={[styles.drawerItemText, { color: '#EF4444', fontWeight: '700' }]}>
+                    {t('send_feedback', 'Send Feedback')} 💬
                   </Text>
-                  <View style={{ backgroundColor: `${theme.primary}25`, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ color: theme.primaryLight, fontSize: 11, fontWeight: '700' }}>
-                      {currentLangObj?.flag} {currentLangObj?.nativeName || 'English'}
+                  <View style={{ backgroundColor: '#EF444420', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '700' }}>
+                      Email
                     </Text>
                   </View>
                 </View>
               </TouchableOpacity>
 
+              {/* Lock App Now Option placed directly BELOW Send Feedback */}
               <TouchableOpacity
                 onPress={() => {
                   setDrawerOpen(false);
@@ -595,27 +579,6 @@ function MainApp() {
                 <Text style={[styles.drawerItemText, { color: theme.danger }]}>
                   {t('lock_app_now', 'Lock App Now')}
                 </Text>
-              </TouchableOpacity>
-
-              {/* Send Feedback Option directly below Lock App Now */}
-              <TouchableOpacity
-                onPress={() => {
-                  setDrawerOpen(false);
-                  setFeedbackModalVisible(true);
-                }}
-                style={styles.drawerItem}
-              >
-                <Ionicons name="chatbox-ellipses-outline" size={20} color="#38BDF8" />
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginRight: 4 }}>
-                  <Text style={[styles.drawerItemText, { color: theme.text }]}>
-                    {t('send_feedback', 'Send Feedback')} 💬
-                  </Text>
-                  <View style={{ backgroundColor: '#38BDF820', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ color: '#38BDF8', fontSize: 11, fontWeight: '700' }}>
-                      Email
-                    </Text>
-                  </View>
-                </View>
               </TouchableOpacity>
             </ScrollView>
 
