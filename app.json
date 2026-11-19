@@ -18,7 +18,9 @@
       "package": "com.wealthflow.moneytracker",
       "permissions": [
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#0F172A",
@@ -27,6 +29,14 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "WealthFlow needs access to your photo gallery to select contact photos."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },

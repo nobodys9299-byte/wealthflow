@@ -16,14 +16,22 @@ import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../../context/FinanceContext';
 
 const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
-const DONATION_UPI_ID = '91423592991@ibl';
-const DONATION_PAYEE = 'WealthFlow Developer';
+const DONATION_UPI_ID = 's8675748237@sic';
+const DONATION_PAYEE = 'Ashwini Kumar';
+const BANK_DETAILS = {
+  holderName: 'Ashwini Kumar',
+  accountNumber: '033311501048792',
+  ifsc: 'NESF0000333',
+  bankName: 'slice Small Finance Bank',
+};
 
 export const DonationModal = ({ visible, onClose }) => {
   const { theme, currency } = useFinance();
   const [selectedAmount, setSelectedAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [copiedAcc, setCopiedAcc] = useState(false);
+  const [copiedIfsc, setCopiedIfsc] = useState(false);
 
   if (!visible) return null;
 
@@ -56,9 +64,23 @@ export const DonationModal = ({ visible, onClose }) => {
 
   const handleCopyUpi = async () => {
     await Clipboard.setStringAsync(DONATION_UPI_ID);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setCopiedUpi(true);
+    setTimeout(() => setCopiedUpi(false), 2500);
     Alert.alert('Copied!', `UPI ID "${DONATION_UPI_ID}" has been copied to clipboard.`);
+  };
+
+  const handleCopyAccountNum = async () => {
+    await Clipboard.setStringAsync(BANK_DETAILS.accountNumber);
+    setCopiedAcc(true);
+    setTimeout(() => setCopiedAcc(false), 2500);
+    Alert.alert('Copied!', `Account Number "${BANK_DETAILS.accountNumber}" copied to clipboard.`);
+  };
+
+  const handleCopyIfsc = async () => {
+    await Clipboard.setStringAsync(BANK_DETAILS.ifsc);
+    setCopiedIfsc(true);
+    setTimeout(() => setCopiedIfsc(false), 2500);
+    Alert.alert('Copied!', `IFSC "${BANK_DETAILS.ifsc}" copied to clipboard.`);
   };
 
   return (
@@ -186,8 +208,8 @@ export const DonationModal = ({ visible, onClose }) => {
                   <Text style={styles.upiIdText} numberOfLines={1}>{DONATION_UPI_ID}</Text>
                 </View>
                 <TouchableOpacity onPress={handleCopyUpi} style={styles.copyBtn}>
-                  <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={15} color="#FFFFFF" />
-                  <Text style={styles.copyBtnText}>{copied ? 'Copied' : 'Copy UPI'}</Text>
+                  <Ionicons name={copiedUpi ? 'checkmark-circle' : 'copy-outline'} size={15} color="#FFFFFF" />
+                  <Text style={styles.copyBtnText}>{copiedUpi ? 'Copied' : 'Copy UPI'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -201,8 +223,58 @@ export const DonationModal = ({ visible, onClose }) => {
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
             </TouchableOpacity>
 
+            {/* Direct Bank Transfer Details Card */}
+            <View style={[styles.bankCard, { backgroundColor: '#0F172A', borderColor: '#1E293B' }]}>
+              <View style={styles.bankHeader}>
+                <Ionicons name="business" size={16} color="#10B981" />
+                <Text style={styles.bankHeaderTitle}>DIRECT BANK TRANSFER DETAILS</Text>
+              </View>
+
+              <View style={styles.bankBody}>
+                {/* Account Holder Name */}
+                <View style={styles.bankFieldRow}>
+                  <Text style={styles.bankFieldLabel}>ACCOUNT HOLDER NAME</Text>
+                  <Text style={styles.bankFieldValueBold}>{BANK_DETAILS.holderName}</Text>
+                </View>
+
+                {/* Bank Name */}
+                <View style={styles.bankFieldRow}>
+                  <Text style={styles.bankFieldLabel}>BANK</Text>
+                  <Text style={styles.bankFieldValue}>{BANK_DETAILS.bankName}</Text>
+                </View>
+
+                {/* Account Number with Copy */}
+                <View style={styles.bankFieldCopyRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.bankFieldLabel}>ACCOUNT NUMBER</Text>
+                    <Text style={styles.bankFieldValueMono}>{BANK_DETAILS.accountNumber}</Text>
+                  </View>
+                  <TouchableOpacity onPress={handleCopyAccountNum} style={styles.bankCopyBtn}>
+                    <Ionicons name={copiedAcc ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
+                    <Text style={styles.bankCopyBtnText}>{copiedAcc ? 'Copied' : 'Copy'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* IFSC with Copy */}
+                <View style={styles.bankFieldCopyRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.bankFieldLabel}>IFSC CODE</Text>
+                    <Text style={styles.bankFieldValueMono}>{BANK_DETAILS.ifsc}</Text>
+                  </View>
+                  <TouchableOpacity onPress={handleCopyIfsc} style={styles.bankCopyBtn}>
+                    <Ionicons name={copiedIfsc ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
+                    <Text style={styles.bankCopyBtnText}>{copiedIfsc ? 'Copied' : 'Copy'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Text style={styles.bankFooterNote}>
+                Supports IMPS, NEFT & RTGS bank transfers directly to slice Small Finance Bank.
+              </Text>
+            </View>
+
             <Text style={[styles.securityNotice, { color: theme.textMuted }]}>
-              🔒 100% Direct UPI Transfer • No Platform Fees
+              🔒 100% Direct Transfer • No Intermediary Platform Fees
             </Text>
           </ScrollView>
         </View>
@@ -473,6 +545,95 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
+  },
+  bankCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
+  },
+  bankHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+    paddingBottom: 8,
+  },
+  bankHeaderTitle: {
+    color: '#10B981',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  bankBody: {
+    gap: 10,
+  },
+  bankFieldRow: {
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  bankFieldLabel: {
+    color: '#94A3B8',
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  bankFieldValueBold: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  bankFieldValue: {
+    color: '#38BDF8',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  bankFieldCopyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  bankFieldValueMono: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: 'monospace',
+    marginTop: 2,
+  },
+  bankCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0F766E',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 7,
+  },
+  bankCopyBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  bankFooterNote: {
+    color: '#64748B',
+    fontSize: 10,
+    marginTop: 10,
+    lineHeight: 14,
+    textAlign: 'center',
   },
   securityNotice: {
     textAlign: 'center',

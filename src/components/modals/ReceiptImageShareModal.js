@@ -278,14 +278,11 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
                 <div style="margin-top: 10px; margin-bottom: 6px;">
-                  <a href="${upiLink}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">
-                    ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)})
+                  <a href="${upiLink}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 13px; letter-spacing: 0.5px; border: 1px solid #0284C7;">
+                    ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)}) &rarr;
                   </a>
                 </div>
-                <div style="font-size: 11px; color: #1E293B; margin-top: 4px; word-break: break-all;">
-                  <strong>Clickable Link:</strong> <a href="${upiLink}" style="color: #0284C7; font-weight: 700; text-decoration: underline;">${upiLink}</a>
-                </div>
-                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap button or link above, or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' button above or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
               </div>
               <div style="text-align: center;">
                 <a href="${upiLink}" style="text-decoration: none;">

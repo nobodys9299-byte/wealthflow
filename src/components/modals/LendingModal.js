@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
 import { formatDateDisplay } from '../../utils/formatters';
 import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
@@ -108,19 +108,26 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
 
   const handlePickFromGallery = async () => {
     try {
-      const res = await DocumentPicker.getDocumentAsync({
-        type: ['image/*'],
-        copyToCacheDirectory: true,
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Needed', 'Please allow gallery access to select a photo from your device.');
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
       });
       if (res.canceled) return;
-      const file = res.assets ? res.assets[0] : res;
-      if (file && file.uri) {
-        setPhotoUri(file.uri);
+      if (res.assets && res.assets.length > 0 && res.assets[0].uri) {
+        setPhotoUri(res.assets[0].uri);
         setAvatarEmoji(null);
+        setShowAvatarPicker(false);
       }
     } catch (e) {
       console.warn('Pick photo error:', e);
-      alert('Could not pick photo from gallery: ' + (e.message || 'Error'));
+      Alert.alert('Gallery Error', 'Could not open photo gallery: ' + (e.message || 'Error'));
     }
   };
 
@@ -700,6 +707,27 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
                 <Ionicons name="close" size={20} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              onPress={handlePickFromGallery}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: `${theme.primary}15`,
+                borderWidth: 1,
+                borderColor: theme.primary,
+                borderRadius: 12,
+                paddingVertical: 10,
+                marginBottom: 12,
+              }}
+            >
+              <Ionicons name="images" size={18} color={theme.primary} />
+              <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>
+                Open Phone Photo Gallery
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.avatarGrid}>
               {PERSON_AVATARS.map((av, idx) => (
