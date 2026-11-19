@@ -828,7 +828,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
               <View>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Load Sample Data', 'Load Sample Data')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {t('Populate demo accounts, budgets, and loans', 'Populate demo accounts, budgets, and loans')}
+                  {t('Restore initial demo accounts, transactions & loans', 'Restore initial demo accounts, transactions & loans')}
                 </Text>
               </View>
             </View>
@@ -842,7 +842,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
               <View>
                 <Text style={[styles.rowTitle, { color: theme.danger }]}>{t('Clear All App Data', 'Clear All App Data')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {t('Erase stored logs and start fresh', 'Erase stored logs and start fresh')}
+                  {t('Erase all records to a clean blank slate (0 records)', 'Erase all records to a clean blank slate (0 records)')}
                 </Text>
               </View>
             </View>

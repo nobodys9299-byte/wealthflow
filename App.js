@@ -284,7 +284,7 @@ function MainApp() {
 
   const navItems = [
     { id: 'dashboard', label: t('home', 'Home'), icon: 'home-outline', activeIcon: 'home' },
-    { id: 'analytics', label: t('transactions', 'Transactions'), icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
+    { id: 'analytics', label: t('analysis', 'Analysis'), icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
     { id: 'lending', label: t('friends', 'Friends'), icon: 'swap-horizontal-outline', activeIcon: 'swap-horizontal' },
     { id: 'budgets', label: t('budgets', 'Budgets'), icon: 'shield-outline', activeIcon: 'shield' },
     { id: 'accounts', label: t('accounts', 'Accounts'), icon: 'wallet-outline', activeIcon: 'wallet' },

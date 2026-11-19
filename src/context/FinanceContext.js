@@ -1255,7 +1255,7 @@ export const FinanceProvider = ({ children }) => {
     setConfirmDialog({
       visible: true,
       title: 'Reset to Sample Data?',
-      message: 'This will populate demo transactions, accounts, and friends.',
+      message: 'This will restore the default demo accounts, sample transactions, budgets, and loans (exactly as when the app was first installed).',
       onConfirm: async () => {
         await persistTransactions(INITIAL_TRANSACTIONS);
         await persistAccounts(DEFAULT_ACCOUNTS);
@@ -1269,8 +1269,8 @@ export const FinanceProvider = ({ children }) => {
   const requestClearAllData = () => {
     setConfirmDialog({
       visible: true,
-      title: 'Clear All Data?',
-      message: 'Are you sure you want to erase all your logged transactions, budgets, and lending records? This cannot be undone.',
+      title: 'Clear All App Data?',
+      message: 'This will completely erase all transactions, budgets, recurring bills, and loans to give you a blank slate (0 records).\n\nTip: You can reload the initial demo data anytime by tapping "Load Sample Data" in Settings.',
       onConfirm: async () => {
         await persistTransactions([]);
         await persistBudgets([]);
