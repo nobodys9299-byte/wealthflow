@@ -18,7 +18,7 @@ import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
 import { CategoryManagerModal } from './CategoryManagerModal';
 
 export const TransactionModal = ({ visible, onClose, initialData = null }) => {
-  const { theme, currency, accounts, categories, addTransaction, editTransaction } = useFinance();
+  const { theme, currency, accounts, categories, addTransaction, editTransaction, t } = useFinance();
 
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -110,7 +110,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>
-              {initialData ? 'Edit Transaction' : 'Record Transaction'}
+              {initialData ? `${t('edit', 'Edit')} ${t('transactions', 'Transaction')}` : t('add_transaction', 'Record Transaction')}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
@@ -138,7 +138,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
                     { color: type === 'expense' ? '#FFF' : theme.textMuted },
                   ]}
                 >
-                  Expense
+                  {t('expense', 'Expense')}
                 </Text>
               </TouchableOpacity>
 
@@ -160,7 +160,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
                     { color: type === 'income' ? '#FFF' : theme.textMuted },
                   ]}
                 >
-                  Income
+                  {t('income', 'Income')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -342,7 +342,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
             >
               <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
               <Text style={styles.saveButtonText}>
-                {initialData ? 'Update Transaction' : 'Save Transaction'}
+                {initialData ? `${t('save', 'Save')} (${t('edit', 'Update')})` : `${t('save', 'Save')} ${t('transactions', 'Transaction')}`}
               </Text>
             </TouchableOpacity>
           </View>

@@ -15,7 +15,7 @@ import { useFinance } from '../../context/FinanceContext';
 import { EXPENSE_CATEGORIES } from '../../constants/categories';
 
 export const BudgetModal = ({ visible, onClose, initialData = null }) => {
-  const { theme, currency, setCategoryBudget, categories } = useFinance();
+  const { theme, currency, setCategoryBudget, categories, t } = useFinance();
 
   const availableCategories = (categories?.expense && categories.expense.length > 0)
     ? categories.expense
@@ -59,7 +59,7 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
 
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>
-              {initialData ? 'Edit Budget Limit' : 'Set Category Budget'}
+              {initialData ? `${t('edit', 'Edit')} ${t('budget_goals', 'Budget')}` : t('create_budget', 'Set Category Budget')}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
@@ -68,7 +68,7 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
 
           {/* Category selection */}
           <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Select Category</Text>
+            <Text style={[styles.label, { color: theme.textMuted }]}>{t('category', 'Select Category')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
               {availableCategories.map((cat) => {
                 const isSelected = categoryId === cat.id;
@@ -129,7 +129,7 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
             style={[styles.saveBtn, { backgroundColor: theme.primary }]}
           >
             <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.saveBtnText}>Save Budget</Text>
+            <Text style={styles.saveBtnText}>{t('save', 'Save Budget')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

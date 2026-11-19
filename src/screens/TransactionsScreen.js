@@ -18,7 +18,7 @@ import { generateTransactionPDF } from '../utils/pdfGenerator';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
 export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack, onOpenMore }) => {
-  const { theme, currency, transactions, accounts, deleteTransaction } = useFinance();
+  const { theme, currency, transactions, accounts, deleteTransaction, t } = useFinance();
 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -95,9 +95,9 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
             <Ionicons name="menu-outline" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Transactions</Text>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>{t('transactions', 'Transactions')}</Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
-              {filteredTransactions.length} records found
+              {filteredTransactions.length} {t('records found', 'records found')}
             </Text>
           </View>
         </View>
@@ -107,7 +107,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="add" size={20} color="#FFF" />
-          <Text style={styles.addBtnText} numberOfLines={1}>Add</Text>
+          <Text style={styles.addBtnText} numberOfLines={1}>{t('add', 'Add')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -116,7 +116,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
         <Ionicons name="search-outline" size={18} color={theme.textMuted} />
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
-          placeholder="Search by title, merchant, note..."
+          placeholder={t('search_placeholder', 'Search by title, merchant, note...')}
           placeholderTextColor={theme.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -131,25 +131,25 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
       {/* Filter Chips */}
       <View style={styles.filterSection}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPills}>
-          {['all', 'expense', 'income'].map((t) => (
+          {['all', 'expense', 'income'].map((tType) => (
             <TouchableOpacity
-              key={`type_${t}`}
-              onPress={() => setFilterType(t)}
+              key={`type_${tType}`}
+              onPress={() => setFilterType(tType)}
               style={[
                 styles.pill,
                 {
-                  backgroundColor: filterType === t ? theme.primary : theme.card,
-                  borderColor: filterType === t ? theme.primaryLight : theme.border,
+                  backgroundColor: filterType === tType ? theme.primary : theme.card,
+                  borderColor: filterType === tType ? theme.primaryLight : theme.border,
                 },
               ]}
             >
               <Text
                 style={[
                   styles.pillText,
-                  { color: filterType === t ? '#FFF' : theme.text },
+                  { color: filterType === tType ? '#FFF' : theme.text },
                 ]}
               >
-                {t.toUpperCase()}
+                {t(tType === 'all' ? 'All Types' : tType === 'expense' ? 'Expense' : 'Income').toUpperCase()}
               </Text>
             </TouchableOpacity>
           ))}

@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
 
 export const TransferModal = ({ visible, onClose }) => {
-  const { theme, currency, accounts, transferMoney } = useFinance();
+  const { theme, currency, accounts, transferMoney, t } = useFinance();
 
   const [fromAccountId, setFromAccountId] = useState(accounts[0]?.id || '');
   const [toAccountId, setToAccountId] = useState(accounts[1]?.id || accounts[0]?.id || '');
@@ -56,7 +56,7 @@ export const TransferModal = ({ visible, onClose }) => {
           </View>
 
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>Transfer Between Accounts</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('transfer', 'Transfer Between Accounts')}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
             </TouchableOpacity>
@@ -64,7 +64,7 @@ export const TransferModal = ({ visible, onClose }) => {
 
           {/* From Account */}
           <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>From Account</Text>
+            <Text style={[styles.label, { color: theme.textMuted }]}>{t('From Account', 'From Account')}</Text>
             <View style={styles.chipRow}>
               {accounts.map((acc) => (
                 <TouchableOpacity
@@ -100,7 +100,7 @@ export const TransferModal = ({ visible, onClose }) => {
 
           {/* To Account */}
           <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>To Account</Text>
+            <Text style={[styles.label, { color: theme.textMuted }]}>{t('To Account', 'To Account')}</Text>
             <View style={styles.chipRow}>
               {accounts.map((acc) => (
                 <TouchableOpacity
@@ -171,7 +171,7 @@ export const TransferModal = ({ visible, onClose }) => {
             style={[styles.submitBtn, { backgroundColor: theme.primary }]}
           >
             <Ionicons name="swap-horizontal" size={20} color="#FFF" />
-            <Text style={styles.submitBtnText}>Complete Transfer</Text>
+            <Text style={styles.submitBtnText}>{t('transfer', 'Complete Transfer')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

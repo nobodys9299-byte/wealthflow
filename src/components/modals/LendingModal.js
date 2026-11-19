@@ -46,6 +46,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
     addFriendCategory,
     deleteFriendCategory,
     resetFriendCategoriesToDefault,
+    t,
   } = useFinance();
 
   const [friendName, setFriendName] = useState(initialFriend);
@@ -262,7 +263,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
-                    I Lent (Owed)
+                    {t('total_lent', 'I Lent (Owed)')}
                   </Text>
                 </TouchableOpacity>
 
@@ -284,7 +285,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
                       { color: type === 'borrowed' ? '#FFF' : theme.textMuted },
                     ]}
                   >
-                    I Borrowed (I Owe)
+                    {t('total_borrowed', 'I Borrowed (I Owe)')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -505,7 +506,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
               >
                 <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
                 <Text style={styles.submitBtnText}>
-                  {initialData ? 'Save Changes' : type === 'lent' ? 'Record Money Given' : 'Record Money Received'}
+                  {initialData ? t('save', 'Save Changes') : type === 'lent' ? `${t('save', 'Record')} (${t('total_lent', 'Lent')})` : `${t('save', 'Record')} (${t('total_borrowed', 'Borrowed')})`}
                 </Text>
               </TouchableOpacity>
             </ScrollView>

@@ -39,6 +39,7 @@ export const DashboardScreen = ({
     homeSections = DEFAULT_HOME_SECTIONS,
     updateHomeSections,
     logRecurringPaymentNow,
+    t,
   } = useFinance();
 
   const [showSearch, setShowSearch] = useState(false);
@@ -148,11 +149,11 @@ export const DashboardScreen = ({
 
           <View>
             <Text style={[styles.welcomeSub, { color: theme.textMuted }]}>
-              Welcome back,
+              {t('welcome_back', 'Welcome back,')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={[styles.welcomeTitle, { color: theme.text }]}>
-                Home Dashboard
+                {t('home_dashboard', 'Home Dashboard')}
               </Text>
               <TouchableOpacity
                 onPress={handleOpenCustomize}
@@ -194,7 +195,7 @@ export const DashboardScreen = ({
             <Ionicons name="search" size={18} color={theme.textMuted} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search title, note, or amount..."
+              placeholder={t('search_placeholder', 'Search title, note, or amount...')}
               placeholderTextColor={theme.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -209,12 +210,12 @@ export const DashboardScreen = ({
 
           {/* Type Filter Chips */}
           <View style={styles.filterChipRow}>
-            {['all', 'expense', 'income'].map((t) => {
-              const active = filterType === t;
+            {['all', 'expense', 'income'].map((typeKey) => {
+              const active = filterType === typeKey;
               return (
                 <TouchableOpacity
-                  key={t}
-                  onPress={() => setFilterType(t)}
+                  key={typeKey}
+                  onPress={() => setFilterType(typeKey)}
                   style={[
                     styles.filterChip,
                     active
@@ -228,7 +229,7 @@ export const DashboardScreen = ({
                       { color: active ? '#FFF' : theme.textMuted, textTransform: 'capitalize' },
                     ]}
                   >
-                    {t === 'all' ? 'All Types' : t}
+                    {typeKey === 'all' ? t('all_types', 'All Types') : t(typeKey)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -247,7 +248,7 @@ export const DashboardScreen = ({
               ]}
             >
               <Text style={{ color: filterAccountId === 'all' ? '#FFF' : theme.textMuted, fontSize: 12, fontWeight: '600' }}>
-                All Accounts
+                {t('all_accounts', 'All Accounts')}
               </Text>
             </TouchableOpacity>
             {accounts.map((acc) => {
@@ -284,7 +285,7 @@ export const DashboardScreen = ({
           style={[styles.actionBtn, { backgroundColor: theme.danger }]}
         >
           <Ionicons name="arrow-up" size={17} color="#FFF" />
-          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>Expense</Text>
+          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('Expense')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -292,7 +293,7 @@ export const DashboardScreen = ({
           style={[styles.actionBtn, { backgroundColor: theme.success }]}
         >
           <Ionicons name="arrow-down" size={17} color="#FFF" />
-          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>Income</Text>
+          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('Income')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -300,7 +301,7 @@ export const DashboardScreen = ({
           style={[styles.actionBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="swap-horizontal" size={17} color="#FFF" />
-          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>Transfer</Text>
+          <Text style={styles.actionBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('Transfer')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -323,7 +324,7 @@ export const DashboardScreen = ({
             <Ionicons name="warning-outline" size={20} color={theme.warning} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.alertTitle, { color: theme.warning }]}>
-                Budget Alert ({alertedBudgets.length} {alertedBudgets.length === 1 ? 'Category' : 'Categories'})
+                {t('budget_alert', 'Budget Alert')} ({alertedBudgets.length} {alertedBudgets.length === 1 ? t('category', 'Category') : t('categories', 'Categories')})
               </Text>
               <Text style={[styles.alertDesc, { color: theme.text }]} numberOfLines={1}>
                 {firstAlert.rawPercent}% of budget spent on {catDisplayName}. Tap to view.
@@ -343,13 +344,13 @@ export const DashboardScreen = ({
             <View key="accounts">
               {/* Accounts Section */}
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Accounts</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Accounts')}</Text>
                 <TouchableOpacity
                   onPress={onOpenAddAccount}
                   style={styles.seeAllBtn}
                 >
                   <Ionicons name="add-circle-outline" size={16} color={theme.primaryLight} />
-                  <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>Add</Text>
+                  <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>{t('Add', 'Add')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -374,7 +375,7 @@ export const DashboardScreen = ({
               {/* Recurring Bills & Auto-Pay Section */}
               <View style={[styles.sectionHeader, { marginTop: 20 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Recurring Pay & Bills</Text>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('recurring_bills', 'Recurring Pay & Bills')}</Text>
                   <View style={[styles.recBadge, { backgroundColor: '#8B5CF625' }]}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: '#8B5CF6' }}>
                       {recurring.length}
@@ -386,7 +387,7 @@ export const DashboardScreen = ({
                   style={[styles.addRecHeaderBtn, { backgroundColor: '#8B5CF618', borderColor: '#8B5CF640' }]}
                 >
                   <Ionicons name="add" size={14} color="#8B5CF6" />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B5CF6' }}>Add Recurring</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B5CF6' }}>{t('add_recurring', 'Add Recurring')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -397,9 +398,9 @@ export const DashboardScreen = ({
                 >
                   <Ionicons name="repeat-outline" size={24} color="#8B5CF6" />
                   <View style={{ flex: 1, marginHorizontal: 10 }}>
-                    <Text style={[styles.emptyRecTitle, { color: theme.text }]}>No recurring bills yet</Text>
+                    <Text style={[styles.emptyRecTitle, { color: theme.text }]}>{t('no_recurring', 'No recurring bills yet')}</Text>
                     <Text style={[styles.emptyRecSub, { color: theme.textMuted }]}>
-                      Schedule subscriptions, rent & utility bills directly from Home
+                      {t('tap_add_recurring', 'Schedule subscriptions, rent & utility bills directly from Home')}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
@@ -484,10 +485,10 @@ export const DashboardScreen = ({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
                   <Text style={[styles.sectionTitle, { color: theme.text }]} numberOfLines={1}>
                     {showSearch
-                      ? 'Search Results'
+                      ? t('Search Results', 'Search Results')
                       : filterAccountId !== 'all'
-                      ? `${selectedAccountObj?.name || 'Account'} Ledger`
-                      : 'All Transactions'}
+                      ? `${selectedAccountObj?.name || t('Account')} ${t('Ledger', 'Ledger')}`
+                      : t('recent_transactions', 'All Transactions')}
                   </Text>
                   <View style={[styles.countBadge, { backgroundColor: `${theme.primary}20` }]}>
                     <Text style={[styles.countBadgeText, { color: theme.primaryLight }]}>
@@ -502,7 +503,7 @@ export const DashboardScreen = ({
                         { backgroundColor: `${theme.primary}20`, borderColor: `${theme.primary}40` },
                       ]}
                     >
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.primaryLight }}>Show All</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.primaryLight }}>{t('all_accounts', 'Show All')}</Text>
                       <Ionicons name="close-circle" size={12} color={theme.primaryLight} style={{ marginLeft: 2 }} />
                     </TouchableOpacity>
                   )}
@@ -511,7 +512,7 @@ export const DashboardScreen = ({
                   onPress={() => onNavigateTab('transactions')}
                   style={styles.seeAllBtn}
                 >
-                  <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>Ledger</Text>
+                  <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>{t('see_all', 'Ledger')}</Text>
                   <Ionicons name="chevron-forward" size={14} color={theme.primaryLight} />
                 </TouchableOpacity>
               </View>
@@ -520,10 +521,10 @@ export const DashboardScreen = ({
                 <View style={[styles.emptyBox, { borderColor: theme.border }]}>
                   <Text style={[styles.emptyText, { color: theme.textMuted }]}>
                     {showSearch
-                      ? 'No transactions found matching your search and filter criteria.'
+                      ? t('no_transactions_found', 'No transactions found matching your search and filter criteria.')
                       : filterAccountId !== 'all'
                       ? `No transactions recorded yet for ${selectedAccountObj?.name || 'this account'}.`
-                      : 'No transactions recorded yet. Tap + to add one!'}
+                      : t('no_transactions', 'No transactions recorded yet. Tap + to add one!')}
                   </Text>
                 </View>
               ) : (

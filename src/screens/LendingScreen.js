@@ -24,6 +24,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
     lendingSummary,
     settleFriendDebt,
     deleteFriendAccount,
+    t,
   } = useFinance();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -94,10 +95,10 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>
-              Friends & Loans
+              {t('friends_split', 'Friends & Loans')}
             </Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
-              Track money lent, borrowed & reminders
+              {t('Track money lent, borrowed & reminders', 'Track money lent, borrowed & reminders')}
             </Text>
           </View>
         </View>
@@ -110,7 +111,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="add" size={18} color="#FFF" />
-          <Text style={styles.addBtnText} numberOfLines={1}>New Loan</Text>
+          <Text style={styles.addBtnText} numberOfLines={1}>{t('new_loan', 'New Loan')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -129,7 +130,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
         <View style={styles.heroTop}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={[styles.heroLabel, { color: theme.textMuted }]}>
-              NET DEBT POSITION
+              {t('NET DEBT POSITION', 'NET DEBT POSITION')}
             </Text>
             <Text
               style={[
@@ -154,7 +155,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
         <View style={styles.heroBreakdown}>
           <View style={styles.breakdownCol}>
             <Text style={[styles.breakdownLabel, { color: theme.textMuted }]} numberOfLines={1}>
-              You Are Owed (Lent)
+              {t('total_lent', 'You Are Owed (Lent)')}
             </Text>
             <Text style={[styles.breakdownVal, { color: theme.success }]} numberOfLines={1} adjustsFontSizeToFit>
               +{formatCurrency(lendingSummary.totalLent, currency.symbol)}
@@ -163,7 +164,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
 
           <View style={styles.breakdownCol}>
             <Text style={[styles.breakdownLabel, { color: theme.textMuted }]} numberOfLines={1}>
-              You Owe (Borrowed)
+              {t('total_borrowed', 'You Owe (Borrowed)')}
             </Text>
             <Text style={[styles.breakdownVal, { color: theme.danger }]} numberOfLines={1} adjustsFontSizeToFit>
               -{formatCurrency(lendingSummary.totalBorrowed, currency.symbol)}
@@ -175,7 +176,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
       {/* Friends List Header */}
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Friends & Contacts</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('friends_contacts', 'Friends & Contacts')}</Text>
           <View style={[styles.countBadge, { backgroundColor: `${theme.primary}20` }]}>
             <Text style={[styles.countBadgeText, { color: theme.primaryLight }]}>
               {lendingSummary.friends.length}
@@ -189,9 +190,9 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
           <View style={[styles.emptyIconBadge, { backgroundColor: `${theme.primary}20` }]}>
             <Ionicons name="swap-horizontal" size={32} color={theme.primaryLight} />
           </View>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No Lending Records</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('no_friends_loans', 'No Lending Records')}</Text>
           <Text style={[styles.emptySub, { color: theme.textMuted }]}>
-            Tap "New Loan" above to record money lent to or borrowed from friends.
+            {t('tap_new_loan', 'Tap "New Loan" above to record money lent to or borrowed from friends.')}
           </Text>
         </View>
       ) : (

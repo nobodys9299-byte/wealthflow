@@ -5,7 +5,7 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils/formatters';
 
 export const SummaryCards = () => {
-  const { theme, currency, netWorth, currentMonthStats } = useFinance();
+  const { theme, currency, netWorth, currentMonthStats, t } = useFinance();
 
   const cardBg = theme.heroBg || (theme.isDark ? '#1E1B4B' : '#4F46E5');
   const cardBorder = theme.heroBorder || theme.primary;
@@ -32,7 +32,7 @@ export const SummaryCards = () => {
               ]}
               numberOfLines={1}
             >
-              CONSOLIDATED NET WORTH
+              {t('CONSOLIDATED NET WORTH')}
             </Text>
             <Text style={styles.netWorthValue} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(netWorth, currency.symbol)}
@@ -41,7 +41,7 @@ export const SummaryCards = () => {
           <View style={[styles.savingsRateBadge, { borderColor: `${theme.primaryLight || '#FFF'}40` }]}>
             <Ionicons name="sparkles" size={12} color="#FDE047" />
             <Text style={styles.savingsRateText} numberOfLines={1}>
-              {currentMonthStats.savingsRate}% Saved this mo.
+              {currentMonthStats.savingsRate}% {t('saved_this_mo', 'Saved this mo.')}
             </Text>
           </View>
         </View>
@@ -55,7 +55,7 @@ export const SummaryCards = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cashFlowLabel} numberOfLines={1}>
-                Income ({currentMonthStats.monthName.split(' ')[0]})
+                {t('Income')} ({currentMonthStats.monthName.split(' ')[0]})
               </Text>
               <Text style={styles.incomeValue} numberOfLines={1} adjustsFontSizeToFit>
                 +{formatCurrency(currentMonthStats.income, currency.symbol)}
@@ -68,7 +68,7 @@ export const SummaryCards = () => {
               <Ionicons name="arrow-up-outline" size={14} color="#F43F5E" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cashFlowLabel} numberOfLines={1}>Expenses</Text>
+              <Text style={styles.cashFlowLabel} numberOfLines={1}>{t('Expenses')}</Text>
               <Text style={styles.expenseValue} numberOfLines={1} adjustsFontSizeToFit>
                 -{formatCurrency(currentMonthStats.expense, currency.symbol)}
               </Text>

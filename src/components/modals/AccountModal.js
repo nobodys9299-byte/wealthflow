@@ -28,7 +28,7 @@ const COLORS = [
 ];
 
 export const AccountModal = ({ visible, onClose, initialData = null }) => {
-  const { theme, currency, addAccount, editAccount } = useFinance();
+  const { theme, currency, addAccount, editAccount, t } = useFinance();
 
   const [name, setName] = useState('');
   const [type, setType] = useState('bank');
@@ -89,7 +89,7 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
 
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>
-              {initialData ? 'Edit Account' : 'Add Account'}
+              {initialData ? `${t('edit', 'Edit')} ${t('accounts', 'Account')}` : t('add_account', 'Add Account')}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
@@ -99,7 +99,7 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
             {/* Account Name */}
             <View style={styles.group}>
-              <Text style={[styles.label, { color: theme.textMuted }]}>Account Name</Text>
+              <Text style={[styles.label, { color: theme.textMuted }]}>{t('Account Name', 'Account Name')}</Text>
               <TextInput
                 style={[
                   styles.textInput,
@@ -226,7 +226,7 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
           >
             <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
             <Text style={styles.saveBtnText}>
-              {initialData ? 'Update Account' : 'Create Account'}
+              {initialData ? `${t('save', 'Save')} (${t('edit', 'Update')})` : `${t('save', 'Save')} ${t('accounts', 'Account')}`}
             </Text>
           </TouchableOpacity>
         </View>

@@ -30,6 +30,7 @@ export const AccountsScreen = ({
     transactions,
     netWorth,
     deleteAccount,
+    t,
   } = useFinance();
 
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
@@ -75,10 +76,10 @@ export const AccountsScreen = ({
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>
-              Account & Categories
+              {t('account_categories', 'Account & Categories')}
             </Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
-              Manage bank accounts, wallets, and custom categories
+              {t('Manage bank accounts, wallets, and custom categories', 'Manage bank accounts, wallets, and custom categories')}
             </Text>
           </View>
         </View>
@@ -87,7 +88,7 @@ export const AccountsScreen = ({
       {/* Net Worth Summary Strip - Harmonious Top Display Panel */}
       <View style={[styles.netWorthCard, { backgroundColor: theme.card, borderColor: theme.border, borderTopColor: '#10B981', borderTopWidth: 3.5 }]}>
         <View style={styles.netWorthLeft}>
-          <Text style={[styles.netWorthLabel, { color: '#10B981', fontWeight: '800' }]}>TOTAL CONSOLIDATED WEALTH</Text>
+          <Text style={[styles.netWorthLabel, { color: '#10B981', fontWeight: '800' }]}>{t('total_consolidated_wealth', 'TOTAL CONSOLIDATED WEALTH')}</Text>
           <Text style={[styles.netWorthValue, { color: theme.text }]}>
             {formatCurrency(netWorth, currency.symbol)}
           </Text>
@@ -98,7 +99,7 @@ export const AccountsScreen = ({
           style={[styles.transferBtn, { backgroundColor: `${theme.primary}18`, borderColor: `${theme.primary}40`, borderWidth: 1 }]}
         >
           <Ionicons name="swap-horizontal" size={18} color={theme.primaryLight} />
-          <Text style={[styles.transferBtnText, { color: theme.primaryLight }]}>Transfer</Text>
+          <Text style={[styles.transferBtnText, { color: theme.primaryLight }]}>{t('transfer', 'Transfer')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -115,9 +116,9 @@ export const AccountsScreen = ({
               <Ionicons name="wallet-outline" size={20} color={theme.primaryLight} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.catCardTitle, { color: theme.text }]}>Add Account</Text>
+              <Text style={[styles.catCardTitle, { color: theme.text }]}>{t('add_account', 'Add Account')}</Text>
               <Text style={[styles.catCardSub, { color: theme.textMuted }]}>
-                Add bank, cash wallet, credit card, or savings vault
+                {t('Add bank, cash wallet, credit card, or savings vault', 'Add bank, cash wallet, credit card, or savings vault')}
               </Text>
             </View>
           </View>
@@ -135,9 +136,9 @@ export const AccountsScreen = ({
               <Ionicons name="pricetags-outline" size={20} color="#8B5CF6" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.catCardTitle, { color: theme.text }]}>Add & Manage Categories</Text>
+              <Text style={[styles.catCardTitle, { color: theme.text }]}>{t('Add & Manage Categories', 'Add & Manage Categories')}</Text>
               <Text style={[styles.catCardSub, { color: theme.textMuted }]}>
-                Create, edit, or delete custom expense and income categories
+                {t('Create, edit, or delete custom expense and income categories', 'Create, edit, or delete custom expense and income categories')}
               </Text>
             </View>
           </View>
@@ -147,9 +148,9 @@ export const AccountsScreen = ({
 
       {/* List of Accounts */}
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Accounts</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Active Accounts', 'Active Accounts')}</Text>
         <Text style={[styles.countText, { color: theme.textMuted }]}>
-          {accounts.length} Total
+          {accounts.length} {t('Total', 'Total')}
         </Text>
       </View>
 

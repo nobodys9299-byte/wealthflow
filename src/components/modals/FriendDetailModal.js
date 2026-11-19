@@ -47,6 +47,7 @@ export const FriendDetailModal = ({
     addFriendCategory,
     deleteFriendCategory,
     resetFriendCategoriesToDefault,
+    t,
   } = useFinance();
 
   const [searchFilter, setSearchFilter] = useState('');
@@ -155,7 +156,7 @@ export const FriendDetailModal = ({
                     {friend.name}
                   </Text>
                   <Text style={[styles.friendStatus, { color: isOwed ? theme.success : theme.danger }]} numberOfLines={1}>
-                    {isOwed ? 'Owes you money' : 'You owe this contact'}
+                    {isOwed ? t('owes_you', 'Owes you money') : t('you_owe', 'You owe this contact')}
                   </Text>
                 </View>
               </View>
@@ -177,7 +178,7 @@ export const FriendDetailModal = ({
               ]}
             >
               <Text style={[styles.heroLabel, { color: isOwed ? theme.success : theme.danger }]}>
-                {isOwed ? 'TOTAL RECEIVABLE' : 'TOTAL PAYABLE'}
+                {isOwed ? t('TOTAL RECEIVABLE', 'TOTAL RECEIVABLE') : t('TOTAL PAYABLE', 'TOTAL PAYABLE')}
               </Text>
               <Text style={[styles.heroAmount, { color: isOwed ? theme.success : theme.danger }]}>
                 {isOwed ? '+' : '-'}{formatCurrency(absBalance, currency.symbol)}
@@ -198,7 +199,7 @@ export const FriendDetailModal = ({
                   style={[styles.actionBtn, { backgroundColor: '#25D366' }]}
                 >
                   <Ionicons name="chatbubble-ellipses" size={16} color="#FFF" />
-                  <Text style={styles.actionBtnText} numberOfLines={1}>Payment Reminder</Text>
+                  <Text style={styles.actionBtnText} numberOfLines={1}>{t('Payment Reminder', 'Payment Reminder')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -211,7 +212,7 @@ export const FriendDetailModal = ({
                 ]}
               >
                 <Ionicons name="share-social-outline" size={16} color="#FFF" />
-                <Text style={styles.actionBtnText} numberOfLines={1}>Share Statement</Text>
+                <Text style={styles.actionBtnText} numberOfLines={1}>{t('share_statement', 'Share Statement')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -225,7 +226,7 @@ export const FriendDetailModal = ({
                 style={[styles.subBtn, { backgroundColor: theme.cardAlt }]}
               >
                 <Ionicons name="add" size={16} color={theme.text} />
-                <Text style={[styles.subBtnText, { color: theme.text }]}>Add Entry</Text>
+                <Text style={[styles.subBtnText, { color: theme.text }]}>{t('add', 'Add Entry')}</Text>
               </TouchableOpacity>
 
               {absBalance > 0 && (
@@ -234,7 +235,7 @@ export const FriendDetailModal = ({
                   style={[styles.subBtn, { backgroundColor: `${theme.success}25` }]}
                 >
                   <Ionicons name="checkmark-done" size={16} color={theme.success} />
-                  <Text style={[styles.subBtnText, { color: theme.success }]}>Mark Settled</Text>
+                  <Text style={[styles.subBtnText, { color: theme.success }]}>{t('settled', 'Mark Settled')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -246,7 +247,7 @@ export const FriendDetailModal = ({
                 style={[styles.subBtn, { backgroundColor: theme.dangerBg }]}
               >
                 <Ionicons name="trash-outline" size={16} color={theme.danger} />
-                <Text style={[styles.subBtnText, { color: theme.danger }]}>Clear Friend</Text>
+                <Text style={[styles.subBtnText, { color: theme.danger }]}>{t('clear_debt', 'Clear Friend')}</Text>
               </TouchableOpacity>
             </View>
 

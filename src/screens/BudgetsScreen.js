@@ -29,6 +29,7 @@ export const BudgetsScreen = ({
     deleteCategoryBudget,
     recurring,
     deleteRecurring,
+    t,
   } = useFinance();
 
   // Hardware Back Handler
@@ -76,9 +77,9 @@ export const BudgetsScreen = ({
             <Ionicons name="menu-outline" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Budget Goals</Text>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>{t('budget_goals', 'Budgets & Goals')}</Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
-              Monthly limits & recurring subscriptions
+              {t('Monthly limits & recurring subscriptions', 'Monthly limits & recurring subscriptions')}
             </Text>
           </View>
         </View>
@@ -88,7 +89,7 @@ export const BudgetsScreen = ({
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="add" size={18} color="#FFF" />
-          <Text style={styles.addBtnText} numberOfLines={1}>New Budget</Text>
+          <Text style={styles.addBtnText} numberOfLines={1}>{t('New Budget', 'New Budget')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -107,7 +108,7 @@ export const BudgetsScreen = ({
         <View style={styles.overallTop}>
           <View>
             <Text style={[styles.overallLabel, { color: '#8B5CF6', fontWeight: '800' }]}>
-              MONTHLY BUDGET POOL
+              {t('monthly_budget_pool', 'MONTHLY BUDGET POOL')}
             </Text>
             <Text style={[styles.overallValue, { color: theme.text }]}>
               {formatCurrency(totalBudgetSpent, currency.symbol)}{' '}
@@ -143,7 +144,7 @@ export const BudgetsScreen = ({
                 },
               ]}
             >
-              {overallPercent}% Used
+              {overallPercent}% {t('Used', 'Used')}
             </Text>
           </View>
         </View>
@@ -169,26 +170,26 @@ export const BudgetsScreen = ({
         <View style={styles.overallBottomRow}>
           <Text style={[styles.overallMeta, { color: theme.textMuted }]}>
             {overallRemaining > 0
-              ? `${formatCurrency(overallRemaining, currency.symbol)} remaining safe to spend`
-              : 'You have reached or exceeded this month’s allocated budget'}
+              ? `${formatCurrency(overallRemaining, currency.symbol)} ${t('remaining safe to spend', 'remaining safe to spend')}`
+              : t('You have reached or exceeded this month’s allocated budget', 'You have reached or exceeded this month’s allocated budget')}
           </Text>
         </View>
       </View>
 
       {/* Category Budgets List */}
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Category Budgets</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Category Budgets', 'Category Budgets')}</Text>
         <Text style={[styles.countBadge, { color: theme.textMuted }]}>
-          {budgetStatusList.length} Categories
+          {budgetStatusList.length} {t('Categories', 'Categories')}
         </Text>
       </View>
 
       {budgetStatusList.length === 0 ? (
         <View style={[styles.emptyBox, { borderColor: theme.border }]}>
           <Ionicons name="pie-chart-outline" size={38} color={theme.textMuted} />
-          <Text style={[styles.emptyText, { color: theme.text }]}>No category budgets configured</Text>
+          <Text style={[styles.emptyText, { color: theme.text }]}>{t('No category budgets configured', 'No category budgets configured')}</Text>
           <Text style={[styles.emptySub, { color: theme.textMuted }]}>
-            Tap "New Budget" above to set limits on dining, groceries, shopping, etc.
+            {t('Tap "New Budget" above to set limits on dining, groceries, shopping, etc.', 'Tap "New Budget" above to set limits on dining, groceries, shopping, etc.')}
           </Text>
         </View>
       ) : (
@@ -205,8 +206,8 @@ export const BudgetsScreen = ({
       {/* Recurring Subscriptions & Fixed Bills Section */}
       <View style={[styles.sectionHeader, { marginTop: 24 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recurring Bills & Pay</Text>
-          <Text style={[styles.subText, { color: theme.textMuted }]}>Auto-tracked bills, salary & subscriptions</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('recurring_bills', 'Recurring Bills & Pay')}</Text>
+          <Text style={[styles.subText, { color: theme.textMuted }]}>{t('Auto-tracked bills, salary & subscriptions', 'Auto-tracked bills, salary & subscriptions')}</Text>
         </View>
 
         <TouchableOpacity
@@ -214,14 +215,14 @@ export const BudgetsScreen = ({
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
           <Ionicons name="add" size={16} color="#FFF" />
-          <Text style={styles.addBtnText}>Add Bill</Text>
+          <Text style={styles.addBtnText}>{t('Add Bill', 'Add Bill')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={[styles.recurringCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {recurring.length === 0 ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ color: theme.textMuted, fontSize: 13 }}>No recurring bills added yet.</Text>
+            <Text style={{ color: theme.textMuted, fontSize: 13 }}>{t('no_recurring', 'No recurring bills added yet.')}</Text>
           </View>
         ) : (
           recurring.map((rec) => {

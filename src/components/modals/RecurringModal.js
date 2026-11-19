@@ -23,7 +23,7 @@ const FREQUENCIES = [
 ];
 
 export const RecurringModal = ({ visible, onClose, initialData = null }) => {
-  const { theme, currency, accounts, categories, addRecurring, editRecurring } = useFinance();
+  const { theme, currency, accounts, categories, addRecurring, editRecurring, t } = useFinance();
 
   const [type, setType] = useState('expense'); // 'expense' (bill) | 'income' (salary/pay)
   const [title, setTitle] = useState('');
@@ -116,10 +116,10 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
           <View style={styles.header}>
             <View>
               <Text style={[styles.title, { color: theme.text }]}>
-                {initialData ? 'Edit Recurring Bill / Pay' : 'New Recurring Bill / Pay'}
+                {initialData ? `${t('edit', 'Edit')} ${t('recurring_bills', 'Recurring Bill / Pay')}` : t('add_recurring', 'New Recurring Bill / Pay')}
               </Text>
               <Text style={[styles.subText, { color: theme.textMuted }]}>
-                Auto-added to transactions on schedule
+                {t('Auto-added to transactions on schedule', 'Auto-added to transactions on schedule')}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -148,7 +148,7 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
                     { color: type === 'expense' ? '#FFF' : theme.textMuted },
                   ]}
                 >
-                  Recurring Bill (Expense)
+                  {t('expense', 'Expense')}
                 </Text>
               </TouchableOpacity>
 
@@ -170,7 +170,7 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
                     { color: type === 'income' ? '#FFF' : theme.textMuted },
                   ]}
                 >
-                  Recurring Pay / Salary
+                  {t('income', 'Income')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -347,7 +347,7 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
             >
               <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
               <Text style={styles.submitBtnText}>
-                {initialData ? 'Update Recurring Bill' : 'Save Recurring Bill'}
+                {initialData ? `${t('save', 'Save')} (${t('edit', 'Update')})` : `${t('save', 'Save')} ${t('recurring_bills', 'Recurring Bill')}`}
               </Text>
             </TouchableOpacity>
           </View>

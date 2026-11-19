@@ -11,7 +11,7 @@ export const ConfirmDeleteModal = ({
   message = 'Are you sure you want to delete this item? This action cannot be undone.',
   confirmText = 'Yes, Delete',
 }) => {
-  const { theme } = useFinance();
+  const { theme, t } = useFinance();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -22,7 +22,7 @@ export const ConfirmDeleteModal = ({
             <Ionicons name="alert-circle" size={32} color={theme.danger} />
           </View>
 
-          <Text style={[styles.dialogTitle, { color: theme.text }]}>{title}</Text>
+          <Text style={[styles.dialogTitle, { color: theme.text }]}>{title === 'Delete Item?' ? `${t('delete', 'Delete')}?` : title}</Text>
           <Text style={[styles.dialogMessage, { color: theme.textMuted }]}>{message}</Text>
 
           {/* Action Buttons */}
@@ -32,7 +32,7 @@ export const ConfirmDeleteModal = ({
               style={[styles.btn, styles.cancelBtn, { borderColor: theme.border, backgroundColor: theme.cardAlt }]}
               activeOpacity={0.7}
             >
-              <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancel</Text>
+              <Text style={[styles.cancelBtnText, { color: theme.text }]}>{t('cancel', 'Cancel')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -44,7 +44,7 @@ export const ConfirmDeleteModal = ({
               activeOpacity={0.7}
             >
               <Ionicons name="trash-outline" size={16} color="#FFF" />
-              <Text style={styles.confirmBtnText}>{confirmText}</Text>
+              <Text style={styles.confirmBtnText}>{confirmText === 'Yes, Delete' ? `${t('delete', 'Delete')}` : confirmText}</Text>
             </TouchableOpacity>
           </View>
         </View>

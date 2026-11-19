@@ -42,7 +42,7 @@ const ANALYSIS_VIEWS = [
 ];
 
 export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack, onOpenMore }) => {
-  const { theme, currency, accounts, transactions, netWorth, deleteTransaction } = useFinance();
+  const { theme, currency, accounts, transactions, netWorth, deleteTransaction, t } = useFinance();
 
   const [activeView, setActiveView] = useState('account'); // 'account' | 'expense' | 'income'
   const [timeframe, setTimeframe] = useState('month'); // 'month' | '30days' | 'year' | 'all' | 'custom'
@@ -298,7 +298,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
             <Ionicons name="menu-outline" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>Financial Analysis</Text>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>{t('analysis_breakdown', 'Financial Analysis')}</Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
               {currentViewObj.subtitle}
             </Text>
@@ -310,6 +310,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       <View style={[styles.quickTabsRow, { backgroundColor: theme.cardAlt }]}>
         {ANALYSIS_VIEWS.map((v) => {
           const isSelected = activeView === v.id;
+          const tabLabel = v.id === 'account' ? t('accounts', 'Accounts') : v.id === 'expense' ? t('expense', 'Expense') : t('income', 'Income');
           return (
             <TouchableOpacity
               key={`tab_${v.id}`}
@@ -328,7 +329,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
                 ]}
                 numberOfLines={1}
               >
-                {v.title.split(' ')[0]}
+                {tabLabel}
               </Text>
             </TouchableOpacity>
           );
@@ -341,7 +342,7 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
           <Ionicons name="search-outline" size={16} color={theme.textMuted} />
           <TextInput
             style={[styles.mainSearchInput, { color: theme.text }]}
-            placeholder="Search records, categories, notes, or amounts..."
+            placeholder={t('search_placeholder', 'Search title, note, or amount...')}
             placeholderTextColor={theme.textMuted}
             value={mainSearchQuery}
             onChangeText={setMainSearchQuery}

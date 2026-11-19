@@ -359,16 +359,16 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
           <Ionicons name="menu-outline" size={24} color={theme.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.screenTitle, { color: theme.text }]}>Setting</Text>
+          <Text style={[styles.screenTitle, { color: theme.text }]}>{t('setting', 'Setting')}</Text>
           <Text style={[styles.subText, { color: theme.textMuted }]}>
-            Passcode, UPI WhatsApp requests, custom categories & CSV
+            {t('Passcode, UPI WhatsApp requests, custom categories & CSV', 'Passcode, UPI WhatsApp requests, custom categories & CSV')}
           </Text>
         </View>
       </View>
 
       {/* UPI & Payment Settings for WhatsApp Requests */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>WHATSAPP PAYMENT & UPI SETTINGS</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('whatsapp_payment_settings', 'WHATSAPP PAYMENT & UPI SETTINGS')}</Text>
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity
             onPress={() => {
@@ -398,7 +398,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       {/* Security & Biometrics Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>SECURITY & PRIVACY</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('security_pin', 'SECURITY & PRIVACY')}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* App Lock Toggle */}
@@ -408,9 +408,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 <Ionicons name="shield-checkmark" size={18} color={theme.primaryLight} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Require Passcode to Open</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Require Passcode to Open', 'Require Passcode to Open')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {securitySettings.enabled ? 'App locks when closed' : 'No lock required'}
+                  {securitySettings.enabled ? t('App locks when closed', 'App locks when closed') : t('No lock required', 'No lock required')}
                 </Text>
               </View>
             </View>
@@ -438,10 +438,10 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 </View>
                 <View>
                   <Text style={[styles.rowTitle, { color: theme.text }]}>
-                    Set PIN ({securitySettings.pin?.length || 4} Digits)
+                    {t('Set PIN', 'Set PIN')} ({securitySettings.pin?.length || 4} {t('Digits', 'Digits')})
                   </Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Supports 4 or 6 digits • Hidden on login screen
+                    {t('Supports 4 or 6 digits • Hidden on login screen', 'Supports 4 or 6 digits • Hidden on login screen')}
                   </Text>
                 </View>
               </View>
@@ -457,9 +457,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                   <Ionicons name="finger-print-outline" size={18} color={theme.primaryLight} />
                 </View>
                 <View>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>Fingerprint / Biometrics</Text>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Fingerprint / Biometrics', 'Fingerprint / Biometrics')}</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Unlock with fingerprint sensor
+                    {t('Unlock with fingerprint sensor', 'Unlock with fingerprint sensor')}
                   </Text>
                 </View>
               </View>
@@ -483,9 +483,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                   <Ionicons name="lock-closed-outline" size={18} color={theme.primaryLight} />
                 </View>
                 <View>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>Lock App Now (Test Screen)</Text>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>{t('lock_app_now', 'Lock App Now (Test Screen)')}</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Verify keypad & hidden PIN
+                    {t('Verify keypad & hidden PIN', 'Verify keypad & hidden PIN')}
                   </Text>
                 </View>
               </View>
@@ -497,7 +497,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       {/* Multiple Theme Picker */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>VISUAL THEMES</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('visual_themes', 'VISUAL THEMES')}</Text>
 
         <View style={styles.themeGrid}>
           {Object.values(THEMES).map((th) => {
@@ -538,7 +538,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       {/* Currency Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>CURRENCY & SYMBOLS</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('currency_symbols', 'CURRENCY & SYMBOLS')}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity
@@ -552,7 +552,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 </Text>
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Base Currency</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('base_currency', 'Base Currency')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   {currency.code} ({currency.name})
                 </Text>
@@ -596,7 +596,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       {/* Developer Feedback Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>FEEDBACK & SUGGESTIONS</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('feedback_suggestions', 'FEEDBACK & SUGGESTIONS')}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity
@@ -608,9 +608,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 <Ionicons name="chatbox-ellipses-outline" size={18} color="#38BDF8" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Send Developer Feedback</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('send_dev_feedback', 'Send Developer Feedback')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Direct to iashwini914@gmail.com • Suggestions & bug reports
+                  {t('Direct to iashwini914@gmail.com • Suggestions & bug reports', 'Direct to iashwini914@gmail.com • Suggestions & bug reports')}
                 </Text>
               </View>
             </View>
@@ -621,7 +621,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       {/* Google Cloud Backup & Automatic Sync */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>GOOGLE CLOUD BACKUP & AUTO SYNC</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('google_cloud_backup', 'GOOGLE CLOUD BACKUP & AUTO SYNC')}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {googleUser?.signedIn ? (
@@ -828,7 +828,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       {/* Local Device Backup (CSV) - Clean & Standalone */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>LOCAL DEVICE BACKUP (CSV FILE)</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('LOCAL DEVICE BACKUP (CSV FILE)', 'LOCAL DEVICE BACKUP (CSV FILE)')}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* CSV File Backup & Restore */}
@@ -841,9 +841,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 <Ionicons name="document-text-outline" size={18} color={theme.success} />
               </View>
               <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>CSV File Backup & Restore</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('CSV File Backup & Restore', 'CSV File Backup & Restore')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Export or import all accounts and transactions for Excel & Sheets
+                  {t('Export or import all accounts and transactions for Excel & Sheets', 'Export or import all accounts and transactions for Excel & Sheets')}
                 </Text>
               </View>
             </View>
@@ -854,7 +854,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       {/* Reset & Maintenance */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>DATA RESET (CONFIRMATION PROTECTED)</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('DATA RESET (CONFIRMATION PROTECTED)', 'DATA RESET (CONFIRMATION PROTECTED)')}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity
@@ -866,9 +866,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 <Ionicons name="refresh-outline" size={18} color={theme.info} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Load Sample Data</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Load Sample Data', 'Load Sample Data')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Populate demo accounts, budgets, and loans
+                  {t('Populate demo accounts, budgets, and loans', 'Populate demo accounts, budgets, and loans')}
                 </Text>
               </View>
             </View>
@@ -880,9 +880,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 <Ionicons name="trash-outline" size={18} color={theme.danger} />
               </View>
               <View>
-                <Text style={[styles.rowTitle, { color: theme.danger }]}>Clear All App Data</Text>
+                <Text style={[styles.rowTitle, { color: theme.danger }]}>{t('Clear All App Data', 'Clear All App Data')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Erase stored logs and start fresh
+                  {t('Erase stored logs and start fresh', 'Erase stored logs and start fresh')}
                 </Text>
               </View>
             </View>
