@@ -27,6 +27,7 @@ import { TransferModal } from './src/components/modals/TransferModal';
 import { BudgetModal } from './src/components/modals/BudgetModal';
 import { RecurringModal } from './src/components/modals/RecurringModal';
 import { AccountModal } from './src/components/modals/AccountModal';
+import { DonationModal } from './src/components/modals/DonationModal';
 import { ConfirmDeleteModal } from './src/components/modals/ConfirmDeleteModal';
 import { LockScreen } from './src/components/security/LockScreen';
 
@@ -59,6 +60,8 @@ function MainApp() {
   const [recurringModalVisible, setRecurringModalVisible] = useState(false);
   const [editingRecurring, setEditingRecurring] = useState(null);
 
+  const [donationModalVisible, setDonationModalVisible] = useState(false);
+
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {
     const handleHardwareBack = () => {
@@ -83,6 +86,10 @@ function MainApp() {
         setRecurringModalVisible(false);
         return true;
       }
+      if (donationModalVisible) {
+        setDonationModalVisible(false);
+        return true;
+      }
       if (drawerOpen) {
         setDrawerOpen(false);
         return true;
@@ -103,6 +110,7 @@ function MainApp() {
     budgetModalVisible,
     accountModalVisible,
     recurringModalVisible,
+    donationModalVisible,
     drawerOpen,
     activeTab,
   ]);
@@ -381,6 +389,12 @@ function MainApp() {
         initialData={editingRecurring}
       />
 
+      {/* Developer Donation & Support Modal */}
+      <DonationModal
+        visible={donationModalVisible}
+        onClose={() => setDonationModalVisible(false)}
+      />
+
       {/* Slide-out Navigation Drawer from Top-Left 3-Bar Menu */}
       <Modal
         visible={drawerOpen}
@@ -473,7 +487,7 @@ function MainApp() {
               >
                 <Ionicons name="wallet-outline" size={20} color={activeTab === 'accounts' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'accounts' ? theme.primaryLight : theme.text }]}>
-                  Wallets & Accounts
+                  Account & Categories
                 </Text>
               </TouchableOpacity>
 
@@ -502,6 +516,19 @@ function MainApp() {
                 <Ionicons name="settings-outline" size={20} color={activeTab === 'settings' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'settings' ? theme.primaryLight : theme.text }]}>
                   Setting
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setDrawerOpen(false);
+                  setDonationModalVisible(true);
+                }}
+                style={styles.drawerItem}
+              >
+                <Ionicons name="heart" size={20} color="#F43F5E" />
+                <Text style={[styles.drawerItemText, { color: '#F43F5E', fontWeight: '700' }]}>
+                  Donate & Support ❤️
                 </Text>
               </TouchableOpacity>
 

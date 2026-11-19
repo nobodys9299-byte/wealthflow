@@ -78,11 +78,17 @@ export const DashboardScreen = ({
   }, [transactions, filterType, filterAccountId, searchQuery]);
 
   const displayTransactions = useMemo(() => {
-    if (showSearch) return filteredTransactions;
-    if (filterAccountId !== 'all') {
-      return transactions.filter((t) => t.accountId === filterAccountId);
+    let list = transactions;
+    if (showSearch) {
+      list = filteredTransactions;
+    } else if (filterAccountId !== 'all') {
+      list = transactions.filter((t) => t.accountId === filterAccountId);
     }
-    return transactions;
+    return [...list].sort((a, b) => {
+      const d = (b.date || '').localeCompare(a.date || '');
+      if (d !== 0) return d;
+      return (b.id || '').localeCompare(a.id || '');
+    });
   }, [showSearch, filteredTransactions, transactions, filterAccountId]);
 
   const handleOpenCustomize = () => {

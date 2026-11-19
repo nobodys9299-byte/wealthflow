@@ -639,7 +639,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
             <ScrollView style={{ marginVertical: 12, maxHeight: 280 }}>
               {friendCategories.length === 0 ? (
                 <View style={{ padding: 20, alignItems: 'center' }}>
-                  <Text style={{ color: theme.textMuted }}>No categories remaining. Create one or reset to defaults.</Text>
+                  <Text style={{ color: theme.textMuted }}>No categories remaining. Create one below.</Text>
                 </View>
               ) : (
                 friendCategories.map((c) => (
@@ -665,22 +665,10 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
               )}
             </ScrollView>
 
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <TouchableOpacity
-                onPress={async () => {
-                  if (resetFriendCategoriesToDefault) {
-                    await resetFriendCategoriesToDefault();
-                  }
-                }}
-                style={[styles.cancelBtn, { borderColor: theme.border, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
-              >
-                <Ionicons name="refresh-outline" size={15} color={theme.textMuted} />
-                <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Reset Defaults</Text>
-              </TouchableOpacity>
-
+            <View style={{ marginTop: 8 }}>
               <TouchableOpacity
                 onPress={() => setShowManageCatsModal(false)}
-                style={[styles.saveCatBtn, { backgroundColor: theme.primary, flex: 1 }]}
+                style={[styles.saveCatBtn, { backgroundColor: theme.primary, width: '100%' }]}
               >
                 <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
               </TouchableOpacity>

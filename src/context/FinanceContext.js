@@ -23,6 +23,15 @@ const STORAGE_KEYS = {
   HOME_SECTIONS: '@wealthflow_home_sections_v2',
 };
 
+export const sortTransactionsByDateDesc = (txList) => {
+  if (!Array.isArray(txList)) return [];
+  return [...txList].sort((a, b) => {
+    const dateDiff = (b.date || '').localeCompare(a.date || '');
+    if (dateDiff !== 0) return dateDiff;
+    return (b.id || '').localeCompare(a.id || '');
+  });
+};
+
 export const DEFAULT_HOME_SECTIONS = [
   { id: 'accounts', label: 'Accounts & Wallets', desc: 'Active bank accounts & balances strip', enabled: true },
   { id: 'recurring', label: 'Recurring Pay & Bills', desc: 'Subscriptions, bills & auto-pay schedules', enabled: true },
@@ -155,11 +164,12 @@ export const FinanceProvider = ({ children }) => {
 
         let loadedTx = INITIAL_TRANSACTIONS;
         if (savedTx) {
-          loadedTx = JSON.parse(savedTx);
+          loadedTx = sortTransactionsByDateDesc(JSON.parse(savedTx));
           setTransactions(loadedTx);
         } else {
-          setTransactions(INITIAL_TRANSACTIONS);
-          await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(INITIAL_TRANSACTIONS));
+          const sortedInit = sortTransactionsByDateDesc(INITIAL_TRANSACTIONS);
+          setTransactions(sortedInit);
+          await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(sortedInit));
         }
 
         let loadedAcc = DEFAULT_ACCOUNTS;
@@ -272,9 +282,10 @@ export const FinanceProvider = ({ children }) => {
 
   // Sync state mutations to AsyncStorage
   const persistTransactions = async (newTx) => {
-    setTransactions(newTx);
+    const sorted = sortTransactionsByDateDesc(newTx);
+    setTransactions(sorted);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(newTx));
+      await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(sorted));
     } catch (e) {
       console.warn(e);
     }

@@ -48,7 +48,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
   }, [selectedReceipt, onBack, onNavigateTab]);
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
+    const list = transactions.filter((t) => {
       if (filterType !== 'all' && t.type !== filterType) return false;
       if (filterAccount !== 'all' && t.accountId !== filterAccount) return false;
 
@@ -61,6 +61,11 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
       }
 
       return true;
+    });
+    return [...list].sort((a, b) => {
+      const d = (b.date || '').localeCompare(a.date || '');
+      if (d !== 0) return d;
+      return (b.id || '').localeCompare(a.id || '');
     });
   }, [transactions, search, filterType, filterAccount]);
 

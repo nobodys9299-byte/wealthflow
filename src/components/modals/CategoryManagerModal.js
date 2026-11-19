@@ -407,17 +407,6 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
                 </View>
               ))
             )}
-
-            {/* Reset to Defaults Option */}
-            <TouchableOpacity
-              onPress={handleResetDefaults}
-              style={[styles.resetBtn, { borderColor: theme.border }]}
-            >
-              <Ionicons name="refresh-outline" size={14} color={theme.textMuted} />
-              <Text style={[styles.resetBtnText, { color: theme.textMuted }]}>
-                Reset Categories to Original Defaults
-              </Text>
-            </TouchableOpacity>
           </ScrollView>
         </View>
       </View>

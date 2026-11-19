@@ -320,39 +320,6 @@ export const FriendDetailModal = ({
                     </TouchableOpacity>
                   );
                 })}
-
-                <TouchableOpacity
-                  onPress={() => setShowManageCatsModal(true)}
-                  style={[
-                    styles.fCatFilterChip,
-                    {
-                      backgroundColor: `${theme.danger}15`,
-                      borderColor: `${theme.danger}40`,
-                    },
-                  ]}
-                >
-                  <Ionicons name="trash-outline" size={13} color={theme.danger} />
-                  <Text style={[styles.fCatFilterText, { color: theme.danger }]}>
-                    Manage
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setShowAddCatModal(true)}
-                  style={[
-                    styles.fCatFilterChip,
-                    {
-                      backgroundColor: `${theme.primary}18`,
-                      borderColor: `${theme.primary}50`,
-                      borderStyle: 'dashed',
-                    },
-                  ]}
-                >
-                  <Ionicons name="add" size={14} color={theme.primaryLight} />
-                  <Text style={[styles.fCatFilterText, { color: theme.primaryLight }]}>
-                    New Category
-                  </Text>
-                </TouchableOpacity>
               </ScrollView>
             </View>
 
@@ -655,22 +622,10 @@ export const FriendDetailModal = ({
                 )}
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                <TouchableOpacity
-                  onPress={async () => {
-                    if (resetFriendCategoriesToDefault) {
-                      await resetFriendCategoriesToDefault();
-                    }
-                  }}
-                  style={[styles.cancelBtn, { borderColor: theme.border, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
-                >
-                  <Ionicons name="refresh-outline" size={14} color={theme.textMuted} />
-                  <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Reset Defaults</Text>
-                </TouchableOpacity>
-
+              <View style={{ marginTop: 8 }}>
                 <TouchableOpacity
                   onPress={() => setShowManageCatsModal(false)}
-                  style={[styles.saveCatBtn, { backgroundColor: theme.primary, flex: 1 }]}
+                  style={[styles.saveCatBtn, { backgroundColor: theme.primary, width: '100%' }]}
                 >
                   <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
                 </TouchableOpacity>

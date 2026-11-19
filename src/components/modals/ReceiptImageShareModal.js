@@ -271,22 +271,27 @@ export const ReceiptImageShareModal = ({
             </table>
 
             <!-- Instant UPI Payment Details with Payment Link & Dynamic QR Code -->
-            <div style="margin-top: 20px; padding: 14px 18px; background-color: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid;">
+            <div style="margin-top: 20px; padding: 16px 18px; background-color: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid;">
               <div style="flex: 1; padding-right: 18px;">
                 <div style="font-size: 11px; font-weight: 800; color: #0284C7; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Instant UPI Payment Details</div>
                 <div style="font-size: 16px; font-weight: 800; color: #0F172A; margin-top: 3px;">Amount: ${currency.symbol}${targetAmount.toFixed(2)}</div>
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
-                <div style="margin-top: 10px;">
-                  <a href="${upiLink}" target="_blank" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">
+                <div style="margin-top: 10px; margin-bottom: 6px;">
+                  <a href="${upiLink}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">
                     ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)})
                   </a>
                 </div>
-                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap button above or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
+                <div style="font-size: 11px; color: #1E293B; margin-top: 4px; word-break: break-all;">
+                  <strong>Clickable Link:</strong> <a href="${upiLink}" style="color: #0284C7; font-weight: 700; text-decoration: underline;">${upiLink}</a>
+                </div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap button or link above, or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
               </div>
               <div style="text-align: center;">
-                <img src="${qrCodeUrl}" width="115" height="115" style="border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF;" alt="UPI QR" />
-                <div style="font-size: 9px; font-weight: 800; color: #0284C7; margin-top: 3px;">SCAN & PAY</div>
+                <a href="${upiLink}" style="text-decoration: none;">
+                  <img src="${qrCodeUrl}" width="115" height="115" style="border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF;" alt="UPI QR" />
+                  <div style="font-size: 9px; font-weight: 800; color: #0284C7; margin-top: 3px;">SCAN & PAY</div>
+                </a>
               </div>
             </div>
 

@@ -31,7 +31,6 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
   const [categoryId, setCategoryId] = useState('bills');
   const [accountId, setAccountId] = useState(accounts[0]?.id || 'acc_checking');
   const [frequency, setFrequency] = useState('monthly');
-  const [dayOfMonth, setDayOfMonth] = useState('1');
   const [nextDueDate, setNextDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -43,7 +42,6 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
       setCategoryId(initialData.categoryId || (initialData.type === 'income' ? 'salary' : 'bills'));
       setAccountId(initialData.accountId || accounts[0]?.id || 'acc_checking');
       setFrequency(initialData.frequency || 'monthly');
-      setDayOfMonth(initialData.dayOfMonth !== undefined ? String(initialData.dayOfMonth) : '1');
       setNextDueDate(initialData.nextDueDate || new Date().toISOString().split('T')[0]);
     } else {
       setType('expense');
@@ -52,7 +50,6 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
       setCategoryId('bills');
       setAccountId(accounts[0]?.id || 'acc_checking');
       setFrequency('monthly');
-      setDayOfMonth('1');
       setNextDueDate(new Date().toISOString().split('T')[0]);
     }
   }, [initialData, visible, accounts]);
@@ -77,6 +74,8 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
       return;
     }
 
+    const derivedDay = nextDueDate ? (parseInt(nextDueDate.split('-')[2], 10) || 1) : 1;
+
     const payload = {
       type,
       title: title.trim(),
@@ -84,7 +83,7 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
       categoryId,
       accountId: accountId || accounts[0]?.id,
       frequency,
-      dayOfMonth: parseInt(dayOfMonth, 10) || 1,
+      dayOfMonth: derivedDay,
       nextDueDate,
     };
 
@@ -241,25 +240,6 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
                   );
                 })}
               </View>
-            </View>
-
-            {/* Day of Month */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>
-                Day of Month (1 - 31)
-              </Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
-                ]}
-                keyboardType="number-pad"
-                placeholder="e.g. 1 (1st of month), 5, 25"
-                placeholderTextColor={theme.textMuted}
-                value={dayOfMonth}
-                onChangeText={setDayOfMonth}
-                maxLength={2}
-              />
             </View>
 
             {/* Next Due Date with Interactive Calendar */}
