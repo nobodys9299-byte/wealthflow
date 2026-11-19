@@ -41,9 +41,6 @@ export const ReceiptImageShareModal = ({
   const upiLink = targetAmount > 0
     ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${targetAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
     : `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&cu=INR`;
-  const pdfPayLink = targetAmount > 0
-    ? `https://upi.pe/${upiId}/${targetAmount.toFixed(2)}?pn=${encodeURIComponent(payeeName)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
-    : `https://upi.pe/${upiId}?pn=${encodeURIComponent(payeeName)}&cu=INR`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}&margin=2`;
 
   const friendTxs = data?.transactions || [];
@@ -299,14 +296,14 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
                 <div style="margin-top: 12px; margin-bottom: 8px;">
-                  <a href="${pdfPayLink}" target="_blank" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
+                  <a href="${upiLink}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
                     ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)}) &rarr;
                   </a>
                 </div>
                 <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' button above or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
               </div>
               <div style="text-align: center;">
-                <a href="${pdfPayLink}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <a href="${upiLink}" style="text-decoration: none; display: inline-block;">
                   <div style="width: 115px; height: 115px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF; overflow: hidden;">
                     ${qrSvg || `<img src="${qrCodeUrl}" width="115" height="115" onerror="this.style.display='none'" alt="UPI QR" />`}
                   </div>
