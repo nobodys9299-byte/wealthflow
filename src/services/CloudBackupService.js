@@ -33,6 +33,79 @@ function hashEmail(email) {
 
 export const CloudBackupService = {
   /**
+   * Save a file (JSON or CSV) directly to device internal storage (e.g. Downloads folder)
+   * via Android StorageAccessFramework, or web download / iOS share.
+   * This file is stored in public storage and will NEVER be deleted when uninstalling the app.
+   */
+  async saveToDeviceInternalStorage(fileData, defaultFileName, mimeType = 'application/json') {
+    try {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([fileData], { type: `${mimeType};charset=utf-8;` });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', defaultFileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return { success: true, fileName: defaultFileName, mode: 'web_download' };
+      }
+
+      // Android StorageAccessFramework: Allows direct folder selection (e.g. Downloads folder)
+      // and writes files directly to internal storage without relying on ACTION_SEND share sheet.
+      if (Platform.OS === 'android' && FileSystem?.StorageAccessFramework) {
+        try {
+          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (!permissions.granted) {
+            return { success: false, error: 'Storage folder selection was cancelled.' };
+          }
+
+          const selectedDirUri = permissions.directoryUri;
+          const createdFileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+            selectedDirUri,
+            defaultFileName,
+            mimeType
+          );
+
+          await FileSystem.StorageAccessFramework.writeAsStringAsync(createdFileUri, fileData, {
+            encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+          });
+
+          return {
+            success: true,
+            fileName: defaultFileName,
+            fileUri: createdFileUri,
+            mode: 'internal_storage',
+          };
+        } catch (safErr) {
+          console.warn('StorageAccessFramework failed, falling back to Sharing:', safErr);
+          // fall through to local documentDirectory + share sheet
+        }
+      }
+
+      // iOS or Android fallback: save locally and trigger native share sheet
+      const fileUri = `${FileSystem.documentDirectory}${defaultFileName}`;
+      await FileSystem.writeAsStringAsync(fileUri, fileData, {
+        encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType,
+          dialogTitle: `Save ${defaultFileName}`,
+          UTI: mimeType === 'application/json' ? 'public.json' : 'public.comma-separated-values-text',
+        });
+        return { success: true, fileName: defaultFileName, fileUri, mode: 'sharing' };
+      } else {
+        return { success: true, fileName: defaultFileName, fileUri, mode: 'saved_locally' };
+      }
+    } catch (err) {
+      console.warn('saveToDeviceInternalStorage error:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  /**
    * Save a JSON snapshot directly to Google Drive via native Share Intent or Web Download
    */
   async exportToGoogleDriveFile(jsonData, email = 'user') {
@@ -76,12 +149,12 @@ export const CloudBackupService = {
   },
 
   /**
-   * Pick and restore backup JSON from Google Drive / Filesystem
+   * Pick and restore backup JSON or CSV from Internal Storage / Google Drive / Filesystem
    */
   async pickAndRestoreFromDriveFile() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/json', 'text/plain', '*/*'],
+        type: ['application/json', 'text/csv', 'text/comma-separated-values', 'text/plain', '*/*'],
         copyToCacheDirectory: true,
       });
 
@@ -117,19 +190,45 @@ export const CloudBackupService = {
       }
 
       if (!content || !content.trim()) {
-        return { success: false, error: 'The selected backup file is empty' };
+        return { success: false, error: 'The selected backup file is empty.' };
       }
 
-      const parsed = JSON.parse(content.trim());
+      const trimmed = content.trim();
+      const fileNameLower = (file.name || '').toLowerCase();
+
+      // Check if it's JSON
+      if (trimmed.startsWith('{') || trimmed.startsWith('[') || fileNameLower.endsWith('.json')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          return {
+            success: true,
+            format: 'json',
+            data: parsed,
+            rawJson: trimmed,
+            fileName: file.name || 'backup.json',
+          };
+        } catch (jsonErr) {
+          // If JSON parse failed, continue checking if it's CSV
+        }
+      }
+
+      // Check if it's CSV
+      if (fileNameLower.endsWith('.csv') || trimmed.includes(',') || trimmed.includes('\n')) {
+        return {
+          success: true,
+          format: 'csv',
+          rawCsv: trimmed,
+          fileName: file.name || 'backup.csv',
+        };
+      }
+
       return {
-        success: true,
-        data: parsed,
-        rawJson: content.trim(),
-        fileName: file.name || 'backup.json',
+        success: false,
+        error: 'Unrecognized file format. Please choose a valid .json or .csv backup file.',
       };
     } catch (err) {
       console.warn('pickAndRestoreFromDriveFile error:', err);
-      return { success: false, error: err.message || 'Invalid JSON file format' };
+      return { success: false, error: err.message || 'Error reading selected backup file' };
     }
   },
 

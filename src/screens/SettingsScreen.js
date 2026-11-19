@@ -48,7 +48,9 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     restoreFromGoogleCloud,
     updateGoogleAutoBackupSettings,
     exportToGoogleDriveFile,
+    saveToDeviceStorage,
     pickAndRestoreFromDriveFile,
+    showCustomAlert,
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
@@ -126,37 +128,65 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
   const [chosenLength, setChosenLength] = useState(securitySettings.pin?.length || 4);
   const [newPin, setNewPin] = useState('');
 
-  const handleExportCSV = async () => {
+  const handleSaveCSVToInternalStorage = async () => {
     try {
       const csv = exportCSVString();
       setCsvInput(csv);
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `wealthflow_backup_${dateStr}.csv`;
+
+      const res = await saveToDeviceStorage(csv, fileName, 'text/csv');
+      if (res.success) {
+        showCustomAlert(
+          'CSV Saved to Device!',
+          `CSV spreadsheet "${res.fileName}" saved successfully to your selected folder (Internal Storage / Downloads).`,
+          { type: 'success' }
+        );
+      } else {
+        showCustomAlert(
+          'Save Cancelled',
+          res.error || 'Could not save CSV to internal storage.',
+          { type: 'info' }
+        );
+      }
+    } catch (err) {
+      showCustomAlert('Export Error', err.message || 'Failed to save CSV', { type: 'danger' });
+    }
+  };
+
+  const handleShareCSVFile = async () => {
+    try {
+      const csv = exportCSVString();
+      setCsvInput(csv);
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `wealthflow_backup_${dateStr}.csv`;
 
       if (Platform.OS === 'web' && typeof document !== 'undefined') {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `wealthflow_backup_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', fileName);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        alert('CSV backup file successfully downloaded!');
+        showCustomAlert('CSV Downloaded', `File "${fileName}" saved to your browser downloads.`, { type: 'success' });
       } else {
-        const fileUri = `${FileSystem.documentDirectory}wealthflow_backup_${Date.now()}.csv`;
+        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri, {
             mimeType: 'text/csv',
-            dialogTitle: 'Save / Export WealthFlow Backup CSV',
+            dialogTitle: 'Share WealthFlow Backup CSV',
             UTI: 'public.comma-separated-values-text',
           });
         } else {
-          alert('Sharing is not available on this device');
+          showCustomAlert('Sharing Unavailable', 'Sharing is not available on this device.', { type: 'info' });
         }
       }
     } catch (err) {
-      console.warn('Native CSV export failed:', err);
-      alert('Export failed: ' + (err.message || 'Unknown error'));
+      console.warn('Native CSV share failed:', err);
+      showCustomAlert('Share Error', err.message || 'Failed to share CSV', { type: 'danger' });
     }
   };
 
@@ -171,7 +201,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       const file = result.assets ? result.assets[0] : result;
       if (!file || !file.uri) {
-        alert('No file selected');
+        showCustomAlert('No File Selected', 'Please select a valid CSV backup file.', { type: 'info' });
         return;
       }
 
@@ -179,7 +209,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       if (Platform.OS === 'web' && file.file) {
         content = await file.file.text();
       } else {
-        // First try fetch() which handles content:// and file:// without deprecation warnings
         try {
           const res = await fetch(file.uri);
           content = await res.text();
@@ -198,20 +227,24 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       }
 
       if (!content || !content.trim()) {
-        alert('The selected CSV file is empty');
+        showCustomAlert('Empty File', 'The selected CSV file is empty.', { type: 'danger' });
         return;
       }
 
       const res = await importFromCSV(content.trim());
       if (res.success) {
-        alert(`Success! Imported ${res.count || 'all'} records from "${file.name || 'CSV file'}".`);
+        showCustomAlert(
+          'Import Successful!',
+          `Restored ${res.count || 'all'} records from "${file.name || 'CSV file'}".`,
+          { type: 'success' }
+        );
         setCsvModalVisible(false);
       } else {
-        alert('Failed to parse CSV file: ' + (res.error || 'Invalid CSV format'));
+        showCustomAlert('Import Failed', 'Failed to parse CSV file: ' + (res.error || 'Invalid CSV format'), { type: 'danger' });
       }
     } catch (err) {
       console.warn('Import CSV error:', err);
-      alert('Failed to import file: ' + (err.message || 'Unknown error'));
+      showCustomAlert('Import Error', 'Failed to import file: ' + (err.message || 'Unknown error'), { type: 'danger' });
     }
   };
 
@@ -264,9 +297,13 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     try {
       const res = await backupToGoogleCloud();
       if (res.success) {
-        alert('All accounts, transactions, and friends backed up to Cloud Vault successfully!');
+        showCustomAlert(
+          'Cloud Sync Complete',
+          'All accounts, transactions, and friend records backed up to Cloud Vault successfully!',
+          { type: 'success' }
+        );
       } else {
-        alert('Cloud backup failed: ' + res.error);
+        showCustomAlert('Cloud Backup Failed', res.error || 'Could not sync to cloud.', { type: 'danger' });
       }
     } finally {
       setCloudSyncing(false);
@@ -278,12 +315,53 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     try {
       const res = await restoreFromGoogleCloud();
       if (res.success && res.count > 0) {
-        alert(`Success! Restored ${res.count} transactions and ${res.accountsCount || 0} accounts from Cloud Vault!`);
+        showCustomAlert(
+          'Cloud Restore Successful',
+          `Restored ${res.count} transactions and ${res.accountsCount || 0} accounts from Cloud Vault!`,
+          { type: 'success' }
+        );
       } else if (res.success && (!res.count || res.count === 0)) {
-        alert('Cloud restore completed, but 0 transactions were found in the current cloud slot.\n\nIf you have a saved backup file on your phone or Google Drive, tap "Import Drive File" or "Import from CSV File" below to restore your complete transaction ledger.');
+        showCustomAlert(
+          'Cloud Vault Empty',
+          'Cloud restore connected, but 0 transactions were found in the current cloud slot.\n\nIf you have a saved backup file on your phone or Google Drive, tap "Restore from Storage / Drive" below to restore your complete transaction ledger.',
+          { type: 'info' }
+        );
       } else {
-        alert(res.error || 'No backup found. If you saved a backup file to Google Drive, tap "Import Drive File" below to restore.');
+        showCustomAlert(
+          'No Cloud Snapshot Found',
+          res.error || 'No backup found in cloud. If you saved a backup file to your phone or Google Drive, tap "Restore from Storage / Drive" below.',
+          { type: 'info' }
+        );
       }
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
+  const handleSaveJSONToInternalStorage = async () => {
+    setCloudSyncing(true);
+    try {
+      const json = exportAsJSON();
+      const dateStr = new Date().toISOString().split('T')[0];
+      const safeEmail = (googleUser?.email || 'user').split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `wealthflow_backup_${safeEmail}_${dateStr}.json`;
+
+      const res = await saveToDeviceStorage(json, fileName, 'application/json');
+      if (res.success) {
+        showCustomAlert(
+          'Backup Saved to Device!',
+          `Backup file "${res.fileName}" saved successfully to your selected folder (Internal Storage / Downloads).\n\nThis file will remain safe even if you uninstall the app.`,
+          { type: 'success' }
+        );
+      } else {
+        showCustomAlert(
+          'Save Cancelled',
+          res.error || 'Folder selection was cancelled.',
+          { type: 'info' }
+        );
+      }
+    } catch (e) {
+      showCustomAlert('Save Failed', e.message || 'Could not save file', { type: 'danger' });
     } finally {
       setCloudSyncing(false);
     }
@@ -295,9 +373,13 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       const json = exportAsJSON();
       const res = await exportToGoogleDriveFile(json, googleUser?.email || 'user@gmail.com');
       if (res.success) {
-        alert(`Backup file "${res.fileName}" prepared! Select Google Drive in the share sheet to save.`);
+        showCustomAlert(
+          'Backup Ready to Share',
+          `Backup file "${res.fileName}" prepared! Select Google Drive in the share sheet to upload.`,
+          { type: 'success' }
+        );
       } else {
-        alert('Failed to save to Google Drive: ' + res.error);
+        showCustomAlert('Google Drive Save Failed', res.error || 'Could not share file', { type: 'danger' });
       }
     } finally {
       setCloudSyncing(false);
@@ -309,15 +391,32 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     try {
       const res = await pickAndRestoreFromDriveFile();
       if (res.canceled) return;
-      if (res.success && res.data) {
-        const importRes = await importFromJSON(res.rawJson);
-        if (importRes.success) {
-          alert(`Success! Restored ${importRes.count || 0} transactions and ${importRes.accountsCount || 0} accounts from "${res.fileName}".`);
-        } else {
-          alert('Failed to parse Google Drive file: ' + importRes.error);
+      if (res.success) {
+        if (res.format === 'csv' || res.rawCsv) {
+          const csvRes = await importFromCSV(res.rawCsv);
+          if (csvRes.success) {
+            showCustomAlert(
+              'CSV Restored Successfully!',
+              `Restored ${csvRes.count || 'all'} records from "${res.fileName}".`,
+              { type: 'success' }
+            );
+          } else {
+            showCustomAlert('Import Failed', 'Failed to parse CSV file: ' + (csvRes.error || 'Invalid CSV format'), { type: 'danger' });
+          }
+        } else if (res.rawJson) {
+          const importRes = await importFromJSON(res.rawJson);
+          if (importRes.success) {
+            showCustomAlert(
+              'Backup Restored Successfully!',
+              `Restored ${importRes.count || 0} transactions and ${importRes.accountsCount || 0} accounts from "${res.fileName}".`,
+              { type: 'success' }
+            );
+          } else {
+            showCustomAlert('Restore Failed', 'Failed to parse JSON backup: ' + (importRes.error || 'Invalid format'), { type: 'danger' });
+          }
         }
       } else {
-        alert('File read error: ' + (res.error || 'Unknown error'));
+        showCustomAlert('File Read Error', res.error || 'Could not read selected file', { type: 'danger' });
       }
     } finally {
       setCloudSyncing(false);
@@ -728,16 +827,16 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 </TouchableOpacity>
               </View>
 
-              {/* Cloud Action Buttons Row 2: Direct Google Drive File Save & Import */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+              {/* Action Buttons Row 2: Direct Internal Storage Save & Restore */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                 <TouchableOpacity
-                  onPress={handleSaveToDriveFile}
+                  onPress={handleSaveJSONToInternalStorage}
                   disabled={cloudSyncing}
                   style={[styles.cloudBtn, { backgroundColor: '#10B981' }]}
                 >
-                  <Ionicons name="logo-google" size={14} color="#FFF" />
+                  <Ionicons name="save-outline" size={14} color="#FFF" />
                   <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
-                    Save to Drive File
+                    Save to Internal Storage
                   </Text>
                 </TouchableOpacity>
 
@@ -748,7 +847,21 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 >
                   <Ionicons name="folder-open-outline" size={14} color={theme.text} />
                   <Text style={[styles.cloudBtnText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
-                    Import Drive File
+                    Restore from Storage
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Action Buttons Row 3: Save to Google Drive via Native Share */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                <TouchableOpacity
+                  onPress={handleSaveToDriveFile}
+                  disabled={cloudSyncing}
+                  style={[styles.cloudBtn, { backgroundColor: '#0284C7', flex: 1 }]}
+                >
+                  <Ionicons name="logo-google" size={14} color="#FFF" />
+                  <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
+                    Share / Save to Google Drive
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -763,25 +876,52 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity
-              onPress={() => setGoogleModalVisible(true)}
-              style={styles.row}
-            >
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconWrap, { backgroundColor: '#4285F420' }]}>
-                  <Ionicons name="logo-google" size={18} color="#4285F4" />
+            <View>
+              <TouchableOpacity
+                onPress={() => setGoogleModalVisible(true)}
+                style={styles.row}
+              >
+                <View style={styles.rowLeft}>
+                  <View style={[styles.iconWrap, { backgroundColor: '#4285F420' }]}>
+                    <Ionicons name="logo-google" size={18} color="#4285F4" />
+                  </View>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={[styles.rowTitle, { color: theme.text }]}>Sign In with Google</Text>
+                    <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                      Automatic Cloud Vault backup & Google Drive file restore across uninstalls
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>Sign In with Google</Text>
-                  <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Automatic Cloud Vault backup & Google Drive file restore across uninstalls
-                  </Text>
+                <View style={[styles.connectPill, { backgroundColor: '#4285F4' }]}>
+                  <Text style={styles.connectPillText}>Connect</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Device Internal Storage Backup & Restore Buttons (Always Available Offline) */}
+              <View style={{ paddingHorizontal: 16, paddingBottom: 14, paddingTop: 4 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={handleSaveJSONToInternalStorage}
+                    style={[styles.cloudBtn, { backgroundColor: '#10B981' }]}
+                  >
+                    <Ionicons name="save-outline" size={14} color="#FFF" />
+                    <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
+                      Save to Internal Storage
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleImportFromDriveFile}
+                    style={[styles.cloudBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border, borderWidth: 1 }]}
+                  >
+                    <Ionicons name="folder-open-outline" size={14} color={theme.text} />
+                    <Text style={[styles.cloudBtnText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                      Restore from Storage
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={[styles.connectPill, { backgroundColor: '#4285F4' }]}>
-                <Text style={styles.connectPillText}>Connect</Text>
-              </View>
-            </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -952,34 +1092,57 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
               Export and import your entire financial database as a CSV spreadsheet file to easily back up or transfer between apps.
             </Text>
 
-            {/* Action 1: Export CSV File */}
+            {/* Action 1: Save CSV directly to Internal Storage (Downloads) */}
             <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
               <View style={styles.fileActionHeader}>
-                <View style={[styles.fileIconBadge, { backgroundColor: `${theme.primary}20` }]}>
-                  <Ionicons name="document-text-outline" size={20} color={theme.primaryLight} />
+                <View style={[styles.fileIconBadge, { backgroundColor: '#10B98120' }]}>
+                  <Ionicons name="save-outline" size={20} color="#10B981" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Export CSV File</Text>
+                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Save to Internal Storage (Downloads)</Text>
                   <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                    Save all accounts, transactions, and friend loans to a .csv file
+                    Save directly to phone storage — safe across app uninstalls
                   </Text>
                 </View>
               </View>
 
               <TouchableOpacity
-                onPress={handleExportCSV}
-                style={[styles.fileActionBtn, { backgroundColor: theme.primary }]}
+                onPress={handleSaveCSVToInternalStorage}
+                style={[styles.fileActionBtn, { backgroundColor: '#10B981' }]}
               >
                 <Ionicons name="download-outline" size={18} color="#FFF" />
-                <Text style={styles.fileActionBtnText}>Export & Save .CSV File</Text>
+                <Text style={styles.fileActionBtnText}>Save CSV to Internal Storage</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Action 2: Import CSV File */}
+            {/* Action 2: Share / Send CSV File */}
             <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
               <View style={styles.fileActionHeader}>
-                <View style={[styles.fileIconBadge, { backgroundColor: '#10B98120' }]}>
-                  <Ionicons name="folder-open-outline" size={20} color="#10B981" />
+                <View style={[styles.fileIconBadge, { backgroundColor: `${theme.primary}20` }]}>
+                  <Ionicons name="share-social-outline" size={20} color={theme.primaryLight} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Share / Send CSV File</Text>
+                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
+                    Share via WhatsApp, Drive, Gmail, or Bluetooth
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleShareCSVFile}
+                style={[styles.fileActionBtn, { backgroundColor: theme.primary }]}
+              >
+                <Ionicons name="share-outline" size={18} color="#FFF" />
+                <Text style={styles.fileActionBtnText}>Share CSV via Apps</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Action 3: Import CSV File */}
+            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+              <View style={styles.fileActionHeader}>
+                <View style={[styles.fileIconBadge, { backgroundColor: '#38BDF820' }]}>
+                  <Ionicons name="folder-open-outline" size={20} color="#38BDF8" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.fileActionTitle, { color: theme.text }]}>Import CSV File</Text>
@@ -991,7 +1154,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
               <TouchableOpacity
                 onPress={handlePickAndImportCSVFile}
-                style={[styles.fileActionBtn, { backgroundColor: '#10B981' }]}
+                style={[styles.fileActionBtn, { backgroundColor: '#0284C7' }]}
               >
                 <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
                 <Text style={styles.fileActionBtnText}>Choose & Import .CSV File</Text>

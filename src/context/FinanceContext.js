@@ -1430,6 +1430,7 @@ export const FinanceProvider = ({ children }) => {
         restoreFromGoogleCloud,
         updateGoogleAutoBackupSettings,
         exportToGoogleDriveFile: (jsonStr, email) => CloudBackupService.exportToGoogleDriveFile(jsonStr, email),
+        saveToDeviceStorage: (data, fileName, mimeType) => CloudBackupService.saveToDeviceInternalStorage(data, fileName, mimeType),
         pickAndRestoreFromDriveFile: () => CloudBackupService.pickAndRestoreFromDriveFile(),
         t,
         language: 'en',

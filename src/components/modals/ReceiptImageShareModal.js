@@ -56,29 +56,6 @@ export const ReceiptImageShareModal = ({
     ? friendTxs.filter((t) => t.type === 'borrowed').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
     : (parseFloat(data?.totalBorrowed) || 0);
 
-  const handlePayNow = async () => {
-    try {
-      const supported = await Linking.canOpenURL(upiLink);
-      if (supported) {
-        await Linking.openURL(upiLink);
-      } else {
-        await Linking.openURL(upiLink).catch(() => {
-          setModalAlert({
-            title: 'UPI Payment',
-            message: `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).\n\nPlease ensure a UPI app like Google Pay, PhonePe, Paytm, or BHIM is installed.`,
-            type: 'info',
-          });
-        });
-      }
-    } catch (e) {
-      setModalAlert({
-        title: 'UPI Payment',
-        message: `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).`,
-        type: 'info',
-      });
-    }
-  };
-
   const handleShareImage = async () => {
     try {
       setIsCapturing(true);
@@ -735,30 +712,6 @@ export const ReceiptImageShareModal = ({
                 <Text style={styles.footerWatermark}>WealthFlow • Personal Finance Tracker</Text>
               </View>
             </View>
-
-            {/* Direct Pay via Native UPI App Button */}
-            {targetAmount > 0 && (
-              <TouchableOpacity
-                onPress={handlePayNow}
-                style={{
-                  backgroundColor: '#0284C7',
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  marginBottom: 10,
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="flash" size={16} color="#FFF" />
-                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>
-                  Open in UPI App ({currency.symbol}{targetAmount.toFixed(2)})
-                </Text>
-              </TouchableOpacity>
-            )}
 
             {/* Action Buttons: WhatsApp Image & Multi-Page A4 PDF Export */}
             <View style={styles.actionBtnRow}>

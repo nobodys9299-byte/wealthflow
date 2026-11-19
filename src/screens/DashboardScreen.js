@@ -372,6 +372,10 @@ export const DashboardScreen = ({
         }
 
         if (section.id === 'recurring') {
+          if (!recurring || recurring.length === 0) {
+            return null;
+          }
+
           return (
             <View key="recurring">
               {/* Recurring Bills & Auto-Pay Section */}
