@@ -9,11 +9,11 @@ import {
   Image,
   TextInput,
   Linking,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../../context/FinanceContext';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
 const DONATION_UPI_ID = 's8675748237@slc';
@@ -32,8 +32,13 @@ export const DonationModal = ({ visible, onClose }) => {
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [copiedAcc, setCopiedAcc] = useState(false);
   const [copiedIfsc, setCopiedIfsc] = useState(false);
+  const [modalAlert, setModalAlert] = useState(null);
 
   if (!visible) return null;
+
+  const showModalAlert = (title, message, type = 'success') => {
+    setModalAlert({ title, message, type });
+  };
 
   const currentAmount = customAmount ? (parseFloat(customAmount) || 0) : selectedAmount;
 
@@ -50,15 +55,15 @@ export const DonationModal = ({ visible, onClose }) => {
         await Linking.openURL(upiLink);
       } else {
         await Linking.openURL(upiLink).catch(() => {
-          Alert.alert(
+          showModalAlert(
             'Donation UPI',
             `UPI ID: ${DONATION_UPI_ID}\nAmount: ${currency.symbol}${currentAmount.toFixed(2)}\n\nPlease open your UPI app (Google Pay, PhonePe, Paytm, or BHIM) to complete the donation.`,
-            [{ text: 'OK' }]
+            'info'
           );
         });
       }
     } catch (e) {
-      Alert.alert('Donation UPI', `UPI ID: ${DONATION_UPI_ID}`);
+      showModalAlert('Donation UPI', `UPI ID: ${DONATION_UPI_ID}`, 'info');
     }
   };
 
@@ -66,21 +71,21 @@ export const DonationModal = ({ visible, onClose }) => {
     await Clipboard.setStringAsync(DONATION_UPI_ID);
     setCopiedUpi(true);
     setTimeout(() => setCopiedUpi(false), 2500);
-    Alert.alert('Copied!', `UPI ID "${DONATION_UPI_ID}" has been copied to clipboard.`);
+    showModalAlert('Copied!', `UPI ID "${DONATION_UPI_ID}" has been copied to clipboard.`, 'success');
   };
 
   const handleCopyAccountNum = async () => {
     await Clipboard.setStringAsync(BANK_DETAILS.accountNumber);
     setCopiedAcc(true);
     setTimeout(() => setCopiedAcc(false), 2500);
-    Alert.alert('Copied!', `Account Number "${BANK_DETAILS.accountNumber}" copied to clipboard.`);
+    showModalAlert('Copied!', `Account Number "${BANK_DETAILS.accountNumber}" copied to clipboard.`, 'success');
   };
 
   const handleCopyIfsc = async () => {
     await Clipboard.setStringAsync(BANK_DETAILS.ifsc);
     setCopiedIfsc(true);
     setTimeout(() => setCopiedIfsc(false), 2500);
-    Alert.alert('Copied!', `IFSC "${BANK_DETAILS.ifsc}" copied to clipboard.`);
+    showModalAlert('Copied!', `IFSC "${BANK_DETAILS.ifsc}" copied to clipboard.`, 'success');
   };
 
   return (
@@ -278,6 +283,20 @@ export const DonationModal = ({ visible, onClose }) => {
             </Text>
           </ScrollView>
         </View>
+
+        {/* Photo 2 Styled Dialog Inside Modal (Guarantees zero native Android popups) */}
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'success'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
+        />
       </View>
     </Modal>
   );

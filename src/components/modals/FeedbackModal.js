@@ -8,11 +8,11 @@ import {
   ScrollView,
   TextInput,
   Linking,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../../context/FinanceContext';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 const FEEDBACK_EMAIL = 'iashwini914@gmail.com';
 
@@ -29,8 +29,13 @@ export const FeedbackModal = ({ visible, onClose }) => {
   const [selectedTopic, setSelectedTopic] = useState('feature');
   const [feedbackText, setFeedbackText] = useState('');
   const [copied, setCopied] = useState(false);
+  const [modalAlert, setModalAlert] = useState(null);
 
   if (!visible) return null;
+
+  const showModalAlert = (title, message, type = 'success') => {
+    setModalAlert({ title, message, type });
+  };
 
   const topicObj = FEEDBACK_TOPICS.find((tp) => tp.id === selectedTopic) || FEEDBACK_TOPICS[0];
 
@@ -47,15 +52,15 @@ export const FeedbackModal = ({ visible, onClose }) => {
         await Linking.openURL(mailtoUrl);
       } else {
         await Linking.openURL(mailtoUrl).catch(() => {
-          Alert.alert(
+          showModalAlert(
             'Feedback Email',
             `Please send your feedback directly to:\n${FEEDBACK_EMAIL}\n\nSubject: ${topicObj.label}`,
-            [{ text: 'OK' }]
+            'info'
           );
         });
       }
     } catch (e) {
-      Alert.alert('Email Client Error', `Could not open mail app. You can copy the email: ${FEEDBACK_EMAIL}`);
+      showModalAlert('Email Client Error', `Could not open mail app. You can copy the email: ${FEEDBACK_EMAIL}`, 'info');
     }
   };
 
@@ -63,7 +68,7 @@ export const FeedbackModal = ({ visible, onClose }) => {
     await Clipboard.setStringAsync(FEEDBACK_EMAIL);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
-    Alert.alert('Email Copied!', `Developer email "${FEEDBACK_EMAIL}" copied to clipboard.`);
+    showModalAlert('Email Copied!', `Developer email "${FEEDBACK_EMAIL}" copied to clipboard.`, 'success');
   };
 
   return (
@@ -181,6 +186,20 @@ export const FeedbackModal = ({ visible, onClose }) => {
             </Text>
           </ScrollView>
         </View>
+
+        {/* Photo 2 Styled Dialog Inside Modal */}
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'success'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
+        />
       </View>
     </Modal>
   );

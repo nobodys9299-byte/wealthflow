@@ -68,6 +68,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
   // Custom Friend Category Creator state
   const [showAddCatModal, setShowAddCatModal] = useState(false);
   const [deletingFriendCategory, setDeletingFriendCategory] = useState(null);
+  const [modalAlert, setModalAlert] = useState(null);
   const [newCatName, setNewCatName] = useState('');
   const [newCatEmoji, setNewCatEmoji] = useState('🍽️');
   const [newCatColor, setNewCatColor] = useState('#3B82F6');
@@ -111,7 +112,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Needed', 'Please allow gallery access to select a photo from your device.');
+        setModalAlert({ title: 'Permission Needed', message: 'Please allow gallery access to select a photo from your device.', type: 'info' });
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -128,18 +129,18 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
       }
     } catch (e) {
       console.warn('Pick photo error:', e);
-      Alert.alert('Gallery Error', 'Could not open photo gallery: ' + (e.message || 'Error'));
+      setModalAlert({ title: 'Gallery Error', message: 'Could not open photo gallery: ' + (e.message || 'Error'), type: 'danger' });
     }
   };
 
   const handleSave = () => {
     const numAmount = parseFloat(amount);
     if (!friendName.trim()) {
-      alert('Please enter a friend or contact name');
+      setModalAlert({ title: 'Validation', message: 'Please enter a friend or contact name', type: 'info' });
       return;
     }
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert('Please enter a valid amount');
+      setModalAlert({ title: 'Validation', message: 'Please enter a valid amount', type: 'info' });
       return;
     }
 
@@ -183,7 +184,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
 
   const handleCreateCategory = async () => {
     if (!newCatName.trim()) {
-      alert('Please enter a category name (e.g. Goa Trip, Chai Split)');
+      setModalAlert({ title: 'Validation', message: 'Please enter a category name (e.g. Goa Trip, Chai Split)', type: 'info' });
       return;
     }
 
@@ -199,7 +200,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
       setNewCatName('');
       setShowAddCatModal(false);
     } catch (e) {
-      alert('Could not add category: ' + e.message);
+      setModalAlert({ title: 'Category Error', message: 'Could not add category: ' + e.message, type: 'danger' });
     }
   };
 
@@ -771,6 +772,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
 
       {/* Styled Delete Confirmation Dialog */}
       <ConfirmDeleteModal
+        useModal={false}
         visible={!!deletingFriendCategory}
         onClose={() => setDeletingFriendCategory(null)}
         onConfirm={() => {
@@ -785,6 +787,22 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         title="Delete Category?"
         message={`Are you sure you want to delete "${deletingFriendCategory?.name}"?`}
         confirmText="Yes, Delete"
+        confirmIcon="trash-outline"
+        type="danger"
+      />
+
+      {/* Photo 2 Styled Dialog for In-Modal Alerts */}
+      <ConfirmDeleteModal
+        useModal={false}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'info'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
       />
     </>
   );

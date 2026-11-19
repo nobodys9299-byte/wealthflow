@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { Alert } from 'react-native';
 import { safeStorage as AsyncStorage } from '../utils/safeStorage';
 import { THEMES, CURRENCIES } from '../constants/theme';
 import { DEFAULT_ACCOUNTS, EXPENSE_CATEGORIES, INCOME_CATEGORIES, setDynamicCategoriesRegistry } from '../constants/categories';
@@ -126,13 +127,75 @@ export const FinanceProvider = ({ children }) => {
   });
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
 
-  // Confirmation modal state
+  // Confirmation & Universal Custom Alert modal state (Photo 2 styled)
   const [confirmDialog, setConfirmDialog] = useState({
     visible: false,
     title: '',
     message: '',
+    confirmText: '',
+    cancelText: '',
+    confirmIcon: '',
+    type: 'danger',
+    showCancel: true,
     onConfirm: () => {},
   });
+
+  const showCustomAlert = (titleOrMsg, maybeMsg, options = {}) => {
+    let title = 'Notice';
+    let message = '';
+    if (maybeMsg === undefined) {
+      message = String(titleOrMsg || '');
+    } else {
+      title = String(titleOrMsg || 'Notice');
+      message = String(maybeMsg || '');
+    }
+    const lower = `${title} ${message}`.toLowerCase();
+    const isSuccess = lower.includes('copied') || lower.includes('success') || lower.includes('saved') || lower.includes('updated') || lower.includes('restored');
+    const isDanger = lower.includes('delete') || lower.includes('error') || lower.includes('failed');
+
+    setConfirmDialog({
+      visible: true,
+      title,
+      message,
+      type: options.type || (isDanger ? 'danger' : isSuccess ? 'success' : 'info'),
+      confirmText: options.confirmText || 'OK',
+      confirmIcon: options.confirmIcon || (isSuccess ? 'checkmark-circle-outline' : isDanger ? 'alert-circle-outline' : 'information-circle-outline'),
+      showCancel: options.showCancel === true,
+      onConfirm: options.onConfirm || (() => {}),
+    });
+  };
+
+  useEffect(() => {
+    // Intercept native Alert.alert globally so no screen or modal shows the ugly Photo 1 gray popup
+    Alert.alert = (title, message, buttons) => {
+      const hasCancel = Array.isArray(buttons) && buttons.length > 1;
+      const confirmBtn = Array.isArray(buttons) ? buttons[buttons.length - 1] : null;
+      const cancelBtn = Array.isArray(buttons) && buttons.length > 1 ? buttons[0] : null;
+
+      const lower = `${title || ''} ${message || ''}`.toLowerCase();
+      const isSuccess = lower.includes('copied') || lower.includes('success') || lower.includes('saved');
+      const isDanger = lower.includes('delete') || lower.includes('error') || lower.includes('failed');
+
+      setConfirmDialog({
+        visible: true,
+        title: title || 'Notice',
+        message: message || '',
+        type: isDanger ? 'danger' : isSuccess ? 'success' : 'info',
+        confirmText: confirmBtn?.text || (hasCancel ? 'Confirm' : 'OK'),
+        cancelText: cancelBtn?.text || 'Cancel',
+        confirmIcon: isDanger ? 'trash-outline' : isSuccess ? 'checkmark-circle-outline' : 'information-circle-outline',
+        showCancel: hasCancel,
+        onConfirm: () => {
+          if (confirmBtn?.onPress) confirmBtn.onPress();
+        },
+      });
+    };
+
+    // Also intercept global.alert
+    global.alert = (msg) => {
+      showCustomAlert('Notice', String(msg || ''));
+    };
+  }, []);
 
   // Load from AsyncStorage on mount
   useEffect(() => {
@@ -945,6 +1008,9 @@ export const FinanceProvider = ({ children }) => {
       visible: true,
       title: `Settle Balance with ${friendName}?`,
       message: `Mark all active loans and borrowings with ${friendName} as fully settled?`,
+      confirmText: 'Settle All',
+      confirmIcon: 'checkmark-circle-outline',
+      type: 'success',
       onConfirm: () => {
         const updated = lendingRecords.map((r) =>
           r.friendName.toLowerCase() === friendName.toLowerCase()
@@ -1256,6 +1322,9 @@ export const FinanceProvider = ({ children }) => {
       visible: true,
       title: 'Reset to Sample Data?',
       message: 'This will restore the default demo accounts, sample transactions, budgets, and loans (exactly as when the app was first installed).',
+      confirmText: 'Restore Data',
+      confirmIcon: 'refresh-outline',
+      type: 'info',
       onConfirm: async () => {
         await persistTransactions(INITIAL_TRANSACTIONS);
         await persistAccounts(DEFAULT_ACCOUNTS);
@@ -1271,6 +1340,9 @@ export const FinanceProvider = ({ children }) => {
       visible: true,
       title: 'Clear All App Data?',
       message: 'This will completely erase all transactions, budgets, recurring bills, and loans to give you a blank slate (0 records).\n\nTip: You can reload the initial demo data anytime by tapping "Load Sample Data" in Settings.',
+      confirmText: 'Clear All',
+      confirmIcon: 'trash-outline',
+      type: 'danger',
       onConfirm: async () => {
         await persistTransactions([]);
         await persistBudgets([]);
@@ -1363,9 +1435,11 @@ export const FinanceProvider = ({ children }) => {
         language: 'en',
         setLanguage: () => {},
         SUPPORTED_LANGUAGES: [],
-        // Confirmation dialog
+        // Universal Custom Dialog & Confirmation
         confirmDialog,
         closeConfirmDialog: () => setConfirmDialog((prev) => ({ ...prev, visible: false })),
+        showAlert: showCustomAlert,
+        showCustomAlert,
       }}
     >
       {children}

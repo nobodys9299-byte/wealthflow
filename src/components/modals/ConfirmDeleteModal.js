@@ -9,46 +9,103 @@ export const ConfirmDeleteModal = ({
   onConfirm,
   title = 'Delete Item?',
   message = 'Are you sure you want to delete this item? This action cannot be undone.',
-  confirmText = 'Yes, Delete',
+  confirmText,
+  cancelText = 'Cancel',
+  confirmIcon,
+  type = 'danger', // 'danger' | 'info' | 'primary' | 'success'
+  showCancel = true,
+  useModal = true,
 }) => {
   const { theme, t } = useFinance();
 
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Warning Icon Badge */}
-          <View style={[styles.iconBadge, { backgroundColor: theme.dangerBg }]}>
-            <Ionicons name="alert-circle" size={32} color={theme.danger} />
-          </View>
+  if (!visible) return null;
 
-          <Text style={[styles.dialogTitle, { color: theme.text }]}>{title === 'Delete Item?' ? `${t('delete', 'Delete')}?` : title}</Text>
-          <Text style={[styles.dialogMessage, { color: theme.textMuted }]}>{message}</Text>
+  const isDanger = type === 'danger';
+  const isSuccess = type === 'success';
 
-          {/* Action Buttons */}
-          <View style={styles.buttonRow}>
+  let badgeBg = `${theme.primary}25`;
+  let badgeIcon = confirmIcon || 'information-circle';
+  let badgeColor = theme.primaryLight;
+  let btnBg = theme.primary;
+
+  if (isDanger) {
+    badgeBg = theme.dangerBg;
+    badgeIcon = confirmIcon || 'alert-circle';
+    badgeColor = theme.danger;
+    btnBg = theme.danger;
+  } else if (isSuccess) {
+    badgeBg = 'rgba(16, 185, 129, 0.2)';
+    badgeIcon = confirmIcon || 'checkmark-circle';
+    badgeColor = '#10B981';
+    btnBg = '#10B981';
+  }
+
+  const defaultBtnText = !showCancel
+    ? 'OK'
+    : isDanger
+    ? t('delete', 'Delete')
+    : t('confirm', 'Confirm');
+
+  const finalConfirmText = confirmText || defaultBtnText;
+  const finalBtnIcon = confirmIcon || (isDanger ? 'trash-outline' : isSuccess ? 'checkmark-circle-outline' : 'checkmark-outline');
+
+  const modalContent = (
+    <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+      <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {/* Icon Badge */}
+        <View style={[styles.iconBadge, { backgroundColor: badgeBg }]}>
+          <Ionicons name={badgeIcon} size={32} color={badgeColor} />
+        </View>
+
+        <Text style={[styles.dialogTitle, { color: theme.text }]}>
+          {title === 'Delete Item?' ? `${t('delete', 'Delete')}?` : title}
+        </Text>
+        <Text style={[styles.dialogMessage, { color: theme.textMuted }]}>{message}</Text>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonRow}>
+          {showCancel && (
             <TouchableOpacity
               onPress={onClose}
               style={[styles.btn, styles.cancelBtn, { borderColor: theme.border, backgroundColor: theme.cardAlt }]}
               activeOpacity={0.7}
             >
-              <Text style={[styles.cancelBtnText, { color: theme.text }]}>{t('cancel', 'Cancel')}</Text>
+              <Text style={[styles.cancelBtnText, { color: theme.text }]}>{cancelText}</Text>
             </TouchableOpacity>
+          )}
 
-            <TouchableOpacity
-              onPress={() => {
-                onConfirm();
-                onClose();
-              }}
-              style={[styles.btn, styles.confirmBtn, { backgroundColor: theme.danger }]}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="trash-outline" size={16} color="#FFF" />
-              <Text style={styles.confirmBtnText}>{confirmText === 'Yes, Delete' ? `${t('delete', 'Delete')}` : confirmText}</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={() => {
+              onConfirm && onConfirm();
+              onClose && onClose();
+            }}
+            style={[
+              styles.btn,
+              styles.confirmBtn,
+              { backgroundColor: btnBg },
+              !showCancel && { flex: 1, width: '100%' },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={finalBtnIcon} size={16} color="#FFF" />
+            <Text style={styles.confirmBtnText}>{finalConfirmText}</Text>
+          </TouchableOpacity>
         </View>
       </View>
+    </View>
+  );
+
+  if (!useModal) {
+    return (
+      <View style={[StyleSheet.absoluteFillObject, { zIndex: 99999, elevation: 99999 }]}>
+        {modalContent}
+      </View>
+    );
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      {modalContent}
     </Modal>
   );
 };

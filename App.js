@@ -342,15 +342,6 @@ function MainApp() {
         </View>
       </View>
 
-      {/* Confirmation Before Deletion Modal */}
-      <ConfirmDeleteModal
-        visible={confirmDialog.visible}
-        onClose={closeConfirmDialog}
-        onConfirm={confirmDialog.onConfirm}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-      />
-
       {/* Transaction Modal */}
       <TransactionModal
         visible={txModalVisible}
@@ -591,6 +582,20 @@ function MainApp() {
           </View>
         </View>
       </Modal>
+
+      {/* Universal Themed Modal Popup (Replaces Native Alert) - placed at root for highest z-index */}
+      <ConfirmDeleteModal
+        visible={confirmDialog.visible}
+        onClose={closeConfirmDialog}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmIcon={confirmDialog.confirmIcon}
+        type={confirmDialog.type}
+        showCancel={confirmDialog.showCancel !== false}
+      />
     </SafeAreaView>
   );
 }

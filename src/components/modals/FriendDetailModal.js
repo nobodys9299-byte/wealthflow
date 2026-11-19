@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { ReceiptImageShareModal } from './ReceiptImageShareModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 const POPULAR_EMOJIS = [
   '🍽️', '🚗', '🎬', '🛒', '⚡', '💵', '🎁', '🤝',
@@ -61,6 +62,8 @@ export const FriendDetailModal = ({
   const [newCatName, setNewCatName] = useState('');
   const [newCatEmoji, setNewCatEmoji] = useState('🍽️');
   const [newCatColor, setNewCatColor] = useState('#3B82F6');
+  const [deletingCat, setDeletingCat] = useState(null);
+  const [modalAlert, setModalAlert] = useState(null);
 
   const isOwed = (friend?.balance || 0) >= 0;
   const absBalance = Math.abs(friend?.balance || 0);
@@ -107,7 +110,7 @@ export const FriendDetailModal = ({
 
   const handleCreateCategory = async () => {
     if (!newCatName.trim()) {
-      alert('Please enter a category name (e.g. Goa Trip, Chai Split)');
+      setModalAlert({ title: 'Validation', message: 'Please enter a category name (e.g. Goa Trip, Chai Split)', type: 'info' });
       return;
     }
 
@@ -123,7 +126,7 @@ export const FriendDetailModal = ({
       setNewCatName('');
       setShowAddCatModal(false);
     } catch (e) {
-      alert('Could not add category: ' + e.message);
+      setModalAlert({ title: 'Category Error', message: 'Could not add category: ' + e.message, type: 'danger' });
     }
   };
 
@@ -595,18 +598,7 @@ export const FriendDetailModal = ({
                         <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>{c.name}</Text>
                       </View>
                       <TouchableOpacity
-                        onPress={() => {
-                          if (Platform.OS === 'web') {
-                            if (window.confirm(`Delete friend category "${c.name}"?`)) {
-                              deleteFriendCategory(c.id);
-                            }
-                          } else {
-                            Alert.alert('Delete Category', `Are you sure you want to delete "${c.name}"?`, [
-                              { text: 'Cancel', style: 'cancel' },
-                              { text: 'Delete', style: 'destructive', onPress: () => deleteFriendCategory(c.id) },
-                            ]);
-                          }
-                        }}
+                        onPress={() => setDeletingCat(c)}
                         style={{
                           width: 30,
                           height: 30,
@@ -634,6 +626,39 @@ export const FriendDetailModal = ({
             </View>
           </View>
         )}
+
+        {/* Photo 2 Styled Dialog for Delete Category */}
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!deletingCat}
+          onClose={() => setDeletingCat(null)}
+          onConfirm={() => {
+            if (deletingCat) {
+              deleteFriendCategory(deletingCat.id);
+              setDeletingCat(null);
+            }
+          }}
+          title="Delete Category?"
+          message={`Are you sure you want to delete category "${deletingCat?.name}"?`}
+          type="danger"
+          confirmText="Delete"
+          confirmIcon="trash-outline"
+          showCancel={true}
+        />
+
+        {/* Photo 2 Styled Dialog for In-Modal Alerts */}
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'info'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
+        />
       </Modal>
 
       {/* WhatsApp Image Statement Preview Modal */}

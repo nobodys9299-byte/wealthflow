@@ -20,6 +20,7 @@ import QRCode from 'qrcode';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { getCategoryById } from '../../constants/categories';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 export const ReceiptImageShareModal = ({
   visible,
@@ -31,6 +32,7 @@ export const ReceiptImageShareModal = ({
   const cardRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [modalAlert, setModalAlert] = useState(null);
 
   if (!visible || !data) return null;
 
@@ -41,6 +43,9 @@ export const ReceiptImageShareModal = ({
   const upiLink = targetAmount > 0
     ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${targetAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
     : `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&cu=INR`;
+  const pdfPayLink = targetAmount > 0
+    ? `https://upi.pe/${upiId}/${targetAmount.toFixed(2)}?pn=${encodeURIComponent(payeeName)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
+    : `https://upi.pe/${upiId}?pn=${encodeURIComponent(payeeName)}&cu=INR`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}&margin=2`;
 
   const friendTxs = data?.transactions || [];
@@ -58,18 +63,19 @@ export const ReceiptImageShareModal = ({
         await Linking.openURL(upiLink);
       } else {
         await Linking.openURL(upiLink).catch(() => {
-          Alert.alert(
-            'UPI Payment',
-            `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).\n\nPlease ensure a UPI app like Google Pay, PhonePe, Paytm, or BHIM is installed.`,
-            [{ text: 'OK' }]
-          );
+          setModalAlert({
+            title: 'UPI Payment',
+            message: `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).\n\nPlease ensure a UPI app like Google Pay, PhonePe, Paytm, or BHIM is installed.`,
+            type: 'info',
+          });
         });
       }
     } catch (e) {
-      Alert.alert(
-        'UPI Payment',
-        `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).`
-      );
+      setModalAlert({
+        title: 'UPI Payment',
+        message: `Pay ${currency.symbol}${targetAmount.toFixed(2)} to ${payeeName} (${upiId}).`,
+        type: 'info',
+      });
     }
   };
 
@@ -91,12 +97,12 @@ export const ReceiptImageShareModal = ({
             UTI: 'public.png',
           });
         } else {
-          alert('Sharing is not available on this device');
+          setModalAlert({ title: 'Sharing Notice', message: 'Sharing is not available on this device', type: 'info' });
         }
       }
     } catch (e) {
       console.warn('Capture error:', e);
-      alert('Could not generate receipt image: ' + (e.message || 'Unknown error'));
+      setModalAlert({ title: 'Receipt Error', message: 'Could not generate receipt image: ' + (e.message || 'Unknown error'), type: 'danger' });
     } finally {
       setIsCapturing(false);
     }
@@ -296,14 +302,14 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
                 <div style="margin-top: 12px; margin-bottom: 8px;">
-                  <a href="${upiLink}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
+                  <a href="${pdfPayLink}" target="_blank" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
                     ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)}) &rarr;
                   </a>
                 </div>
-                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' button above or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' to open the secure UPI payment page, or scan the QR code directly with Google Pay, PhonePe, or Paytm.</div>
               </div>
               <div style="text-align: center;">
-                <a href="${upiLink}" style="text-decoration: none; display: inline-block;">
+                <a href="${pdfPayLink}" target="_blank" style="text-decoration: none; display: inline-block;">
                   <div style="width: 115px; height: 115px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF; overflow: hidden;">
                     ${qrSvg || `<img src="${qrCodeUrl}" width="115" height="115" onerror="this.style.display='none'" alt="UPI QR" />`}
                   </div>
@@ -332,11 +338,11 @@ export const ReceiptImageShareModal = ({
           UTI: 'com.adobe.pdf',
         });
       } else {
-        alert('Sharing is not available on this device');
+        setModalAlert({ title: 'Sharing Notice', message: 'Sharing is not available on this device', type: 'info' });
       }
     } catch (e) {
       console.warn('PDF export error:', e);
-      alert('Could not export PDF: ' + (e.message || 'Unknown error'));
+      setModalAlert({ title: 'PDF Export Error', message: 'Could not export PDF: ' + (e.message || 'Unknown error'), type: 'danger' });
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -730,6 +736,30 @@ export const ReceiptImageShareModal = ({
               </View>
             </View>
 
+            {/* Direct Pay via Native UPI App Button */}
+            {targetAmount > 0 && (
+              <TouchableOpacity
+                onPress={handlePayNow}
+                style={{
+                  backgroundColor: '#0284C7',
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginBottom: 10,
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="flash" size={16} color="#FFF" />
+                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>
+                  Open in UPI App ({currency.symbol}{targetAmount.toFixed(2)})
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {/* Action Buttons: WhatsApp Image & Multi-Page A4 PDF Export */}
             <View style={styles.actionBtnRow}>
               <TouchableOpacity
@@ -764,6 +794,20 @@ export const ReceiptImageShareModal = ({
             </View>
           </ScrollView>
         </View>
+
+        {/* Photo 2 Styled Dialog for In-Modal Alerts */}
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'info'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
+        />
       </View>
     </Modal>
   );
