@@ -153,9 +153,18 @@ export const DashboardScreen = ({
             <Text style={[styles.welcomeSub, { color: theme.textMuted }]}>
               {t('welcome_back', 'Welcome back,')}
             </Text>
-            <Text style={[styles.welcomeTitle, { color: theme.text }]}>
-              {t('home_dashboard', 'Home Dashboard')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.welcomeTitle, { color: theme.text }]}>
+                {t('home_dashboard', 'Home Dashboard')}
+              </Text>
+              <TouchableOpacity
+                onPress={handleOpenCustomize}
+                style={{ padding: 4 }}
+                accessibilityLabel="Edit Home Dashboard"
+              >
+                <Ionicons name="pencil-outline" size={16} color={theme.primaryLight} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
