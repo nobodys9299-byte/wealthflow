@@ -5,6 +5,7 @@ import { DEFAULT_ACCOUNTS, EXPENSE_CATEGORIES, INCOME_CATEGORIES, setDynamicCate
 import { INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING } from '../constants/initialData';
 import { generateFullAppCSV, parseFullAppCSV } from '../utils/formatters';
 import { CloudBackupService } from '../services/CloudBackupService';
+import { SUPPORTED_LANGUAGES, getTranslation } from '../constants/translations';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: '@spendpulse_transactions_v1',
@@ -21,6 +22,7 @@ const STORAGE_KEYS = {
   GOOGLE_USER: '@wealthflow_google_user_v1',
   CLOUD_BACKUP: '@wealthflow_cloud_backup_v1',
   HOME_SECTIONS: '@wealthflow_home_sections_v2',
+  LANGUAGE: '@wealthflow_language_v1',
 };
 
 export const sortTransactionsByDateDesc = (txList) => {
@@ -84,6 +86,7 @@ export const FinanceProvider = ({ children }) => {
   const [lendingRecords, setLendingRecords] = useState([]);
   const [currency, setCurrency] = useState(CURRENCIES[0]);
   const [themeId, setThemeId] = useState('dark');
+  const [language, setLanguageState] = useState('en');
   const [isLoading, setIsLoading] = useState(true);
 
   // Dedicated Friend Categories (specific only to the Friends tab)
@@ -252,6 +255,11 @@ export const FinanceProvider = ({ children }) => {
           setGoogleUser(JSON.parse(savedGUser));
         }
 
+        const savedLang = await AsyncStorage.getItem(STORAGE_KEYS.LANGUAGE);
+        if (savedLang) {
+          setLanguageState(savedLang);
+        }
+
         if (savedSecurity) {
           const parsedSec = JSON.parse(savedSecurity);
           setSecuritySettings(parsedSec);
@@ -346,6 +354,17 @@ export const FinanceProvider = ({ children }) => {
       }
     }
   };
+
+  const changeLanguage = async (newLang) => {
+    setLanguageState(newLang);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.LANGUAGE, newLang);
+    } catch (e) {
+      console.warn('Failed to save language:', e);
+    }
+  };
+
+  const t = (key, defaultText) => getTranslation(language, key, defaultText);
 
   const persistCategories = async (newCats) => {
     setCategories(newCats);
@@ -1335,6 +1354,11 @@ export const FinanceProvider = ({ children }) => {
         updateGoogleAutoBackupSettings,
         exportToGoogleDriveFile: (jsonStr, email) => CloudBackupService.exportToGoogleDriveFile(jsonStr, email),
         pickAndRestoreFromDriveFile: () => CloudBackupService.pickAndRestoreFromDriveFile(),
+        // Language & Localization
+        language,
+        setLanguage: changeLanguage,
+        t,
+        SUPPORTED_LANGUAGES,
         // Confirmation dialog
         confirmDialog,
         closeConfirmDialog: () => setConfirmDialog((prev) => ({ ...prev, visible: false })),

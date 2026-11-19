@@ -1,0 +1,378 @@
+import React, { useState } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Linking,
+  Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
+import { useFinance } from '../../context/FinanceContext';
+
+const FEEDBACK_EMAIL = 'iashwini914@gmail.com';
+
+const FEEDBACK_TOPICS = [
+  { id: 'feature', label: '💡 New Feature Idea' },
+  { id: 'bug', label: '🐛 Bug / Issue Report' },
+  { id: 'ui', label: '🎨 Design & UI Suggestion' },
+  { id: 'praise', label: '⭐ Review & Appreciation' },
+  { id: 'other', label: '💬 General Feedback' },
+];
+
+export const FeedbackModal = ({ visible, onClose }) => {
+  const { theme, t } = useFinance();
+  const [selectedTopic, setSelectedTopic] = useState('feature');
+  const [feedbackText, setFeedbackText] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  if (!visible) return null;
+
+  const topicObj = FEEDBACK_TOPICS.find((tp) => tp.id === selectedTopic) || FEEDBACK_TOPICS[0];
+
+  const handleSendEmail = async () => {
+    const subject = encodeURIComponent(`[WealthFlow Feedback] ${topicObj.label}`);
+    const bodyContent = feedbackText.trim()
+      ? `Hi Ashwini,\n\n${feedbackText.trim()}\n\n---\nSent from WealthFlow Money Tracker App`
+      : `Hi Ashwini,\n\nI would like to share my thoughts on WealthFlow:\n\n---\nSent from WealthFlow Money Tracker App`;
+    const mailtoUrl = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${encodeURIComponent(bodyContent)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        await Linking.openURL(mailtoUrl).catch(() => {
+          Alert.alert(
+            'Feedback Email',
+            `Please send your feedback directly to:\n${FEEDBACK_EMAIL}\n\nSubject: ${topicObj.label}`,
+            [{ text: 'OK' }]
+          );
+        });
+      }
+    } catch (e) {
+      Alert.alert('Email Client Error', `Could not open mail app. You can copy the email: ${FEEDBACK_EMAIL}`);
+    }
+  };
+
+  const handleCopyEmail = async () => {
+    await Clipboard.setStringAsync(FEEDBACK_EMAIL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+    Alert.alert('Email Copied!', `Developer email "${FEEDBACK_EMAIL}" copied to clipboard.`);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+        <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Top Grab Bar Pill */}
+          <View style={styles.dragPillWrap}>
+            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+          </View>
+
+          {/* Modal Header */}
+          <View style={styles.header}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={[styles.iconBadge, { backgroundColor: '#38BDF825' }]}>
+                <Ionicons name="chatbox-ellipses" size={20} color="#38BDF8" />
+              </View>
+              <View>
+                <Text style={[styles.title, { color: theme.text }]}>Share Your Feedback</Text>
+                <Text style={[styles.subTitle, { color: theme.textMuted }]}>
+                  Your thoughts shape the next update
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={22} color={theme.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
+            {/* Inspiring Motivational Banner */}
+            <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+              <View style={styles.quoteTop}>
+                <Ionicons name="sparkles" size={16} color="#38BDF8" />
+                <Text style={styles.quoteBadgeText}>YOUR VOICE POWERS OUR APP 🚀</Text>
+              </View>
+              <Text style={styles.quoteText}>
+                &ldquo;Every great improvement in WealthFlow begins with an honest suggestion from people like you.&rdquo;
+              </Text>
+              <Text style={styles.quoteDesc}>
+                We read every single email personally. Found a glitch? Want a brand new feature? Have an idea to make money tracking even smoother? Tell us directly and watch your ideas come alive in upcoming updates! ❤️
+              </Text>
+            </View>
+
+            {/* Direct Email Pill Box */}
+            <View style={styles.emailPillBox}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.emailPillLabel}>DEVELOPER DIRECT EMAIL</Text>
+                <Text style={styles.emailPillValue} numberOfLines={1}>{FEEDBACK_EMAIL}</Text>
+              </View>
+              <TouchableOpacity onPress={handleCopyEmail} style={styles.copyEmailBtn}>
+                <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
+                <Text style={styles.copyEmailBtnText}>{copied ? 'Copied' : 'Copy Email'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Topic Chips */}
+            <Text style={[styles.sectionHeading, { color: theme.textMuted }]}>
+              WHAT IS YOUR FEEDBACK ABOUT?
+            </Text>
+            <View style={styles.topicRow}>
+              {FEEDBACK_TOPICS.map((tp) => {
+                const isSelected = selectedTopic === tp.id;
+                return (
+                  <TouchableOpacity
+                    key={tp.id}
+                    onPress={() => setSelectedTopic(tp.id)}
+                    style={[
+                      styles.topicChip,
+                      {
+                        backgroundColor: isSelected ? `${theme.primary}25` : theme.inputBg,
+                        borderColor: isSelected ? theme.primary : theme.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.topicChipText,
+                        { color: isSelected ? theme.primaryLight : theme.text },
+                      ]}
+                    >
+                      {tp.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Feedback Message Input */}
+            <Text style={[styles.sectionHeading, { color: theme.textMuted }]}>
+              YOUR MESSAGE OR SUGGESTION (OPTIONAL)
+            </Text>
+            <View style={[styles.textAreaBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+              <TextInput
+                style={[styles.textArea, { color: theme.text }]}
+                placeholder="Write your feedback, feature request, or experience here..."
+                placeholderTextColor={theme.textMuted}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={feedbackText}
+                onChangeText={setFeedbackText}
+              />
+            </View>
+
+            {/* Send Email Action Button */}
+            <TouchableOpacity onPress={handleSendEmail} style={styles.sendEmailBtn}>
+              <Ionicons name="mail" size={18} color="#FFFFFF" />
+              <Text style={styles.sendEmailBtnText}>Open Email App & Send Feedback</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <Text style={[styles.footerNote, { color: theme.textMuted }]}>
+              ⚡ Opens Gmail, Outlook, or your preferred default email app with details pre-filled.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  dialogCard: {
+    width: '100%',
+    maxHeight: '90%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  dragPillWrap: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  dragPill: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  iconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  subTitle: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  scrollBody: {
+    paddingBottom: 20,
+  },
+  quoteCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
+  },
+  quoteTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  quoteBadgeText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  quoteText: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  quoteDesc: {
+    color: '#94A3B8',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  emailPillBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 14,
+  },
+  emailPillLabel: {
+    color: '#94A3B8',
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  emailPillValue: {
+    color: '#38BDF8',
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: 'monospace',
+    marginTop: 2,
+  },
+  copyEmailBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  copyEmailBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  sectionHeading: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  topicRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  topicChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  topicChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  textAreaBox: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 14,
+    height: 100,
+  },
+  textArea: {
+    fontSize: 13,
+    height: '100%',
+    padding: 0,
+  },
+  sendEmailBtn: {
+    backgroundColor: '#0284C7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 14,
+    gap: 8,
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 8,
+  },
+  sendEmailBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  footerNote: {
+    textAlign: 'center',
+    fontSize: 10,
+    marginTop: 2,
+    lineHeight: 14,
+  },
+});

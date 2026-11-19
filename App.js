@@ -28,6 +28,8 @@ import { BudgetModal } from './src/components/modals/BudgetModal';
 import { RecurringModal } from './src/components/modals/RecurringModal';
 import { AccountModal } from './src/components/modals/AccountModal';
 import { DonationModal } from './src/components/modals/DonationModal';
+import { LanguageModal } from './src/components/modals/LanguageModal';
+import { FeedbackModal } from './src/components/modals/FeedbackModal';
 import { ConfirmDeleteModal } from './src/components/modals/ConfirmDeleteModal';
 import { LockScreen } from './src/components/security/LockScreen';
 
@@ -40,6 +42,9 @@ function MainApp() {
     isLoading,
     confirmDialog,
     closeConfirmDialog,
+    language,
+    t,
+    SUPPORTED_LANGUAGES,
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -61,6 +66,10 @@ function MainApp() {
   const [editingRecurring, setEditingRecurring] = useState(null);
 
   const [donationModalVisible, setDonationModalVisible] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+
+  const currentLangObj = SUPPORTED_LANGUAGES?.find((l) => l.id === language) || { nativeName: 'English', flag: '🇬🇧' };
 
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {
@@ -90,6 +99,14 @@ function MainApp() {
         setDonationModalVisible(false);
         return true;
       }
+      if (languageModalVisible) {
+        setLanguageModalVisible(false);
+        return true;
+      }
+      if (feedbackModalVisible) {
+        setFeedbackModalVisible(false);
+        return true;
+      }
       if (drawerOpen) {
         setDrawerOpen(false);
         return true;
@@ -111,6 +128,8 @@ function MainApp() {
     accountModalVisible,
     recurringModalVisible,
     donationModalVisible,
+    languageModalVisible,
+    feedbackModalVisible,
     drawerOpen,
     activeTab,
   ]);
@@ -275,11 +294,11 @@ function MainApp() {
   };
 
   const navItems = [
-    { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
-    { id: 'analytics', label: 'Analysis', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
-    { id: 'lending', label: 'Friends', icon: 'swap-horizontal-outline', activeIcon: 'swap-horizontal' },
-    { id: 'budgets', label: 'Budgets', icon: 'shield-outline', activeIcon: 'shield' },
-    { id: 'accounts', label: 'Account', icon: 'wallet-outline', activeIcon: 'wallet' },
+    { id: 'dashboard', label: t('home', 'Home'), icon: 'home-outline', activeIcon: 'home' },
+    { id: 'analytics', label: t('transactions', 'Analysis'), icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
+    { id: 'lending', label: t('friends', 'Friends'), icon: 'swap-horizontal-outline', activeIcon: 'swap-horizontal' },
+    { id: 'budgets', label: t('budget_goals', 'Budgets'), icon: 'shield-outline', activeIcon: 'shield' },
+    { id: 'accounts', label: t('accounts', 'Account'), icon: 'wallet-outline', activeIcon: 'wallet' },
   ];
 
   return (
@@ -395,6 +414,18 @@ function MainApp() {
         onClose={() => setDonationModalVisible(false)}
       />
 
+      {/* App Language Selection Modal */}
+      <LanguageModal
+        visible={languageModalVisible}
+        onClose={() => setLanguageModalVisible(false)}
+      />
+
+      {/* User Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackModalVisible}
+        onClose={() => setFeedbackModalVisible(false)}
+      />
+
       {/* Slide-out Navigation Drawer from Top-Left 3-Bar Menu */}
       <Modal
         visible={drawerOpen}
@@ -435,7 +466,7 @@ function MainApp() {
               >
                 <Ionicons name="home-outline" size={20} color={activeTab === 'dashboard' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'dashboard' ? theme.primaryLight : theme.text }]}>
-                  Home Dashboard
+                  {t('home_dashboard', 'Home Dashboard')}
                 </Text>
               </TouchableOpacity>
 
@@ -448,7 +479,7 @@ function MainApp() {
               >
                 <Ionicons name="stats-chart-outline" size={20} color={activeTab === 'analytics' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'analytics' ? theme.primaryLight : theme.text }]}>
-                  Analysis & Breakdown
+                  {t('transactions_ledger', 'Analysis & Breakdown')}
                 </Text>
               </TouchableOpacity>
 
@@ -461,7 +492,7 @@ function MainApp() {
               >
                 <Ionicons name="swap-horizontal-outline" size={20} color={activeTab === 'lending' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'lending' ? theme.primaryLight : theme.text }]}>
-                  Friends & Loans
+                  {t('friends_split', 'Friends & Loans')}
                 </Text>
               </TouchableOpacity>
 
@@ -474,7 +505,7 @@ function MainApp() {
               >
                 <Ionicons name="shield-outline" size={20} color={activeTab === 'budgets' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'budgets' ? theme.primaryLight : theme.text }]}>
-                  Budgets & Goals
+                  {t('budget_goals', 'Budgets & Goals')}
                 </Text>
               </TouchableOpacity>
 
@@ -487,7 +518,7 @@ function MainApp() {
               >
                 <Ionicons name="wallet-outline" size={20} color={activeTab === 'accounts' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'accounts' ? theme.primaryLight : theme.text }]}>
-                  Account & Categories
+                  {t('account_categories', 'Account & Categories')}
                 </Text>
               </TouchableOpacity>
 
@@ -500,7 +531,7 @@ function MainApp() {
               >
                 <Ionicons name="repeat-outline" size={20} color="#8B5CF6" />
                 <Text style={[styles.drawerItemText, { color: theme.text }]}>
-                  Recurring Bills & Pay
+                  {t('recurring_bills', 'Recurring Bills & Pay')}
                 </Text>
               </TouchableOpacity>
 
@@ -515,7 +546,7 @@ function MainApp() {
               >
                 <Ionicons name="settings-outline" size={20} color={activeTab === 'settings' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'settings' ? theme.primaryLight : theme.text }]}>
-                  Setting
+                  {t('setting', 'Setting')}
                 </Text>
               </TouchableOpacity>
 
@@ -528,8 +559,29 @@ function MainApp() {
               >
                 <Ionicons name="heart" size={20} color="#F43F5E" />
                 <Text style={[styles.drawerItemText, { color: '#F43F5E', fontWeight: '700' }]}>
-                  Donate & Support ❤️
+                  {t('donate_support', 'Donate & Support ❤️')}
                 </Text>
+              </TouchableOpacity>
+
+              {/* App Language Option directly below Donate & Support */}
+              <TouchableOpacity
+                onPress={() => {
+                  setDrawerOpen(false);
+                  setLanguageModalVisible(true);
+                }}
+                style={styles.drawerItem}
+              >
+                <Ionicons name="language" size={20} color="#06B6D4" />
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginRight: 4 }}>
+                  <Text style={[styles.drawerItemText, { color: theme.text }]}>
+                    {t('app_language', 'App Language')} 🌐
+                  </Text>
+                  <View style={{ backgroundColor: `${theme.primary}25`, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ color: theme.primaryLight, fontSize: 11, fontWeight: '700' }}>
+                      {currentLangObj?.flag} {currentLangObj?.nativeName || 'English'}
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -541,15 +593,36 @@ function MainApp() {
               >
                 <Ionicons name="lock-closed-outline" size={20} color={theme.danger} />
                 <Text style={[styles.drawerItemText, { color: theme.danger }]}>
-                  Lock App Now
+                  {t('lock_app_now', 'Lock App Now')}
                 </Text>
+              </TouchableOpacity>
+
+              {/* Send Feedback Option directly below Lock App Now */}
+              <TouchableOpacity
+                onPress={() => {
+                  setDrawerOpen(false);
+                  setFeedbackModalVisible(true);
+                }}
+                style={styles.drawerItem}
+              >
+                <Ionicons name="chatbox-ellipses-outline" size={20} color="#38BDF8" />
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginRight: 4 }}>
+                  <Text style={[styles.drawerItemText, { color: theme.text }]}>
+                    {t('send_feedback', 'Send Feedback')} 💬
+                  </Text>
+                  <View style={{ backgroundColor: '#38BDF820', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ color: '#38BDF8', fontSize: 11, fontWeight: '700' }}>
+                      Email
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             </ScrollView>
 
             {/* Drawer Footer */}
             <View style={[styles.drawerFooter, { borderTopColor: theme.border }]}>
               <Text style={[styles.drawerFooterText, { color: theme.textMuted }]}>
-                WealthFlow v2.2.0 • Offline Ready
+                WealthFlow v2.2.0 • {t('offline_ready', 'Offline Ready')}
               </Text>
             </View>
           </View>
