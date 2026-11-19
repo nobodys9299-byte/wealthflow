@@ -26,7 +26,7 @@ const BANK_DETAILS = {
 };
 
 export const DonationModal = ({ visible, onClose }) => {
-  const { theme, currency } = useFinance();
+  const { theme, currency, t } = useFinance();
   const [selectedAmount, setSelectedAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState('');
   const [copiedUpi, setCopiedUpi] = useState(false);
@@ -99,9 +99,9 @@ export const DonationModal = ({ visible, onClose }) => {
                 <Ionicons name="heart" size={20} color="#F43F5E" />
               </View>
               <View>
-                <Text style={[styles.title, { color: theme.text }]}>Support & Donate</Text>
+                <Text style={[styles.title, { color: theme.text }]}>{t('donate_title', 'Support & Donate')}</Text>
                 <Text style={[styles.subTitle, { color: theme.textMuted }]}>
-                  Help keep WealthFlow free & ad-free
+                  {t('donate_sub', 'Help keep WealthFlow free & ad-free')}
                 </Text>
               </View>
             </View>
@@ -115,19 +115,19 @@ export const DonationModal = ({ visible, onClose }) => {
             <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
               <View style={styles.quoteTop}>
                 <Ionicons name="sparkles" size={16} color="#F59E0B" />
-                <Text style={styles.quoteBadgeText}>DEVELOPER APPRECIATION</Text>
+                <Text style={styles.quoteBadgeText}>{t('developer_appreciation', 'DEVELOPER APPRECIATION')}</Text>
               </View>
               <Text style={styles.quoteText}>
-                &ldquo;No act of kindness, no matter how small, is ever wasted. Generosity is the heartbeat of community.&rdquo;
+                &ldquo;{t('quote_text', 'No act of kindness, no matter how small, is ever wasted. Generosity is the heartbeat of community.')}&rdquo;
               </Text>
               <Text style={styles.quoteDesc}>
-                Your voluntary contribution directly powers independent app development, keeping WealthFlow 100% free, private, and continuously updated for everyone. Thank you for your heartfelt support! ❤️
+                {t('quote_desc', 'Your voluntary contribution directly powers independent app development, keeping WealthFlow 100% free, private, and continuously updated for everyone. Thank you for your heartfelt support! ❤️')}
               </Text>
             </View>
 
             {/* Quick Amount Selector */}
             <Text style={[styles.sectionHeading, { color: theme.textMuted }]}>
-              CHOOSE DONATION AMOUNT
+              {t('choose_donation_amount', 'CHOOSE DONATION AMOUNT')}
             </Text>
             <View style={styles.amountsRow}>
               {PRESET_AMOUNTS.map((amt) => {

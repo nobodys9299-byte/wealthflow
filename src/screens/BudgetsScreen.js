@@ -77,7 +77,7 @@ export const BudgetsScreen = ({
             <Ionicons name="menu-outline" size={24} color={theme.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>{t('budget_goals', 'Budgets & Goals')}</Text>
+            <Text style={[styles.screenTitle, { color: theme.text }]} numberOfLines={1}>{t('budgets', 'Budgets')}</Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
               {t('Monthly limits & recurring subscriptions', 'Monthly limits & recurring subscriptions')}
             </Text>

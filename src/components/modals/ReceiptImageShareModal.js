@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
+import QRCode from 'qrcode';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { getCategoryById } from '../../constants/categories';
@@ -26,7 +27,7 @@ export const ReceiptImageShareModal = ({
   data,
   type = 'transaction', // 'transaction' | 'friend' | 'account'
 }) => {
-  const { theme, currency, accounts, categories, userUpiSettings } = useFinance();
+  const { theme, currency, accounts, categories, userUpiSettings, t } = useFinance();
   const cardRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -104,6 +105,23 @@ export const ReceiptImageShareModal = ({
   const handleExportA4Pdf = async () => {
     try {
       setIsGeneratingPdf(true);
+
+      // Generate vector SVG QR code offline (pure JS in memory, no remote HTTP request)
+      let qrSvg = '';
+      try {
+        qrSvg = await QRCode.toString(upiLink, {
+          type: 'svg',
+          width: 115,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#ffffff',
+          },
+        });
+      } catch (qrErr) {
+        console.warn('QR SVG generation fallback:', qrErr);
+      }
+
       const title = type === 'friend'
         ? `Lending Statement - ${data.name || 'Friend'}`
         : type === 'account'
@@ -285,8 +303,10 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' button above or scan QR with Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</div>
               </div>
               <div style="text-align: center;">
-                <a href="${upiLink}" style="text-decoration: none;">
-                  <img src="${qrCodeUrl}" width="115" height="115" style="border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF;" alt="UPI QR" />
+                <a href="${upiLink}" style="text-decoration: none; display: inline-block;">
+                  <div style="width: 115px; height: 115px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF; overflow: hidden;">
+                    ${qrSvg || `<img src="${qrCodeUrl}" width="115" height="115" onerror="this.style.display='none'" alt="UPI QR" />`}
+                  </div>
                   <div style="font-size: 9px; font-weight: 800; color: #0284C7; margin-top: 3px;">SCAN & PAY</div>
                 </a>
               </div>
@@ -300,7 +320,11 @@ export const ReceiptImageShareModal = ({
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html });
+      const printPromise = Print.printToFileAsync({ html });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF generation timed out. Please try again.')), 10000)
+      );
+      const { uri } = await Promise.race([printPromise, timeoutPromise]);
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
@@ -333,7 +357,9 @@ export const ReceiptImageShareModal = ({
               <View style={[styles.shareIconBadge, { backgroundColor: '#25D36625' }]}>
                 <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
               </View>
-              <Text style={[styles.dialogTitle, { color: theme.text }]}>Share as WhatsApp Image</Text>
+              <Text style={[styles.dialogTitle, { color: theme.text }]}>
+                {t('share_as_image', 'Share as WhatsApp Image')}
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={theme.textMuted} />
@@ -716,7 +742,7 @@ export const ReceiptImageShareModal = ({
                 ) : (
                   <>
                     <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
-                    <Text style={styles.shareWhatsAppText}>Share Image</Text>
+                    <Text style={styles.shareWhatsAppText}>{t('share_image', 'Share Image')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -731,7 +757,7 @@ export const ReceiptImageShareModal = ({
                 ) : (
                   <>
                     <Ionicons name="document-text-outline" size={18} color="#FFF" />
-                    <Text style={styles.exportPdfText}>Export A4 PDF</Text>
+                    <Text style={styles.exportPdfText}>{t('export_a4_pdf', 'Export A4 PDF')}</Text>
                   </>
                 )}
               </TouchableOpacity>

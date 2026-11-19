@@ -7,21 +7,21 @@ import { getCategoryById } from '../constants/categories';
 import { CategoryVisual } from './common/CategoryVisual';
 
 const BudgetCardComponent = ({ budget, onEdit, onDelete }) => {
-  const { theme, currency } = useFinance();
+  const { theme, currency, t } = useFinance();
   const category = getCategoryById(budget.categoryId, 'expense');
 
   let statusColor = theme.success;
   let statusBadgeBg = theme.successBg;
-  let statusText = 'On Track';
+  let statusText = t('on_track', 'On Track');
 
   if (budget.status === 'exceeded') {
     statusColor = theme.danger;
     statusBadgeBg = theme.dangerBg;
-    statusText = 'Over Budget!';
+    statusText = t('over_budget', 'Over Budget!');
   } else if (budget.status === 'warning') {
     statusColor = theme.warning;
     statusBadgeBg = theme.warningBg;
-    statusText = 'Near Limit';
+    statusText = t('near_limit', 'Near Limit');
   }
 
   return (
@@ -38,9 +38,9 @@ const BudgetCardComponent = ({ budget, onEdit, onDelete }) => {
         <View style={[styles.catInfo, { flex: 1, marginRight: 6 }]}>
           <CategoryVisual category={category} size={44} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.catName, { color: theme.text }]} numberOfLines={1}>{category.name}</Text>
+            <Text style={[styles.catName, { color: theme.text }]} numberOfLines={1}>{t(category.name, category.name)}</Text>
             <Text style={[styles.subText, { color: theme.textMuted }]} numberOfLines={1}>
-              Limit: {formatCurrency(budget.limit, currency.symbol)} / mo
+              {t('limit', 'Limit')}: {formatCurrency(budget.limit, currency.symbol)} / mo
             </Text>
           </View>
         </View>
@@ -78,13 +78,13 @@ const BudgetCardComponent = ({ budget, onEdit, onDelete }) => {
       {/* Bottom Metrics */}
       <View style={styles.metricsRow}>
         <Text style={[styles.metricSpent, { color: theme.text }]} numberOfLines={1}>
-          Spent: <Text style={{ fontWeight: '800' }}>{formatCurrency(budget.spent, currency.symbol)}</Text>
+          {t('spent', 'Spent')}: <Text style={{ fontWeight: '800' }}>{formatCurrency(budget.spent, currency.symbol)}</Text>
         </Text>
         <Text style={[styles.metricPercent, { color: statusColor }]} numberOfLines={1}>
           {budget.rawPercent}%
         </Text>
         <Text style={[styles.metricRemaining, { color: theme.textMuted }]} numberOfLines={1}>
-          {budget.status === 'exceeded' ? 'Over: ' : 'Left: '}
+          {budget.status === 'exceeded' ? `${t('over', 'Over')}: ` : `${t('left', 'Left')}: `}
           <Text style={{ fontWeight: '700', color: budget.status === 'exceeded' ? theme.danger : theme.text }}>
             {formatCurrency(Math.abs(budget.limit - budget.spent), currency.symbol)}
           </Text>

@@ -81,7 +81,6 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       if (selectedDetail) {
         setSelectedDetail(null);
         setDetailSearch('');
-        setIsDetailExpanded(false);
         return true;
       }
       if (showAdvancedFilters) {

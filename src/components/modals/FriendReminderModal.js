@@ -25,6 +25,7 @@ export const FriendReminderModal = ({
     currency,
     userUpiSettings,
     updateUpiSettings,
+    t,
   } = useFinance();
 
   const [reminderChannel, setReminderChannel] = useState('whatsapp'); // 'whatsapp' | 'sms'
@@ -155,7 +156,7 @@ export const FriendReminderModal = ({
               )}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-                  Payment Reminder
+                  {t('payment_reminder', 'Payment Reminder')}
                 </Text>
                 <Text style={[styles.subtitle, { color: theme.textMuted }]} numberOfLines={1}>
                   Direct UPI link for {friend.name}

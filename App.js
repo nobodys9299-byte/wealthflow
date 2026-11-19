@@ -295,10 +295,10 @@ function MainApp() {
 
   const navItems = [
     { id: 'dashboard', label: t('home', 'Home'), icon: 'home-outline', activeIcon: 'home' },
-    { id: 'analytics', label: t('transactions', 'Analysis'), icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
+    { id: 'analytics', label: t('transactions', 'Transactions'), icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
     { id: 'lending', label: t('friends', 'Friends'), icon: 'swap-horizontal-outline', activeIcon: 'swap-horizontal' },
-    { id: 'budgets', label: t('budget_goals', 'Budgets'), icon: 'shield-outline', activeIcon: 'shield' },
-    { id: 'accounts', label: t('accounts', 'Account'), icon: 'wallet-outline', activeIcon: 'wallet' },
+    { id: 'budgets', label: t('budgets', 'Budgets'), icon: 'shield-outline', activeIcon: 'shield' },
+    { id: 'accounts', label: t('accounts', 'Accounts'), icon: 'wallet-outline', activeIcon: 'wallet' },
   ];
 
   return (
@@ -505,7 +505,7 @@ function MainApp() {
               >
                 <Ionicons name="shield-outline" size={20} color={activeTab === 'budgets' ? theme.primaryLight : theme.text} />
                 <Text style={[styles.drawerItemText, { color: activeTab === 'budgets' ? theme.primaryLight : theme.text }]}>
-                  {t('budget_goals', 'Budgets & Goals')}
+                  {t('budgets', 'Budgets')}
                 </Text>
               </TouchableOpacity>
 

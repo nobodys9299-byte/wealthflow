@@ -11,7 +11,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useFinance } from '../../context/FinanceContext';
 
 export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
-  const { theme } = useFinance();
+  const { theme, t } = useFinance();
   const [pin, setPin] = useState('');
   const [hasBiometrics, setHasBiometrics] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -38,8 +38,8 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
   const triggerBiometricAuth = async () => {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock WealthFlow with Biometrics',
-        fallbackLabel: 'Use PIN',
+        promptMessage: t('unlock_biometrics', 'Unlock WealthFlow with Biometrics'),
+        fallbackLabel: t('use_pin', 'Use PIN'),
       });
       if (result.success) {
         onUnlock();
@@ -60,7 +60,7 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
         setTimeout(onUnlock, 120);
       } else {
         setTimeout(() => {
-          setErrorMsg('Incorrect PIN. Please try again.');
+          setErrorMsg(t('incorrect_pin', 'Incorrect PIN. Please try again.'));
           setPin('');
         }, 180);
       }
@@ -86,9 +86,9 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
         <View style={[styles.shieldIcon, { backgroundColor: `${theme.primary}25` }]}>
           <Ionicons name="lock-closed" size={32} color={theme.primaryLight} />
         </View>
-        <Text style={[styles.title, { color: theme.text }]}>WealthFlow Locked</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('locked', 'WealthFlow Locked')}</Text>
         <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-          Enter your {targetLength}-digit security PIN to continue
+          {t('enter_pin_to_continue', `Enter your ${targetLength}-digit security PIN to continue`)}
         </Text>
       </View>
 

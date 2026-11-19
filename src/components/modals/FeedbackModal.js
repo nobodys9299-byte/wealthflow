@@ -82,9 +82,9 @@ export const FeedbackModal = ({ visible, onClose }) => {
                 <Ionicons name="chatbox-ellipses" size={20} color="#38BDF8" />
               </View>
               <View>
-                <Text style={[styles.title, { color: theme.text }]}>Share Your Feedback</Text>
+                <Text style={[styles.title, { color: theme.text }]}>{t('share_feedback', 'Share Your Feedback')}</Text>
                 <Text style={[styles.subTitle, { color: theme.textMuted }]}>
-                  Your thoughts shape the next update
+                  {t('feedback_sub', 'Your thoughts shape the next update')}
                 </Text>
               </View>
             </View>
@@ -98,31 +98,31 @@ export const FeedbackModal = ({ visible, onClose }) => {
             <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
               <View style={styles.quoteTop}>
                 <Ionicons name="sparkles" size={16} color="#38BDF8" />
-                <Text style={styles.quoteBadgeText}>YOUR VOICE POWERS OUR APP 🚀</Text>
+                <Text style={styles.quoteBadgeText}>{t('your_voice_powers', 'YOUR VOICE POWERS OUR APP 🚀')}</Text>
               </View>
               <Text style={styles.quoteText}>
-                &ldquo;Every great improvement in WealthFlow begins with an honest suggestion from people like you.&rdquo;
+                &ldquo;{t('feedback_quote', 'Every great improvement in WealthFlow begins with an honest suggestion from people like you.')}&rdquo;
               </Text>
               <Text style={styles.quoteDesc}>
-                We read every single email personally. Found a glitch? Want a brand new feature? Have an idea to make money tracking even smoother? Tell us directly and watch your ideas come alive in upcoming updates! ❤️
+                {t('feedback_desc', 'We read every single email personally. Found a glitch? Want a brand new feature? Have an idea to make money tracking even smoother? Tell us directly and watch your ideas come alive in upcoming updates! ❤️')}
               </Text>
             </View>
 
             {/* Direct Email Pill Box */}
             <View style={styles.emailPillBox}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={styles.emailPillLabel}>DEVELOPER DIRECT EMAIL</Text>
+                <Text style={styles.emailPillLabel}>{t('developer_email', 'DEVELOPER DIRECT EMAIL')}</Text>
                 <Text style={styles.emailPillValue} numberOfLines={1}>{FEEDBACK_EMAIL}</Text>
               </View>
               <TouchableOpacity onPress={handleCopyEmail} style={styles.copyEmailBtn}>
                 <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
-                <Text style={styles.copyEmailBtnText}>{copied ? 'Copied' : 'Copy Email'}</Text>
+                <Text style={styles.copyEmailBtnText}>{copied ? t('copied', 'Copied') : t('copy_email', 'Copy Email')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Topic Chips */}
             <Text style={[styles.sectionHeading, { color: theme.textMuted }]}>
-              WHAT IS YOUR FEEDBACK ABOUT?
+              {t('what_is_feedback_about', 'WHAT IS YOUR FEEDBACK ABOUT?')}
             </Text>
             <View style={styles.topicRow}>
               {FEEDBACK_TOPICS.map((tp) => {
@@ -154,12 +154,12 @@ export const FeedbackModal = ({ visible, onClose }) => {
 
             {/* Feedback Message Input */}
             <Text style={[styles.sectionHeading, { color: theme.textMuted }]}>
-              YOUR MESSAGE OR SUGGESTION (OPTIONAL)
+              {t('your_message_suggestion', 'YOUR MESSAGE OR SUGGESTION (OPTIONAL)')}
             </Text>
             <View style={[styles.textAreaBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
               <TextInput
                 style={[styles.textArea, { color: theme.text }]}
-                placeholder="Write your feedback, feature request, or experience here..."
+                placeholder={t('write_feedback_placeholder', 'Write your feedback, feature request, or experience here...')}
                 placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={4}
@@ -172,7 +172,7 @@ export const FeedbackModal = ({ visible, onClose }) => {
             {/* Send Email Action Button */}
             <TouchableOpacity onPress={handleSendEmail} style={styles.sendEmailBtn}>
               <Ionicons name="mail" size={18} color="#FFFFFF" />
-              <Text style={styles.sendEmailBtnText}>Open Email App & Send Feedback</Text>
+              <Text style={styles.sendEmailBtnText}>{t('open_email_app', 'Open Email App & Send Feedback')}</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
             </TouchableOpacity>
 

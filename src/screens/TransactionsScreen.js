@@ -8,6 +8,7 @@ import {
   ScrollView,
   FlatList,
   BackHandler,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';

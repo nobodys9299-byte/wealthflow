@@ -16,7 +16,7 @@ const MONTH_NAMES = [
 ];
 
 export const CalendarDatePickerModal = ({ visible, onClose, onSelectDate, selectedDate }) => {
-  const { theme } = useFinance();
+  const { theme, t } = useFinance();
 
   const initial = selectedDate ? new Date(selectedDate) : new Date();
   const [viewYear, setViewYear] = useState(initial.getFullYear());
@@ -66,7 +66,7 @@ export const CalendarDatePickerModal = ({ visible, onClose, onSelectDate, select
             </TouchableOpacity>
 
             <Text style={[styles.monthYearText, { color: theme.text }]}>
-              {MONTH_NAMES[viewMonth]} {viewYear}
+              {t(MONTH_NAMES[viewMonth].toLowerCase(), MONTH_NAMES[viewMonth])} {viewYear}
             </Text>
 
             <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, { backgroundColor: theme.cardAlt }]}>
@@ -131,11 +131,11 @@ export const CalendarDatePickerModal = ({ visible, onClose, onSelectDate, select
               }}
               style={[styles.todayBtn, { backgroundColor: theme.cardAlt }]}
             >
-              <Text style={[styles.todayBtnText, { color: theme.primaryLight }]}>Select Today</Text>
+              <Text style={[styles.todayBtnText, { color: theme.primaryLight }]}>{t('select_today', 'Select Today')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
-              <Text style={[styles.cancelBtnText, { color: theme.textMuted }]}>Close</Text>
+              <Text style={[styles.cancelBtnText, { color: theme.textMuted }]}>{t('close', 'Close')}</Text>
             </TouchableOpacity>
           </View>
         </View>

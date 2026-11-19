@@ -7,7 +7,7 @@ import { getCategoryById } from '../constants/categories';
 import { CategoryVisual } from './common/CategoryVisual';
 
 const TransactionItemComponent = ({ transaction, onPress, onEdit, onDelete }) => {
-  const { theme, currency, accounts } = useFinance();
+  const { theme, currency, accounts, t } = useFinance();
   const isIncome = transaction.type === 'income';
   const category = getCategoryById(transaction.categoryId, transaction.type);
   const account = accounts.find((a) => a.id === transaction.accountId);
@@ -42,7 +42,7 @@ const TransactionItemComponent = ({ transaction, onPress, onEdit, onDelete }) =>
         </Text>
         <View style={styles.metaRow}>
           <Text style={[styles.categoryName, { color: category.color }]} numberOfLines={1}>
-            {category.name}
+            {t(category.name, category.name)}
           </Text>
           {account && (
             <>

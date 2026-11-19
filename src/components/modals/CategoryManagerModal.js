@@ -41,7 +41,7 @@ const COLOR_OPTIONS = [
 ];
 
 export const CategoryManagerModal = ({ visible, onClose }) => {
-  const { theme, categories, addCategory, editCategory, deleteCategory, resetCategoriesToDefault } = useFinance();
+  const { theme, categories, addCategory, editCategory, deleteCategory, resetCategoriesToDefault, t } = useFinance();
 
   const [activeTab, setActiveTab] = useState('expense'); // 'expense' | 'income'
   const [showAddForm, setShowAddForm] = useState(false);
@@ -135,10 +135,10 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="pricetags-outline" size={20} color={theme.primaryLight} />
-                <Text style={[styles.title, { color: theme.text }]}>Manage Categories</Text>
+                <Text style={[styles.title, { color: theme.text }]}>{t('manage_categories', 'Manage Categories')}</Text>
               </View>
               <Text style={[styles.subText, { color: theme.textMuted }]}>
-                {categoryList.length} {activeTab} categories • Edit or delete anytime
+                {categoryList.length} {t(activeTab, activeTab)} {t('categories', 'categories')} • {t('edit_or_delete_anytime', 'Edit or delete anytime')}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -166,7 +166,7 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
                   { color: activeTab === 'expense' ? '#FFF' : theme.textMuted },
                 ]}
               >
-                Expense Categories ({categories.expense?.length || 0})
+                {t('expense_categories', 'Expense Categories')} ({categories.expense?.length || 0})
               </Text>
             </TouchableOpacity>
 
@@ -188,7 +188,7 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
                   { color: activeTab === 'income' ? '#FFF' : theme.textMuted },
                 ]}
               >
-                Income Categories ({categories.income?.length || 0})
+                {t('income_categories', 'Income Categories')} ({categories.income?.length || 0})
               </Text>
             </TouchableOpacity>
           </View>
@@ -377,9 +377,9 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
                       <Text style={{ fontSize: 20 }}>{cat.emoji || '🏷️'}</Text>
                     </View>
                     <View>
-                      <Text style={[styles.catName, { color: theme.text }]}>{cat.name}</Text>
+                      <Text style={[styles.catName, { color: theme.text }]}>{t(cat.name, cat.name)}</Text>
                       {cat.isCustom && (
-                        <Text style={[styles.customBadge, { color: theme.primaryLight }]}>Custom</Text>
+                        <Text style={[styles.customBadge, { color: theme.primaryLight }]}>{t('custom', 'Custom')}</Text>
                       )}
                     </View>
                   </View>
@@ -392,7 +392,7 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
                       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     >
                       <Ionicons name="create-outline" size={15} color={theme.primaryLight} />
-                      <Text style={[styles.actionBtnText, { color: theme.primaryLight }]}>Edit</Text>
+                      <Text style={[styles.actionBtnText, { color: theme.primaryLight }]}>{t('edit', 'Edit')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -401,7 +401,7 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
                       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     >
                       <Ionicons name="trash-outline" size={15} color={theme.danger} />
-                      <Text style={[styles.actionBtnText, { color: theme.danger }]}>Delete</Text>
+                      <Text style={[styles.actionBtnText, { color: theme.danger }]}>{t('delete', 'Delete')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

@@ -255,7 +255,11 @@ const exportAndSharePDF = async (html, filename) => {
       return { success: true };
     }
 
-    const { uri } = await Print.printToFileAsync({ html });
+    const printPromise = Print.printToFileAsync({ html });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('PDF generation timed out. Please try again.')), 10000)
+    );
+    const { uri } = await Promise.race([printPromise, timeoutPromise]);
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
         UTI: '.pdf',
