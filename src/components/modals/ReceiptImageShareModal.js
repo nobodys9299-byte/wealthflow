@@ -329,9 +329,11 @@ export const ReceiptImageShareModal = ({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={StyleSheet.absoluteFillObject} />
-        </TouchableWithoutFeedback>
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPress={onClose}
+        />
         <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
           <View style={styles.dragPillWrap}>

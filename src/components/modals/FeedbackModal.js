@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Modal,
   View,
@@ -10,7 +10,6 @@ import {
   Linking,
   KeyboardAvoidingView,
   Platform,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -33,6 +32,7 @@ export const FeedbackModal = ({ visible, onClose }) => {
   const [feedbackText, setFeedbackText] = useState('');
   const [copied, setCopied] = useState(false);
   const [modalAlert, setModalAlert] = useState(null);
+  const scrollRef = useRef(null);
 
   if (!visible) return null;
 
@@ -77,13 +77,15 @@ export const FeedbackModal = ({ visible, onClose }) => {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={onClose}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={onClose}
+          />
 
           <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Top Grab Bar Pill */}
@@ -110,9 +112,10 @@ export const FeedbackModal = ({ visible, onClose }) => {
             </View>
 
             <ScrollView
+              ref={scrollRef}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.scrollBody, { paddingBottom: 30 }]}
+              contentContainerStyle={[styles.scrollBody, { paddingBottom: 60 }]}
             >
             {/* Inspiring Motivational Banner */}
             <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
@@ -186,6 +189,11 @@ export const FeedbackModal = ({ visible, onClose }) => {
                 textAlignVertical="top"
                 value={feedbackText}
                 onChangeText={setFeedbackText}
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }, 250);
+                }}
               />
             </View>
 

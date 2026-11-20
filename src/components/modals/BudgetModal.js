@@ -49,13 +49,16 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={StyleSheet.absoluteFillObject} />
-        </TouchableWithoutFeedback>
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
           <View style={styles.dragPillWrap}>
             <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
@@ -136,8 +139,9 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
             <Text style={styles.saveBtnText}>{t('save', 'Save Budget')}</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      </View>
+    </KeyboardAvoidingView>
+  </Modal>
   );
 };
 

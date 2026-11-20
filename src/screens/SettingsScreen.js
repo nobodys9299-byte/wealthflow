@@ -18,6 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Clipboard from 'expo-clipboard';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 import { formatDateDisplay, formatDateTimeDisplay } from '../utils/formatters';
@@ -125,16 +126,21 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       // Allow modal dismiss transition to finish cleanly before opening SAF dialog
       await new Promise((resolve) => setTimeout(resolve, 250));
 
-      if (Platform.OS === 'android' && FileSystem.StorageAccessFramework) {
+      // Android: Native ACTION_CREATE_DOCUMENT picker (Screenshot 5 "Save to" with SAVE button)
+      if (Platform.OS === 'android') {
         try {
-          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-          if (permissions.granted) {
-            const uri = await FileSystem.StorageAccessFramework.createFileAsync(
-              permissions.directoryUri,
-              fileName,
-              'text/csv'
-            );
-            await FileSystem.writeAsStringAsync(uri, csv, {
+          const result = await IntentLauncher.startActivityAsync(
+            'android.intent.action.CREATE_DOCUMENT',
+            {
+              type: 'text/csv',
+              category: ['android.intent.category.OPENABLE'],
+              extra: {
+                'android.intent.extra.TITLE': fileName,
+              },
+            }
+          );
+          if (result && result.resultCode === -1 && result.data) {
+            await FileSystem.writeAsStringAsync(result.data, csv, {
               encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
             });
             showCustomAlert(
@@ -143,11 +149,12 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
               { type: 'success' }
             );
             return;
-          } else {
+          } else if (result && result.resultCode === 0) {
+            // User cancelled
             return;
           }
-        } catch (safErr) {
-          console.warn('SAF error, falling back to Sharing:', safErr);
+        } catch (intentErr) {
+          console.warn('IntentLauncher CREATE_DOCUMENT error, falling back:', intentErr);
         }
       }
 
@@ -913,10 +920,15 @@ Status: Healthy. No fatal crash exceptions recorded.
       {/* PIN Setup Modal (4 or 6 digits) */}
       <Modal visible={pinModalVisible} transparent animationType="fade" onRequestClose={() => setPinModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={() => setPinModalVisible(false)}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setPinModalVisible(false)}
+          />
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onStartShouldSetResponder={() => true}
+          >
             <Text style={[styles.modalTitle, { color: theme.text }]}>Set Passcode</Text>
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
               Choose 4 or 6 digits for your lock screen PIN
@@ -995,11 +1007,16 @@ Status: Healthy. No fatal crash exceptions recorded.
       {/* CSV Export / Import Modal */}
       <Modal visible={csvModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCsvModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={() => setCsvModalVisible(false)}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setCsvModalVisible(false)}
+          />
 
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onStartShouldSetResponder={() => true}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>CSV File Backup & Restore</Text>
               <TouchableOpacity onPress={() => setCsvModalVisible(false)}>
@@ -1063,10 +1080,15 @@ Status: Healthy. No fatal crash exceptions recorded.
       {/* Currency Modal */}
       <Modal visible={currencyModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCurrencyModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={() => setCurrencyModalVisible(false)}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setCurrencyModalVisible(false)}
+          />
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onStartShouldSetResponder={() => true}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Select Currency</Text>
               <TouchableOpacity onPress={() => setCurrencyModalVisible(false)}>
@@ -1114,10 +1136,15 @@ Status: Healthy. No fatal crash exceptions recorded.
       {/* UPI Settings Modal */}
       <Modal visible={upiModalVisible} animationType="slide" transparent={true} onRequestClose={() => setUpiModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={() => setUpiModalVisible(false)}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setUpiModalVisible(false)}
+          />
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onStartShouldSetResponder={() => true}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Configure UPI & Payment ID</Text>
               <TouchableOpacity onPress={() => setUpiModalVisible(false)}>

@@ -13,6 +13,7 @@ import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { safeStorage as AsyncStorage } from '../utils/safeStorage';
 
 const CLOUD_SYNC_ENDPOINT = 'https://api.restful-api.dev/objects'; // Free, public JSON cloud store
@@ -58,7 +59,40 @@ export const CloudBackupService = {
         return { success: true, fileName: defaultFileName, mode: 'web_download' };
       }
 
-      // Android: Native Storage Access Framework (SAF) folder picker
+      // Android: Native ACTION_CREATE_DOCUMENT picker (Save to Downloads, Drive, etc.)
+      if (Platform.OS === 'android') {
+        try {
+          const actualMime = mimeType === 'text/csv' ? 'text/csv' : (mimeType || 'application/json');
+          const result = await IntentLauncher.startActivityAsync(
+            'android.intent.action.CREATE_DOCUMENT',
+            {
+              type: actualMime,
+              category: ['android.intent.category.OPENABLE'],
+              extra: {
+                'android.intent.extra.TITLE': defaultFileName,
+              },
+            }
+          );
+          if (result && result.resultCode === -1 && result.data) {
+            await FileSystem.writeAsStringAsync(result.data, fileData, {
+              encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+            });
+            return {
+              success: true,
+              fileName: defaultFileName,
+              fileUri: result.data,
+              mode: 'create_document',
+            };
+          } else if (result && result.resultCode === 0) {
+            // User cancelled
+            return { success: false, cancelled: true, error: 'Document creation was cancelled.' };
+          }
+        } catch (intentErr) {
+          console.warn('IntentLauncher CREATE_DOCUMENT error, falling back to SAF / Sharing:', intentErr);
+        }
+      }
+
+      // Android Fallback: Storage Access Framework (SAF) folder picker
       if (Platform.OS === 'android' && FileSystem.StorageAccessFramework) {
         try {
           const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();

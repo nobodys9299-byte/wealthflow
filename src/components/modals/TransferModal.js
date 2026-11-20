@@ -47,12 +47,14 @@ export const TransferModal = ({ visible, onClose }) => {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
       >
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={StyleSheet.absoluteFillObject} />
-        </TouchableWithoutFeedback>
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPress={onClose}
+        />
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
           <View style={styles.dragPillWrap}>

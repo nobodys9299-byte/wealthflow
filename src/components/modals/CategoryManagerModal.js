@@ -125,9 +125,11 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={StyleSheet.absoluteFillObject} />
-        </TouchableWithoutFeedback>
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPress={onClose}
+        />
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Grab Bar Pill */}
           <View style={styles.dragPillWrap}>
