@@ -37,7 +37,8 @@
         {
           "photosPermission": "WealthFlow needs access to your photo gallery to select contact photos."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

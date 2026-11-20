@@ -53,11 +53,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
-
-  // Google Cloud Modal state
-  const [googleModalVisible, setGoogleModalVisible] = useState(false);
-  const [gEmailInput, setGEmailInput] = useState('user@gmail.com');
-  const [gNameInput, setGNameInput] = useState('WealthFlow User');
   const [cloudSyncing, setCloudSyncing] = useState(false);
 
   // Hardware Back Handler
@@ -69,10 +64,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       }
       if (feedbackModalVisible) {
         setFeedbackModalVisible(false);
-        return true;
-      }
-      if (googleModalVisible) {
-        setGoogleModalVisible(false);
         return true;
       }
       if (csvModalVisible) {
@@ -103,7 +94,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
   }, [
     currencyModalVisible,
     feedbackModalVisible,
-    googleModalVisible,
     csvModalVisible,
     upiModalVisible,
     pinModalVisible,
@@ -240,61 +230,65 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
 
   const handleGoogleSignIn = async () => {
-    if (!gEmailInput.trim()) {
-      showCustomAlert('Invalid Email', 'Please enter a valid Google Account email.', { type: 'info' });
-      return;
-    }
-    const cleanEmail = gEmailInput.trim().toLowerCase();
-    setGoogleModalVisible(false);
-
-    const result = await loginWithGoogle(cleanEmail, gNameInput.trim() || 'Google User');
-
-    if (result?.remoteCheck?.exists) {
-      const { txCount, accCount, updatedAt, data: cloudSnapshot } = result.remoteCheck;
-      const dateFormatted = formatDateDisplay(updatedAt);
-
-      showCustomAlert(
-        'Cloud Backup Found!',
-        `A previous cloud backup was found for ${cleanEmail}.\n\n📅 Date: ${dateFormatted}\n📊 Data: ${txCount} transactions, ${accCount} accounts\n\nWould you like to restore this backup now?\n\n(If you skip, your previous backup will be removed and replaced with new data).`,
-        {
-          type: 'info',
-          confirmText: 'Restore Backup',
-          cancelText: 'Skip / Start Fresh',
-          confirmIcon: 'cloud-download-outline',
-          showCancel: true,
-          onConfirm: async () => {
-            setCloudSyncing(true);
-            try {
-              const restoreRes = await restoreFromGoogleCloud(cleanEmail, cloudSnapshot);
-              if (restoreRes.success) {
-                showCustomAlert(
-                  'Backup Restored!',
-                  `Successfully restored & updated ${restoreRes.count} transactions and ${restoreRes.accountsCount || 0} accounts from cloud!`,
-                  { type: 'success' }
-                );
-              } else {
-                showCustomAlert('Restore Failed', restoreRes.error || 'Could not restore backup.', { type: 'danger' });
-              }
-            } finally {
-              setCloudSyncing(false);
-            }
-          },
-          onCancel: async () => {
-            await removeCloudBackup(cleanEmail);
-            showCustomAlert(
-              'Previous Backup Cleared',
-              'You have chosen to start fresh. Your previous cloud backup was removed and will be replaced when a new backup is saved.',
-              { type: 'info' }
-            );
-          },
+    setCloudSyncing(true);
+    try {
+      const result = await loginWithGoogle();
+      if (!result.success) {
+        if (result.error && !result.error.toLowerCase().includes('cancel') && !result.error.includes('12501')) {
+          showCustomAlert('Google Sign-In Error', result.error, { type: 'danger' });
         }
-      );
-    } else {
-      showCustomAlert(
-        'Connected with Google',
-        `Logged in as ${cleanEmail}. Automatic backup is active.`,
-        { type: 'success' }
-      );
+        return;
+      }
+
+      if (result?.remoteCheck?.exists) {
+        const { txCount, accCount, updatedAt, data: cloudSnapshot } = result.remoteCheck;
+        const dateFormatted = formatDateDisplay(updatedAt);
+
+        showCustomAlert(
+          'Google Drive Backup Found!',
+          `A previous backup was found in your Google Drive.\n\n📅 Date: ${dateFormatted}\n📊 Data: ${txCount} transactions, ${accCount} accounts\n\nWould you like to restore this backup now?`,
+          {
+            type: 'info',
+            confirmText: 'Restore Backup',
+            cancelText: 'Skip / Start Fresh',
+            confirmIcon: 'cloud-download-outline',
+            showCancel: true,
+            onConfirm: async () => {
+              setCloudSyncing(true);
+              try {
+                const restoreRes = await restoreFromGoogleCloud(null, cloudSnapshot);
+                if (restoreRes.success) {
+                  showCustomAlert(
+                    'Backup Restored!',
+                    `Successfully restored & updated ${restoreRes.count} transactions and ${restoreRes.accountsCount || 0} accounts from Google Drive!`,
+                    { type: 'success' }
+                  );
+                } else {
+                  showCustomAlert('Restore Failed', restoreRes.error || 'Could not restore backup.', { type: 'danger' });
+                }
+              } finally {
+                setCloudSyncing(false);
+              }
+            },
+            onCancel: async () => {
+              await removeCloudBackup();
+              showCustomAlert(
+                'Previous Backup Cleared',
+                'You have chosen to start fresh. Any previous Google Drive backup file was removed and will be replaced when a new backup is saved.',
+                { type: 'info' }
+              );
+            },
+          }
+        );
+      } else {
+        showCustomAlert(
+          'Connected with Google Drive',
+          `Logged in as ${result.user?.email || 'Google User'}. Automatic Google Drive backup is now active.`,
+          { type: 'success' }
+        );
+      }
+    } finally {
+      setCloudSyncing(false);
     }
   };
 
@@ -790,7 +784,7 @@ Status: Healthy. No fatal crash exceptions recorded.
           ) : (
             <View>
               <TouchableOpacity
-                onPress={() => setGoogleModalVisible(true)}
+                onPress={handleGoogleSignIn}
                 style={styles.row}
               >
                 <View style={styles.rowLeft}>
@@ -800,7 +794,7 @@ Status: Healthy. No fatal crash exceptions recorded.
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Text style={[styles.rowTitle, { color: theme.text }]}>Sign In with Google</Text>
                     <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                      Automatic Cloud Vault backup across uninstalls & devices (WhatsApp-style)
+                      Automatic Google Drive backup across uninstalls & devices (WhatsApp-style)
                     </Text>
                   </View>
                 </View>
@@ -1179,82 +1173,6 @@ Status: Healthy. No fatal crash exceptions recorded.
               >
                 <Ionicons name="checkmark-circle" size={18} color="#FFF" />
                 <Text style={styles.modalBtnText}>Save UPI Settings</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Google Cloud Sign-In Modal */}
-      <Modal visible={googleModalVisible} animationType="slide" transparent={true}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.googleAvatarWrap, { backgroundColor: '#4285F420' }]}>
-                  <Ionicons name="logo-google" size={20} color="#4285F4" />
-                </View>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>Sign In with Google</Text>
-              </View>
-              <TouchableOpacity onPress={() => setGoogleModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Link your Google Account to enable automatic cloud backup. Your financial data is securely synced and protected across uninstalls and devices (WhatsApp-style).
-            </Text>
-
-            <View style={{ gap: 12, marginVertical: 14 }}>
-              <View>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
-                  GOOGLE EMAIL ADDRESS
-                </Text>
-                <TextInput
-                  style={[
-                    styles.textInputStyle,
-                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
-                  ]}
-                  placeholder="e.g. yourname@gmail.com"
-                  placeholderTextColor={theme.textMuted}
-                  value={gEmailInput}
-                  onChangeText={setGEmailInput}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
-                  ACCOUNT NAME
-                </Text>
-                <TextInput
-                  style={[
-                    styles.textInputStyle,
-                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
-                  ]}
-                  placeholder="e.g. John Doe"
-                  placeholderTextColor={theme.textMuted}
-                  value={gNameInput}
-                  onChangeText={setGNameInput}
-                />
-              </View>
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                onPress={() => setGoogleModalVisible(false)}
-                style={[styles.modalBtn, { backgroundColor: theme.cardAlt }]}
-              >
-                <Text style={[styles.modalBtnText, { color: theme.text }]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleGoogleSignIn}
-                style={[styles.modalBtn, { backgroundColor: '#4285F4' }]}
-              >
-                <Ionicons name="logo-google" size={16} color="#FFF" />
-                <Text style={styles.modalBtnText}>Sign In & Sync</Text>
               </TouchableOpacity>
             </View>
           </View>
