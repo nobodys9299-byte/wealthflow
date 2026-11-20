@@ -2,11 +2,11 @@
  * CloudBackupService.js
  * Comprehensive Cloud Backup & Restore Architecture for WealthFlow.
  * 
- * Solves the problem of data recovery if a user uninstalls and reinstalls the app:
- * 1. Automatic Cloud Sync: Uploads encrypted snapshot to Cloud Vault keyed by user email.
- * 2. Remote Auto-Discovery: When user signs in with Google after reinstall, discovers existing cloud snapshot.
- * 3. Direct Google Drive File Save: Uses expo-sharing to save wealthflow_backup_[email].json directly to Google Drive.
- * 4. Direct Google Drive File Import: Uses expo-document-picker to select and restore the Drive JSON backup.
+ * Implements WhatsApp-style Cloud Vault Backup & Discovery across uninstalls:
+ * 1. Global Vault Discovery Index: Discovers existing backup by Google Account email across re-installations.
+ * 2. Automatic Cloud Sync: Saves complete JSON database snapshot to Cloud Vault.
+ * 3. Local Share Sheet (Screenshot 1): Saves directly via native Android Share Sheet (Files by Google / Downloads).
+ * 4. Pick & Restore from Storage: Uses DocumentPicker to restore .json or .csv backup files.
  */
 
 import { Platform } from 'react-native';
@@ -16,7 +16,15 @@ import * as DocumentPicker from 'expo-document-picker';
 import { safeStorage as AsyncStorage } from '../utils/safeStorage';
 
 const CLOUD_SYNC_ENDPOINT = 'https://api.restful-api.dev/objects'; // Free, public JSON cloud store
+const GLOBAL_VAULT_INDEX_ID = 'ff808181a09d98f701a1f6d02c0a7d1f'; // Persistent global discovery registry across uninstalls
 const FALLBACK_CACHE_KEY_PREFIX = '@wealthflow_cloud_vault_';
+
+/**
+ * Clean email key for safe indexing
+ */
+function cleanEmailKey(email) {
+  return (email || 'user').toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+}
 
 /**
  * Hash an email to create a safe unique key
@@ -33,9 +41,8 @@ function hashEmail(email) {
 
 export const CloudBackupService = {
   /**
-   * Save a file (JSON or CSV) directly to device internal storage (e.g. Downloads folder)
-   * via Android StorageAccessFramework, or web download / iOS share.
-   * This file is stored in public storage and will NEVER be deleted when uninstalling the app.
+   * Save a file (JSON or CSV) directly to device internal storage
+   * by opening the native Android Share Sheet (Screenshot 1: Files by Google / Downloads / Drive).
    */
   async saveToDeviceInternalStorage(fileData, defaultFileName, mimeType = 'application/json') {
     try {
@@ -51,39 +58,7 @@ export const CloudBackupService = {
         return { success: true, fileName: defaultFileName, mode: 'web_download' };
       }
 
-      // Android StorageAccessFramework: Allows direct folder selection (e.g. Downloads folder)
-      // and writes files directly to internal storage without relying on ACTION_SEND share sheet.
-      if (Platform.OS === 'android' && FileSystem?.StorageAccessFramework) {
-        try {
-          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-          if (!permissions.granted) {
-            return { success: false, error: 'Storage folder selection was cancelled.' };
-          }
-
-          const selectedDirUri = permissions.directoryUri;
-          const createdFileUri = await FileSystem.StorageAccessFramework.createFileAsync(
-            selectedDirUri,
-            defaultFileName,
-            mimeType
-          );
-
-          await FileSystem.StorageAccessFramework.writeAsStringAsync(createdFileUri, fileData, {
-            encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-          });
-
-          return {
-            success: true,
-            fileName: defaultFileName,
-            fileUri: createdFileUri,
-            mode: 'internal_storage',
-          };
-        } catch (safErr) {
-          console.warn('StorageAccessFramework failed, falling back to Sharing:', safErr);
-          // fall through to local documentDirectory + share sheet
-        }
-      }
-
-      // iOS or Android fallback: save locally and trigger native share sheet
+      // Save to local documents directory and open the system Share Sheet (Screenshot 1)
       const fileUri = `${FileSystem.documentDirectory}${defaultFileName}`;
       await FileSystem.writeAsStringAsync(fileUri, fileData, {
         encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
@@ -106,50 +81,7 @@ export const CloudBackupService = {
   },
 
   /**
-   * Save a JSON snapshot directly to Google Drive via native Share Intent or Web Download
-   */
-  async exportToGoogleDriveFile(jsonData, email = 'user') {
-    try {
-      const dateStr = new Date().toISOString().split('T')[0];
-      const safeEmail = (email || 'user').split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-      const fileName = `wealthflow_backup_${safeEmail}_${dateStr}.json`;
-
-      if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        const blob = new Blob([jsonData], { type: 'application/json;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        return { success: true, fileName, mode: 'web_download' };
-      }
-
-      // Native Mobile (Android / iOS)
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-      await FileSystem.writeAsStringAsync(fileUri, jsonData, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/json',
-          dialogTitle: 'Save Backup File to Google Drive',
-          UTI: 'public.json',
-        });
-        return { success: true, fileName, fileUri, mode: 'sharing' };
-      } else {
-        return { success: true, fileName, fileUri, mode: 'saved_locally' };
-      }
-    } catch (err) {
-      console.warn('exportToGoogleDriveFile error:', err);
-      return { success: false, error: err.message };
-    }
-  },
-
-  /**
-   * Pick and restore backup JSON or CSV from Internal Storage / Google Drive / Filesystem
+   * Pick and restore backup JSON or CSV from Internal Storage / Filesystem
    */
   async pickAndRestoreFromDriveFile() {
     try {
@@ -171,7 +103,6 @@ export const CloudBackupService = {
       if (Platform.OS === 'web' && file.file) {
         content = await file.file.text();
       } else {
-        // First try fetch() which natively supports content:// and file:// on Android
         try {
           const res = await fetch(file.uri);
           content = await res.text();
@@ -233,13 +164,14 @@ export const CloudBackupService = {
   },
 
   /**
-   * Sync snapshot to Remote Cloud Vault
+   * Sync snapshot to Remote Cloud Vault using Global Discovery Index
    */
   async syncToCloudVault(email, snapshotObj) {
     if (!email) return { success: false, error: 'Missing email' };
+    const emailKey = cleanEmailKey(email);
     const vaultKey = hashEmail(email);
 
-    // 1. Always cache in local cloud slot
+    // 1. Cache locally in AsyncStorage
     try {
       await AsyncStorage.setItem(`${FALLBACK_CACHE_KEY_PREFIX}${vaultKey}`, JSON.stringify(snapshotObj));
       await AsyncStorage.setItem('@wealthflow_last_cloud_email', email);
@@ -247,13 +179,29 @@ export const CloudBackupService = {
       console.warn('AsyncStorage cloud cache error:', e);
     }
 
-    // 2. Push to remote REST store for cross-device & post-uninstall recovery
+    // 2. Push to remote REST store with Global Index mapping for post-uninstall discovery
     try {
+      let existingBackupId = await AsyncStorage.getItem(`@wealthflow_cloud_obj_id_${vaultKey}`);
+      let indexData = {};
+
+      try {
+        const indexRes = await fetch(`${CLOUD_SYNC_ENDPOINT}/${GLOBAL_VAULT_INDEX_ID}`);
+        if (indexRes.ok) {
+          const indexBody = await indexRes.json();
+          indexData = indexBody?.data || {};
+          if (indexData[emailKey]) {
+            existingBackupId = indexData[emailKey];
+          }
+        }
+      } catch (idxErr) {
+        console.log('Index lookup error:', idxErr.message);
+      }
+
       const payload = {
-        name: `wealthflow_backup_${vaultKey}`,
+        name: `wealthflow_backup_${emailKey}`,
         data: {
           email,
-          vaultKey,
+          emailKey,
           updatedAt: new Date().toISOString(),
           txCount: snapshotObj.transactions?.length || 0,
           accCount: snapshotObj.accounts?.length || 0,
@@ -261,22 +209,44 @@ export const CloudBackupService = {
         },
       };
 
-      const response = await fetch(CLOUD_SYNC_ENDPOINT, {
+      if (existingBackupId) {
+        const putRes = await fetch(`${CLOUD_SYNC_ENDPOINT}/${existingBackupId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (putRes.ok) {
+          await AsyncStorage.setItem(`@wealthflow_cloud_obj_id_${vaultKey}`, String(existingBackupId));
+          return { success: true, timestamp: payload.data.updatedAt, remote: true };
+        }
+      }
+
+      const postRes = await fetch(CLOUD_SYNC_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
-        const resJson = await response.json();
-        // Save remote cloud object ID for fast retrieval
-        if (resJson && resJson.id) {
-          await AsyncStorage.setItem(`@wealthflow_cloud_obj_id_${vaultKey}`, String(resJson.id));
-        }
+      if (postRes.ok) {
+        const resJson = await postRes.json();
+        const newBackupId = String(resJson.id);
+        await AsyncStorage.setItem(`@wealthflow_cloud_obj_id_${vaultKey}`, newBackupId);
+
+        // Update Global Index with this user's backup object ID
+        indexData[emailKey] = newBackupId;
+        await fetch(`${CLOUD_SYNC_ENDPOINT}/${GLOBAL_VAULT_INDEX_ID}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'WealthFlow_Global_Cloud_Vault_Index_v1',
+            data: indexData,
+          }),
+        }).catch(() => {});
+
         return { success: true, timestamp: payload.data.updatedAt, remote: true };
       }
     } catch (netErr) {
-      console.log('Remote cloud push deferred (network offline or mock), cached locally:', netErr.message);
+      console.log('Remote cloud push deferred (network offline), cached locally:', netErr.message);
     }
 
     return { success: true, timestamp: new Date().toISOString(), remote: false };
@@ -287,9 +257,39 @@ export const CloudBackupService = {
    */
   async checkCloudBackupExists(email) {
     if (!email) return { exists: false };
+    const emailKey = cleanEmailKey(email);
     const vaultKey = hashEmail(email);
 
-    // 1. Check local cloud vault cache
+    // 1. Query remote Global Index to discover user's backup object ID across uninstalls
+    try {
+      const indexRes = await fetch(`${CLOUD_SYNC_ENDPOINT}/${GLOBAL_VAULT_INDEX_ID}`);
+      if (indexRes.ok) {
+        const indexBody = await indexRes.json();
+        const backupObjectId = indexBody?.data?.[emailKey];
+        if (backupObjectId) {
+          const backupRes = await fetch(`${CLOUD_SYNC_ENDPOINT}/${backupObjectId}`);
+          if (backupRes.ok) {
+            const body = await backupRes.json();
+            if (body?.data?.snapshot) {
+              await AsyncStorage.setItem(`@wealthflow_cloud_obj_id_${vaultKey}`, String(backupObjectId));
+              return {
+                exists: true,
+                source: 'remote_cloud',
+                backupId: backupObjectId,
+                updatedAt: body.data.updatedAt || new Date().toISOString(),
+                txCount: body.data.txCount || (body.data.snapshot.transactions?.length || 0),
+                accCount: body.data.accCount || (body.data.snapshot.accounts?.length || 0),
+                data: body.data.snapshot,
+              };
+            }
+          }
+        }
+      }
+    } catch (netErr) {
+      console.log('Remote index check error:', netErr.message);
+    }
+
+    // 2. Check local cloud vault cache (fallback)
     try {
       const cached = await AsyncStorage.getItem(`${FALLBACK_CACHE_KEY_PREFIX}${vaultKey}`);
       if (cached) {
@@ -307,29 +307,6 @@ export const CloudBackupService = {
       console.warn('Cache check error:', e);
     }
 
-    // 2. Query remote REST endpoint if cloud object ID is available
-    try {
-      const objId = await AsyncStorage.getItem(`@wealthflow_cloud_obj_id_${vaultKey}`);
-      if (objId) {
-        const res = await fetch(`${CLOUD_SYNC_ENDPOINT}/${objId}`);
-        if (res.ok) {
-          const body = await res.json();
-          if (body?.data?.snapshot) {
-            return {
-              exists: true,
-              source: 'remote_cloud',
-              updatedAt: body.data.updatedAt,
-              txCount: body.data.txCount || 0,
-              accCount: body.data.accCount || 0,
-              data: body.data.snapshot,
-            };
-          }
-        }
-      }
-    } catch (err) {
-      console.log('Remote check error:', err.message);
-    }
-
     return { exists: false };
   },
 
@@ -339,8 +316,44 @@ export const CloudBackupService = {
   async fetchFromCloudVault(email) {
     const check = await this.checkCloudBackupExists(email);
     if (check.exists && check.data) {
-      return { success: true, data: check.data };
+      return { success: true, data: check.data, txCount: check.txCount, accCount: check.accCount };
     }
     return { success: false, error: `No cloud backup found for ${email}.` };
+  },
+
+  /**
+   * Remove/clear previous cloud backup (when user chooses "Skip / Start Fresh" like WhatsApp)
+   */
+  async removeCloudBackup(email) {
+    if (!email) return;
+    const emailKey = cleanEmailKey(email);
+    const vaultKey = hashEmail(email);
+    try {
+      await AsyncStorage.removeItem(`${FALLBACK_CACHE_KEY_PREFIX}${vaultKey}`);
+      await AsyncStorage.removeItem(`@wealthflow_cloud_obj_id_${vaultKey}`);
+
+      const indexRes = await fetch(`${CLOUD_SYNC_ENDPOINT}/${GLOBAL_VAULT_INDEX_ID}`);
+      if (indexRes.ok) {
+        const indexBody = await indexRes.json();
+        const indexData = indexBody?.data || {};
+        if (indexData[emailKey]) {
+          const oldBackupId = indexData[emailKey];
+          delete indexData[emailKey];
+          // Delete remote object
+          await fetch(`${CLOUD_SYNC_ENDPOINT}/${oldBackupId}`, { method: 'DELETE' }).catch(() => {});
+          // Update Global Index
+          await fetch(`${CLOUD_SYNC_ENDPOINT}/${GLOBAL_VAULT_INDEX_ID}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: 'WealthFlow_Global_Cloud_Vault_Index_v1',
+              data: indexData,
+            }),
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('removeCloudBackup error:', e);
+    }
   },
 };

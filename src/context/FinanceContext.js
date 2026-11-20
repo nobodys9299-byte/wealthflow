@@ -22,6 +22,7 @@ const STORAGE_KEYS = {
   GOOGLE_USER: '@wealthflow_google_user_v1',
   CLOUD_BACKUP: '@wealthflow_cloud_backup_v1',
   HOME_SECTIONS: '@wealthflow_home_sections_v2',
+  CRASH_REPORTS: '@wealthflow_crash_reports_enabled',
 };
 
 export const sortTransactionsByDateDesc = (txList) => {
@@ -126,6 +127,7 @@ export const FinanceProvider = ({ children }) => {
     biometrics: true,
   });
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
+  const [crashReportsEnabled, setCrashReportsEnabled] = useState(true);
 
   // Confirmation & Universal Custom Alert modal state (Photo 2 styled)
   const [confirmDialog, setConfirmDialog] = useState({
@@ -159,9 +161,11 @@ export const FinanceProvider = ({ children }) => {
       message,
       type: options.type || (isDanger ? 'danger' : isSuccess ? 'success' : 'info'),
       confirmText: options.confirmText || 'OK',
+      cancelText: options.cancelText || 'Cancel',
       confirmIcon: options.confirmIcon || (isSuccess ? 'checkmark-circle-outline' : isDanger ? 'alert-circle-outline' : 'information-circle-outline'),
       showCancel: options.showCancel === true,
       onConfirm: options.onConfirm || (() => {}),
+      onCancel: options.onCancel || (() => {}),
     });
   };
 
@@ -187,6 +191,9 @@ export const FinanceProvider = ({ children }) => {
         showCancel: hasCancel,
         onConfirm: () => {
           if (confirmBtn?.onPress) confirmBtn.onPress();
+        },
+        onCancel: () => {
+          if (cancelBtn?.onPress) cancelBtn.onPress();
         },
       });
     };
@@ -323,6 +330,11 @@ export const FinanceProvider = ({ children }) => {
           }
         } else {
           setIsAppUnlocked(true);
+        }
+
+        const savedCrash = await AsyncStorage.getItem(STORAGE_KEYS.CRASH_REPORTS);
+        if (savedCrash !== null) {
+          setCrashReportsEnabled(savedCrash === 'true');
         }
 
         // Automatic logging of due recurring bills
@@ -613,7 +625,7 @@ export const FinanceProvider = ({ children }) => {
       // Fallback to local snapshot
       const snapshot = await AsyncStorage.getItem(STORAGE_KEYS.CLOUD_BACKUP);
       if (!snapshot) {
-        return { success: false, error: 'No cloud backup snapshot found on Google Drive yet.' };
+        return { success: false, error: 'No cloud backup snapshot found yet.' };
       }
       try {
         const parsed = JSON.parse(snapshot);
@@ -621,7 +633,7 @@ export const FinanceProvider = ({ children }) => {
         if (txCount === 0) {
           return {
             success: false,
-            error: 'No transactions found in this cloud slot.\n\nIf you have a saved backup file on your phone or Google Drive, tap "Import Drive File" below to restore your transactions.',
+            error: 'No transactions found in this cloud slot.\n\nIf you have a saved backup file on your phone storage, tap "Restore from Storage" below to restore your transactions.',
           };
         }
       } catch (parseErr) {
@@ -753,6 +765,15 @@ export const FinanceProvider = ({ children }) => {
     setSecuritySettings(merged);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.SECURITY, JSON.stringify(merged));
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const updateCrashReportsSetting = async (enabled) => {
+    setCrashReportsEnabled(enabled);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.CRASH_REPORTS, String(enabled));
     } catch (e) {
       console.warn(e);
     }
@@ -1428,10 +1449,13 @@ export const FinanceProvider = ({ children }) => {
         logoutGoogle,
         backupToGoogleCloud,
         restoreFromGoogleCloud,
+        removeCloudBackup: (email) => CloudBackupService.removeCloudBackup(email),
         updateGoogleAutoBackupSettings,
-        exportToGoogleDriveFile: (jsonStr, email) => CloudBackupService.exportToGoogleDriveFile(jsonStr, email),
         saveToDeviceStorage: (data, fileName, mimeType) => CloudBackupService.saveToDeviceInternalStorage(data, fileName, mimeType),
         pickAndRestoreFromDriveFile: () => CloudBackupService.pickAndRestoreFromDriveFile(),
+        // Diagnostics & Crash Reports
+        crashReportsEnabled,
+        updateCrashReportsSetting,
         t,
         language: 'en',
         setLanguage: () => {},

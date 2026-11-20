@@ -7,6 +7,7 @@ export const ConfirmDeleteModal = ({
   visible,
   onClose,
   onConfirm,
+  onCancel,
   title = 'Delete Item?',
   message = 'Are you sure you want to delete this item? This action cannot be undone.',
   confirmText,
@@ -66,7 +67,10 @@ export const ConfirmDeleteModal = ({
         <View style={styles.buttonRow}>
           {showCancel && (
             <TouchableOpacity
-              onPress={onClose}
+              onPress={() => {
+                onCancel && onCancel();
+                onClose && onClose();
+              }}
               style={[styles.btn, styles.cancelBtn, { borderColor: theme.border, backgroundColor: theme.cardAlt }]}
               activeOpacity={0.7}
             >

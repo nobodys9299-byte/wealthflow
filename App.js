@@ -588,6 +588,7 @@ function MainApp() {
         visible={confirmDialog.visible}
         onClose={closeConfirmDialog}
         onConfirm={confirmDialog.onConfirm}
+        onCancel={confirmDialog.onCancel}
         title={confirmDialog.title}
         message={confirmDialog.message}
         confirmText={confirmDialog.confirmText}

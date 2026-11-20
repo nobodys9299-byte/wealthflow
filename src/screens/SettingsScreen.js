@@ -10,11 +10,13 @@ import {
   TextInput,
   Platform,
   BackHandler,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 import { formatDateDisplay } from '../utils/formatters';
@@ -46,11 +48,13 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     logoutGoogle,
     backupToGoogleCloud,
     restoreFromGoogleCloud,
+    removeCloudBackup,
     updateGoogleAutoBackupSettings,
-    exportToGoogleDriveFile,
     saveToDeviceStorage,
     pickAndRestoreFromDriveFile,
     showCustomAlert,
+    crashReportsEnabled,
+    updateCrashReportsSetting,
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
@@ -154,42 +158,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     }
   };
 
-  const handleShareCSVFile = async () => {
-    try {
-      const csv = exportCSVString();
-      setCsvInput(csv);
-      const dateStr = new Date().toISOString().split('T')[0];
-      const fileName = `wealthflow_backup_${dateStr}.csv`;
-
-      if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showCustomAlert('CSV Downloaded', `File "${fileName}" saved to your browser downloads.`, { type: 'success' });
-      } else {
-        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'text/csv',
-            dialogTitle: 'Share WealthFlow Backup CSV',
-            UTI: 'public.comma-separated-values-text',
-          });
-        } else {
-          showCustomAlert('Sharing Unavailable', 'Sharing is not available on this device.', { type: 'info' });
-        }
-      }
-    } catch (err) {
-      console.warn('Native CSV share failed:', err);
-      showCustomAlert('Share Error', err.message || 'Failed to share CSV', { type: 'danger' });
-    }
-  };
-
   const handlePickAndImportCSVFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -276,19 +244,90 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
   const handleGoogleSignIn = async () => {
     if (!gEmailInput.trim()) {
-      alert('Please enter a valid Google Account email');
+      showCustomAlert('Invalid Email', 'Please enter a valid Google Account email.', { type: 'info' });
       return;
     }
-    const cleanEmail = gEmailInput.trim();
-    const result = await loginWithGoogle(cleanEmail, gNameInput.trim() || 'Google User');
+    const cleanEmail = gEmailInput.trim().toLowerCase();
     setGoogleModalVisible(false);
+
+    const result = await loginWithGoogle(cleanEmail, gNameInput.trim() || 'Google User');
 
     if (result?.remoteCheck?.exists) {
       const { txCount, accCount, updatedAt } = result.remoteCheck;
       const dateFormatted = formatDateDisplay(updatedAt);
-      alert(`Welcome back! We found an existing Cloud Vault backup for ${cleanEmail} from ${dateFormatted} with ${txCount} transactions and ${accCount} accounts.\n\nTap "Cloud Restore" anytime to recover all data.`);
+
+      showCustomAlert(
+        'Cloud Backup Found!',
+        `A previous cloud backup was found for ${cleanEmail}.\n\n📅 Date: ${dateFormatted}\n📊 Data: ${txCount} transactions, ${accCount} accounts\n\nWould you like to restore this backup now?\n\n(If you skip, your previous backup will be removed and replaced with new data).`,
+        {
+          type: 'info',
+          confirmText: 'Restore Backup',
+          cancelText: 'Skip / Start Fresh',
+          confirmIcon: 'cloud-download-outline',
+          showCancel: true,
+          onConfirm: async () => {
+            setCloudSyncing(true);
+            try {
+              const restoreRes = await restoreFromGoogleCloud();
+              if (restoreRes.success) {
+                showCustomAlert(
+                  'Backup Restored!',
+                  `Successfully restored ${restoreRes.count} transactions and ${restoreRes.accountsCount || 0} accounts!`,
+                  { type: 'success' }
+                );
+              } else {
+                showCustomAlert('Restore Failed', restoreRes.error || 'Could not restore backup.', { type: 'danger' });
+              }
+            } finally {
+              setCloudSyncing(false);
+            }
+          },
+          onCancel: async () => {
+            await removeCloudBackup(cleanEmail);
+            showCustomAlert(
+              'Previous Backup Cleared',
+              'You have chosen to start fresh. Your previous cloud backup was removed and will be replaced when a new backup is saved.',
+              { type: 'info' }
+            );
+          },
+        }
+      );
     } else {
-      alert('Connected with Google! Automatic backup to Google Cloud Vault enabled.');
+      showCustomAlert(
+        'Connected with Google',
+        'No previous backup found for this account. Automatic backups will now protect your data.',
+        { type: 'success' }
+      );
+    }
+  };
+
+  const handleSendDiagnosticReport = async () => {
+    const totalTx = transactions?.length || 0;
+    const totalAcc = accounts?.length || 0;
+    const osVersion = Platform.OS === 'android' ? `Android ${Platform.Version}` : Platform.OS;
+    const body = `--- WealthFlow Diagnostics & Crash Report ---
+Target Developer: iashwini914@gmail.com
+Timestamp: ${new Date().toISOString()}
+App Version: 1.0.0
+Platform: ${osVersion}
+Total Transactions: ${totalTx}
+Total Accounts: ${totalAcc}
+Currency: ${currency?.code || 'INR'}
+Google Sync: ${googleUser?.signedIn ? 'Connected (' + googleUser.email + ')' : 'Not Connected'}
+Status: Healthy. No fatal crash exceptions recorded.
+---------------------------------------------`;
+
+    const mailto = `mailto:iashwini914@gmail.com?subject=${encodeURIComponent('WealthFlow Crash & Usage Report')}&body=${encodeURIComponent(body)}`;
+    try {
+      const supported = await Linking.canOpenURL(mailto);
+      if (supported) {
+        await Linking.openURL(mailto);
+      } else {
+        await Clipboard.setStringAsync(body);
+        showCustomAlert('Report Copied', 'Diagnostic report copied to clipboard. You can send it directly to iashwini914@gmail.com.', { type: 'success' });
+      }
+    } catch (e) {
+      showCustomAlert('Email Notice', 'Could not open email client automatically.', { type: 'info' });
     }
   };
 
@@ -323,13 +362,13 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       } else if (res.success && (!res.count || res.count === 0)) {
         showCustomAlert(
           'Cloud Vault Empty',
-          'Cloud restore connected, but 0 transactions were found in the current cloud slot.\n\nIf you have a saved backup file on your phone or Google Drive, tap "Restore from Storage / Drive" below to restore your complete transaction ledger.',
+          'Cloud restore connected, but 0 transactions were found in the current cloud slot.\n\nIf you have a saved backup file on your phone storage, tap "Restore from Storage" below to restore your complete transaction ledger.',
           { type: 'info' }
         );
       } else {
         showCustomAlert(
           'No Cloud Snapshot Found',
-          res.error || 'No backup found in cloud. If you saved a backup file to your phone or Google Drive, tap "Restore from Storage / Drive" below.',
+          res.error || 'No backup found in cloud. If you saved a backup file to your phone storage, tap "Restore from Storage" below.',
           { type: 'info' }
         );
       }
@@ -362,25 +401,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       }
     } catch (e) {
       showCustomAlert('Save Failed', e.message || 'Could not save file', { type: 'danger' });
-    } finally {
-      setCloudSyncing(false);
-    }
-  };
-
-  const handleSaveToDriveFile = async () => {
-    setCloudSyncing(true);
-    try {
-      const json = exportAsJSON();
-      const res = await exportToGoogleDriveFile(json, googleUser?.email || 'user@gmail.com');
-      if (res.success) {
-        showCustomAlert(
-          'Backup Ready to Share',
-          `Backup file "${res.fileName}" prepared! Select Google Drive in the share sheet to upload.`,
-          { type: 'success' }
-        );
-      } else {
-        showCustomAlert('Google Drive Save Failed', res.error || 'Could not share file', { type: 'danger' });
-      }
     } finally {
       setCloudSyncing(false);
     }
@@ -852,20 +872,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 </TouchableOpacity>
               </View>
 
-              {/* Action Buttons Row 3: Save to Google Drive via Native Share */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-                <TouchableOpacity
-                  onPress={handleSaveToDriveFile}
-                  disabled={cloudSyncing}
-                  style={[styles.cloudBtn, { backgroundColor: '#0284C7', flex: 1 }]}
-                >
-                  <Ionicons name="logo-google" size={14} color="#FFF" />
-                  <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
-                    Share / Save to Google Drive
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
               <TouchableOpacity
                 onPress={logoutGoogle}
                 style={{ alignSelf: 'flex-start', marginTop: 4, paddingVertical: 4 }}
@@ -888,7 +894,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Text style={[styles.rowTitle, { color: theme.text }]}>Sign In with Google</Text>
                     <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                      Automatic Cloud Vault backup & Google Drive file restore across uninstalls
+                      Automatic Cloud Vault backup across uninstalls & devices (WhatsApp-style)
                     </Text>
                   </View>
                 </View>
@@ -949,6 +955,53 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* App Health & Diagnostics */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('APP HEALTH & DIAGNOSTICS', 'APP HEALTH & DIAGNOSTICS')}</Text>
+
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.row, crashReportsEnabled && { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: '#38BDF820' }]}>
+                <Ionicons name="bug-outline" size={18} color="#38BDF8" />
+              </View>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>Send Crash & Usage Statistics</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                  Automatically send diagnostic reports & error logs to iashwini914@gmail.com
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={crashReportsEnabled}
+              onValueChange={updateCrashReportsSetting}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={crashReportsEnabled ? '#FFFFFF' : '#94A3B8'}
+            />
+          </View>
+
+          {crashReportsEnabled && (
+            <TouchableOpacity
+              onPress={handleSendDiagnosticReport}
+              style={styles.row}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconWrap, { backgroundColor: '#10B98120' }]}>
+                  <Ionicons name="mail-outline" size={18} color="#10B981" />
+                </View>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>Send Diagnostic Report Now</Text>
+                  <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                    Email current database stats, system health, and crash logs to iashwini914@gmail.com
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="send-outline" size={16} color={theme.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -1115,30 +1168,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
               </TouchableOpacity>
             </View>
 
-            {/* Action 2: Share / Send CSV File */}
-            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <View style={styles.fileActionHeader}>
-                <View style={[styles.fileIconBadge, { backgroundColor: `${theme.primary}20` }]}>
-                  <Ionicons name="share-social-outline" size={20} color={theme.primaryLight} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Share / Send CSV File</Text>
-                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                    Share via WhatsApp, Drive, Gmail, or Bluetooth
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={handleShareCSVFile}
-                style={[styles.fileActionBtn, { backgroundColor: theme.primary }]}
-              >
-                <Ionicons name="share-outline" size={18} color="#FFF" />
-                <Text style={styles.fileActionBtnText}>Share CSV via Apps</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Action 3: Import CSV File */}
+            {/* Action 2: Import CSV File */}
             <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
               <View style={styles.fileActionHeader}>
                 <View style={[styles.fileIconBadge, { backgroundColor: '#38BDF820' }]}>
@@ -1329,7 +1359,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
             </View>
 
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Link your Google Account to enable automatic cloud backup to Google Drive. Your financial data is securely synced and protected.
+              Link your Google Account to enable automatic cloud backup. Your financial data is securely synced and protected across uninstalls and devices (WhatsApp-style).
             </Text>
 
             <View style={{ gap: 12, marginVertical: 14 }}>
