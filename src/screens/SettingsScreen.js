@@ -808,31 +808,6 @@ Status: Healthy. No fatal crash exceptions recorded.
                   <Text style={styles.connectPillText}>Connect</Text>
                 </View>
               </TouchableOpacity>
-
-              {/* Device Internal Storage Backup & Restore Buttons (Always Available Offline) */}
-              <View style={{ paddingHorizontal: 16, paddingBottom: 14, paddingTop: 4 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={handleSaveJSONToInternalStorage}
-                    style={[styles.cloudBtn, { backgroundColor: '#10B981' }]}
-                  >
-                    <Ionicons name="save-outline" size={14} color="#FFF" />
-                    <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
-                      Save to Internal Storage
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleImportFromDriveFile}
-                    style={[styles.cloudBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border, borderWidth: 1 }]}
-                  >
-                    <Ionicons name="folder-open-outline" size={14} color={theme.text} />
-                    <Text style={[styles.cloudBtnText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
-                      Restore from Storage
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
             </View>
           )}
         </View>
