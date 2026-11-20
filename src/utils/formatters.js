@@ -11,23 +11,53 @@ export const formatCurrency = (amount, symbol = '$') => {
 // Formats YYYY-MM-DD or Date object strictly into DD/MM/YY (e.g. 18/11/26)
 export const formatDateDisplay = (dateString) => {
   if (!dateString) return '';
+  const str = String(dateString).trim();
   
-  // If in YYYY-MM-DD format
-  const parts = String(dateString).split('-');
-  if (parts.length === 3) {
-    const year = parts[0].slice(-2); // last 2 digits
+  // If strictly in YYYY-MM-DD format (no time component)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const parts = str.split('-');
+    const year = parts[0].slice(-2);
     const month = String(parts[1]).padStart(2, '0');
     const day = String(parts[2]).padStart(2, '0');
     return `${day}/${month}/${year}`;
   }
 
-  // Fallback
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return dateString;
+  // Fallback for Date objects or ISO strings
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = String(d.getFullYear()).slice(-2);
   return `${day}/${month}/${year}`;
+};
+
+// Formats date and time into clear, beautiful, human-readable format
+export const formatDateTimeDisplay = (isoOrDate) => {
+  if (!isoOrDate) return '';
+  const d = new Date(isoOrDate);
+  if (isNaN(d.getTime())) return String(isoOrDate);
+
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+
+  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  if (isToday) {
+    return `Today at ${timeStr}`;
+  }
+  if (isYesterday) {
+    return `Yesterday at ${timeStr}`;
+  }
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthStr = monthNames[d.getMonth()];
+  const year = d.getFullYear();
+
+  return `${day} ${monthStr} ${year}, ${timeStr}`;
 };
 
 // Generates a comprehensive full-database CSV export

@@ -9,6 +9,7 @@ import {
   Image,
   TextInput,
   Linking,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -91,6 +92,9 @@ export const DonationModal = ({ visible, onClose }) => {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
         <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Grab Bar Pill */}
           <View style={styles.dragPillWrap}>

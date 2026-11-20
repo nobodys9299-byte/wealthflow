@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
   Linking,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
@@ -328,6 +329,9 @@ export const ReceiptImageShareModal = ({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
         <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
           <View style={styles.dragPillWrap}>

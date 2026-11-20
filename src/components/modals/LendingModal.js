@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   Image,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -215,6 +216,9 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
         >
+          <TouchableWithoutFeedback onPress={onClose}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
             <View style={styles.dragPillWrap}>

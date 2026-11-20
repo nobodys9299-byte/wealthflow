@@ -9,6 +9,7 @@ import {
   TextInput,
   SafeAreaView,
   BackHandler,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -960,6 +961,12 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         }}
       >
         <View style={[styles.detailModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={() => {
+            setSelectedDetail(null);
+            setDetailSearch('');
+          }}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View
             style={[
               styles.detailModalCard,

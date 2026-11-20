@@ -42,7 +42,7 @@ function hashEmail(email) {
 export const CloudBackupService = {
   /**
    * Save a file (JSON or CSV) directly to device internal storage
-   * by opening the native Android Share Sheet (Screenshot 1: Files by Google / Downloads / Drive).
+   * using Android Storage Access Framework (SAF - Screenshot 1: Downloads / Drive folder picker).
    */
   async saveToDeviceInternalStorage(fileData, defaultFileName, mimeType = 'application/json') {
     try {
@@ -58,7 +58,35 @@ export const CloudBackupService = {
         return { success: true, fileName: defaultFileName, mode: 'web_download' };
       }
 
-      // Save to local documents directory and open the system Share Sheet (Screenshot 1)
+      // Android: Native Storage Access Framework (SAF) folder picker
+      if (Platform.OS === 'android' && FileSystem.StorageAccessFramework) {
+        try {
+          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (permissions.granted) {
+            const actualMime = mimeType === 'text/csv' ? 'text/csv' : (mimeType || 'application/octet-stream');
+            const createdUri = await FileSystem.StorageAccessFramework.createFileAsync(
+              permissions.directoryUri,
+              defaultFileName,
+              actualMime
+            );
+            await FileSystem.writeAsStringAsync(createdUri, fileData, {
+              encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+            });
+            return {
+              success: true,
+              fileName: defaultFileName,
+              fileUri: createdUri,
+              mode: 'saf',
+            };
+          } else {
+            return { success: false, cancelled: true, error: 'Folder selection was cancelled.' };
+          }
+        } catch (safErr) {
+          console.warn('StorageAccessFramework error, falling back to Sharing:', safErr);
+        }
+      }
+
+      // Fallback for iOS or if SAF fails
       const fileUri = `${FileSystem.documentDirectory}${defaultFileName}`;
       await FileSystem.writeAsStringAsync(fileUri, fileData, {
         encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
@@ -66,7 +94,7 @@ export const CloudBackupService = {
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
-          mimeType: Platform.OS === 'android' ? '*/*' : mimeType,
+          mimeType: mimeType || '*/*',
           dialogTitle: `Save ${defaultFileName}`,
           UTI: mimeType === 'application/json' ? 'public.json' : 'public.comma-separated-values-text',
         });

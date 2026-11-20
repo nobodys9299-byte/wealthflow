@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   Image,
   Alert,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
@@ -134,6 +135,9 @@ export const FriendDetailModal = ({
     <>
       <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={onClose}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
             <View style={styles.dragPillWrap}>

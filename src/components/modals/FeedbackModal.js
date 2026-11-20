@@ -8,6 +8,9 @@ import {
   ScrollView,
   TextInput,
   Linking,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -73,32 +76,44 @@ export const FeedbackModal = ({ visible, onClose }) => {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Top Grab Bar Pill */}
-          <View style={styles.dragPillWrap}>
-            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-          </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={onClose}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
 
-          {/* Modal Header */}
-          <View style={styles.header}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={[styles.iconBadge, { backgroundColor: '#38BDF825' }]}>
-                <Ionicons name="chatbox-ellipses" size={20} color="#38BDF8" />
-              </View>
-              <View>
-                <Text style={[styles.title, { color: theme.text }]}>{t('share_feedback', 'Share Your Feedback')}</Text>
-                <Text style={[styles.subTitle, { color: theme.textMuted }]}>
-                  {t('feedback_sub', 'Your thoughts shape the next update')}
-                </Text>
-              </View>
+          <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {/* Top Grab Bar Pill */}
+            <View style={styles.dragPillWrap}>
+              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
+            {/* Modal Header */}
+            <View style={styles.header}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[styles.iconBadge, { backgroundColor: '#38BDF825' }]}>
+                  <Ionicons name="chatbox-ellipses" size={20} color="#38BDF8" />
+                </View>
+                <View>
+                  <Text style={[styles.title, { color: theme.text }]}>{t('share_feedback', 'Share Your Feedback')}</Text>
+                  <Text style={[styles.subTitle, { color: theme.textMuted }]}>
+                    {t('feedback_sub', 'Your thoughts shape the next update')}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={22} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={[styles.scrollBody, { paddingBottom: 30 }]}
+            >
             {/* Inspiring Motivational Banner */}
             <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
               <View style={styles.quoteTop}>
@@ -201,6 +216,7 @@ export const FeedbackModal = ({ visible, onClose }) => {
           confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
         />
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -359,14 +375,16 @@ const styles = StyleSheet.create({
   textAreaBox: {
     borderRadius: 12,
     borderWidth: 1,
-    padding: 10,
+    padding: 12,
     marginBottom: 14,
-    height: 100,
+    minHeight: 110,
   },
   textArea: {
-    fontSize: 13,
-    height: '100%',
+    fontSize: 14,
+    minHeight: 86,
+    textAlignVertical: 'top',
     padding: 0,
+    lineHeight: 20,
   },
   sendEmailBtn: {
     backgroundColor: '#0284C7',

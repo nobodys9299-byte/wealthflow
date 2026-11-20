@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
 
@@ -52,6 +52,9 @@ export const ConfirmDeleteModal = ({
 
   const modalContent = (
     <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={StyleSheet.absoluteFillObject} />
+      </TouchableWithoutFeedback>
       <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {/* Icon Badge */}
         <View style={[styles.iconBadge, { backgroundColor: badgeBg }]}>

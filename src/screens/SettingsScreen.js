@@ -11,6 +11,7 @@ import {
   Platform,
   BackHandler,
   Linking,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -19,7 +20,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
-import { formatDateDisplay } from '../utils/formatters';
+import { formatDateDisplay, formatDateTimeDisplay } from '../utils/formatters';
 import { FeedbackModal } from '../components/modals/FeedbackModal';
 
 export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore }) => {
@@ -108,8 +109,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
   // CSV Modal
   const [csvModalVisible, setCsvModalVisible] = useState(false);
-  const [csvInput, setCsvInput] = useState('');
-  const [showRawCsv, setShowRawCsv] = useState(false);
 
   // PIN Setup Modal
   const [pinModalVisible, setPinModalVisible] = useState(false);
@@ -120,12 +119,50 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     try {
       setCsvModalVisible(false);
       const csv = exportCSVString();
-      setCsvInput(csv);
       const dateStr = new Date().toISOString().split('T')[0];
       const fileName = `wealthflow_backup_${dateStr}.csv`;
 
-      // Allow modal dismiss transition to finish cleanly before opening share sheet
+      // Allow modal dismiss transition to finish cleanly before opening SAF dialog
       await new Promise((resolve) => setTimeout(resolve, 250));
+
+      if (Platform.OS === 'android' && FileSystem.StorageAccessFramework) {
+        try {
+          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (permissions.granted) {
+            const uri = await FileSystem.StorageAccessFramework.createFileAsync(
+              permissions.directoryUri,
+              fileName,
+              'text/csv'
+            );
+            await FileSystem.writeAsStringAsync(uri, csv, {
+              encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+            });
+            showCustomAlert(
+              'CSV File Saved!',
+              `Successfully saved "${fileName}" to your device storage.`,
+              { type: 'success' }
+            );
+            return;
+          } else {
+            return;
+          }
+        } catch (safErr) {
+          console.warn('SAF error, falling back to Sharing:', safErr);
+        }
+      }
+
+      // Web / iOS Fallback
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
 
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(fileUri, csv, {
@@ -134,8 +171,8 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
-          mimeType: Platform.OS === 'android' ? '*/*' : 'text/csv',
-          dialogTitle: 'Save CSV to Internal Storage (Downloads)',
+          mimeType: 'text/csv',
+          dialogTitle: 'Save CSV File',
           UTI: 'public.comma-separated-values-text',
         });
       }
@@ -209,22 +246,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       payeeName: payeeNameInput.trim() || 'WealthFlow User',
     });
     setUpiModalVisible(false);
-    alert('UPI settings updated! You can now request payments directly via WhatsApp.');
-  };
-
-  const handleImportCSV = async () => {
-    if (!csvInput.trim()) {
-      alert('Please paste valid CSV data to restore');
-      return;
-    }
-
-    const res = await importFromCSV(csvInput.trim());
-    if (res.success) {
-      alert(`Success! Imported ${res.count || 'all'} records.`);
-      setCsvModalVisible(false);
-    } else {
-      alert('Failed to parse CSV: ' + res.error);
-    }
+    showCustomAlert('UPI Updated', 'Your UPI payment settings have been saved successfully.', { type: 'success' });
   };
 
 
@@ -396,14 +418,14 @@ Status: Healthy. No fatal crash exceptions recorded.
         <View style={{ flex: 1 }}>
           <Text style={[styles.screenTitle, { color: theme.text }]}>{t('setting', 'Setting')}</Text>
           <Text style={[styles.subText, { color: theme.textMuted }]}>
-            {t('Passcode, UPI WhatsApp requests, custom categories & CSV', 'Passcode, UPI WhatsApp requests, custom categories & CSV')}
+            {t('Passcode, UPI payment requests, custom categories & CSV', 'Passcode, UPI payment requests, custom categories & CSV')}
           </Text>
         </View>
       </View>
 
-      {/* UPI & Payment Settings for WhatsApp Requests */}
+      {/* UPI & Payment Settings */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('whatsapp_payment_settings', 'WHATSAPP PAYMENT & UPI SETTINGS')}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('payment_settings', 'PAYMENT & UPI SETTINGS')}</Text>
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity
             onPress={() => {
@@ -422,7 +444,7 @@ Status: Healthy. No fatal crash exceptions recorded.
                   {userUpiSettings?.upiId ? `UPI ID: ${userUpiSettings.upiId}` : 'Configure UPI ID & QR Code'}
                 </Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Shared when requesting lending payments via WhatsApp
+                  Shared when requesting lending payments
                 </Text>
               </View>
             </View>
@@ -657,8 +679,8 @@ Status: Healthy. No fatal crash exceptions recorded.
 
               <Text style={{ fontSize: 11, color: theme.textMuted, marginBottom: 12 }}>
                 {googleUser.lastBackup
-                  ? `Last Cloud Backup: ${formatDateDisplay(googleUser.lastBackup)} ${new Date(googleUser.lastBackup).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                  : 'Auto-Backup enabled: Will sync changes to your Google Cloud Vault'}
+                  ? `Last Cloud Backup: ${formatDateTimeDisplay(googleUser.lastBackup)}`
+                  : 'Auto-Backup enabled: Will sync changes to your Google Drive'}
               </Text>
 
               {/* Automatic Backup Schedule & Time Box */}
@@ -794,7 +816,7 @@ Status: Healthy. No fatal crash exceptions recorded.
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Text style={[styles.rowTitle, { color: theme.text }]}>Sign In with Google</Text>
                     <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                      Automatic Google Drive backup across uninstalls & devices (WhatsApp-style)
+                      Secure cloud backup & instant restore across devices & uninstalls
                     </Text>
                   </View>
                 </View>
@@ -889,8 +911,11 @@ Status: Healthy. No fatal crash exceptions recorded.
       </View>
 
       {/* PIN Setup Modal (4 or 6 digits) */}
-      <Modal visible={pinModalVisible} transparent animationType="fade">
+      <Modal visible={pinModalVisible} transparent animationType="fade" onRequestClose={() => setPinModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={() => setPinModalVisible(false)}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Set Passcode</Text>
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
@@ -968,8 +993,12 @@ Status: Healthy. No fatal crash exceptions recorded.
       </Modal>
 
       {/* CSV Export / Import Modal */}
-      <Modal visible={csvModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={csvModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCsvModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={() => setCsvModalVisible(false)}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
+
           <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>CSV File Backup & Restore</Text>
@@ -1027,50 +1056,16 @@ Status: Healthy. No fatal crash exceptions recorded.
                 <Text style={styles.fileActionBtnText}>Choose & Import .CSV File</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Optional Collapsible Direct Text Input */}
-            <TouchableOpacity
-              onPress={() => setShowRawCsv(!showRawCsv)}
-              style={styles.toggleRawTextRow}
-            >
-              <Text style={[styles.toggleRawText, { color: theme.primaryLight }]}>
-                {showRawCsv ? '▲ Hide Direct CSV Text' : '▼ Advanced: View / Paste Direct CSV Text'}
-              </Text>
-            </TouchableOpacity>
-
-            {showRawCsv && (
-              <View style={{ marginTop: 8 }}>
-                <TextInput
-                  style={[
-                    styles.jsonTextarea,
-                    {
-                      backgroundColor: theme.inputBg,
-                      color: theme.text,
-                      borderColor: theme.border,
-                      maxHeight: 120,
-                    },
-                  ]}
-                  multiline
-                  value={csvInput}
-                  onChangeText={setCsvInput}
-                  placeholder="Paste CSV text here..."
-                  placeholderTextColor={theme.textMuted}
-                />
-                <TouchableOpacity
-                  onPress={handleImportCSV}
-                  style={[styles.fileActionBtn, { backgroundColor: theme.primary, marginTop: 8 }]}
-                >
-                  <Text style={styles.fileActionBtnText}>Restore from Pasted Text</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         </View>
       </Modal>
 
       {/* Currency Modal */}
-      <Modal visible={currencyModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={currencyModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCurrencyModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={() => setCurrencyModalVisible(false)}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Select Currency</Text>
@@ -1117,18 +1112,21 @@ Status: Healthy. No fatal crash exceptions recorded.
       </Modal>
 
       {/* UPI Settings Modal */}
-      <Modal visible={upiModalVisible} animationType="slide" transparent={true}>
+      <Modal visible={upiModalVisible} animationType="slide" transparent={true} onRequestClose={() => setUpiModalVisible(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={() => setUpiModalVisible(false)}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Configure UPI for WhatsApp</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Configure UPI & Payment ID</Text>
               <TouchableOpacity onPress={() => setUpiModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Enter your UPI ID and name. WealthFlow will include this payment link and QR code in friendly WhatsApp payment requests.
+              Enter your UPI ID and name. WealthFlow will include this payment link and QR code in friendly payment requests.
             </Text>
 
             <View style={{ gap: 12, marginVertical: 14 }}>

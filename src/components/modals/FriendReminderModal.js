@@ -9,6 +9,7 @@ import {
   TextInput,
   Linking,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
@@ -128,6 +129,9 @@ export const FriendReminderModal = ({
       onRequestClose={onClose}
     >
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Drag Pill */}
           <View style={styles.dragPillWrap}>

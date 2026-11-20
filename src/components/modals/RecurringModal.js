@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
@@ -106,6 +107,9 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
       >
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
           <View style={styles.dragPillWrap}>

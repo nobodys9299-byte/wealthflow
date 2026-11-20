@@ -9,6 +9,7 @@ import {
   Modal,
   Alert,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance, DEFAULT_HOME_SECTIONS } from '../context/FinanceContext';
@@ -639,6 +640,9 @@ export const DashboardScreen = ({
       {/* Customize Home Sections Bottom Sheet Modal */}
       <Modal visible={showCustomizeModal} transparent animationType="slide" onRequestClose={() => setShowCustomizeModal(false)}>
         <View style={[styles.customizeOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableWithoutFeedback onPress={() => setShowCustomizeModal(false)}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View style={[styles.customizeCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Grab Pill */}
             <View style={styles.dragPillWrap}>

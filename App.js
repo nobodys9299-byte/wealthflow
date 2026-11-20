@@ -408,12 +408,6 @@ function MainApp() {
         onRequestClose={() => setDrawerOpen(false)}
       >
         <View style={styles.drawerBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setDrawerOpen(false)}
-          />
-
           <View style={[styles.drawerContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Drawer Header */}
             <View style={[styles.drawerHeader, { borderBottomColor: theme.border }]}>
@@ -580,6 +574,13 @@ function MainApp() {
               </Text>
             </View>
           </View>
+
+          {/* Tap outside the drawer to dismiss */}
+          <TouchableOpacity
+            style={{ flex: 1, height: '100%' }}
+            activeOpacity={1}
+            onPress={() => setDrawerOpen(false)}
+          />
         </View>
       </Modal>
 
