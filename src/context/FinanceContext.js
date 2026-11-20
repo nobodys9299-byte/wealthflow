@@ -8,21 +8,21 @@ import { generateFullAppCSV, parseFullAppCSV } from '../utils/formatters';
 import { CloudBackupService } from '../services/CloudBackupService';
 
 const STORAGE_KEYS = {
-  TRANSACTIONS: '@spendpulse_transactions_v1',
-  ACCOUNTS: '@spendpulse_accounts_v1',
-  BUDGETS: '@spendpulse_budgets_v1',
-  RECURRING: '@spendpulse_recurring_v1',
-  LENDING: '@spendpulse_lending_v1',
-  CURRENCY: '@spendpulse_currency_v1',
-  THEME_ID: '@spendpulse_theme_id_v2',
-  SECURITY: '@spendpulse_security_v1',
-  CATEGORIES: '@spendpulse_categories_v2',
-  UPI_SETTINGS: '@spendpulse_upi_settings_v1',
-  FRIEND_CATEGORIES: '@wealthflow_friend_categories_v1',
-  GOOGLE_USER: '@wealthflow_google_user_v1',
-  CLOUD_BACKUP: '@wealthflow_cloud_backup_v1',
-  HOME_SECTIONS: '@wealthflow_home_sections_v2',
-  CRASH_REPORTS: '@wealthflow_crash_reports_enabled',
+  TRANSACTIONS: '@wealthflow_transactions_v3',
+  ACCOUNTS: '@wealthflow_accounts_v3',
+  BUDGETS: '@wealthflow_budgets_v3',
+  RECURRING: '@wealthflow_recurring_v3',
+  LENDING: '@wealthflow_lending_v3',
+  CURRENCY: '@wealthflow_currency_v3',
+  THEME_ID: '@wealthflow_theme_id_v3',
+  SECURITY: '@wealthflow_security_v3',
+  CATEGORIES: '@wealthflow_categories_v3',
+  UPI_SETTINGS: '@wealthflow_upi_settings_v3',
+  FRIEND_CATEGORIES: '@wealthflow_friend_categories_v3',
+  GOOGLE_USER: '@wealthflow_google_user_v3',
+  CLOUD_BACKUP: '@wealthflow_cloud_backup_v3',
+  HOME_SECTIONS: '@wealthflow_home_sections_v3',
+  CRASH_REPORTS: '@wealthflow_crash_reports_v3',
 };
 
 export const sortTransactionsByDateDesc = (txList) => {

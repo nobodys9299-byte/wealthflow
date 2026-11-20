@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.wealthflow.moneytracker",
-      "allowBackup": true,
+      "allowBackup": false,
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
