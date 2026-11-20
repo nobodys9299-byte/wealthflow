@@ -36,10 +36,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     updateUpiSettings,
     exportCSVString,
     importFromCSV,
-    exportAsJSON,
-    importFromJSON,
-    resetToSampleData,
-    clearAllData,
     transactions,
     accounts,
     lendingRecords,
@@ -50,8 +46,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     restoreFromGoogleCloud,
     removeCloudBackup,
     updateGoogleAutoBackupSettings,
-    saveToDeviceStorage,
-    pickAndRestoreFromDriveFile,
     showCustomAlert,
     crashReportsEnabled,
     updateCrashReportsSetting,
@@ -134,26 +128,29 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
   const handleSaveCSVToInternalStorage = async () => {
     try {
+      setCsvModalVisible(false);
       const csv = exportCSVString();
       setCsvInput(csv);
       const dateStr = new Date().toISOString().split('T')[0];
       const fileName = `wealthflow_backup_${dateStr}.csv`;
 
-      const res = await saveToDeviceStorage(csv, fileName, 'text/csv');
-      if (res.success) {
-        showCustomAlert(
-          'CSV Saved to Device!',
-          `CSV spreadsheet "${res.fileName}" saved successfully to your selected folder (Internal Storage / Downloads).`,
-          { type: 'success' }
-        );
-      } else {
-        showCustomAlert(
-          'Save Cancelled',
-          res.error || 'Could not save CSV to internal storage.',
-          { type: 'info' }
-        );
+      // Allow modal dismiss transition to finish cleanly before opening share sheet
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.writeAsStringAsync(fileUri, csv, {
+        encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: Platform.OS === 'android' ? '*/*' : 'text/csv',
+          dialogTitle: 'Save CSV to Internal Storage (Downloads)',
+          UTI: 'public.comma-separated-values-text',
+        });
       }
     } catch (err) {
+      console.warn('Save CSV failed:', err);
       showCustomAlert('Export Error', err.message || 'Failed to save CSV', { type: 'danger' });
     }
   };
@@ -253,7 +250,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     const result = await loginWithGoogle(cleanEmail, gNameInput.trim() || 'Google User');
 
     if (result?.remoteCheck?.exists) {
-      const { txCount, accCount, updatedAt } = result.remoteCheck;
+      const { txCount, accCount, updatedAt, data: cloudSnapshot } = result.remoteCheck;
       const dateFormatted = formatDateDisplay(updatedAt);
 
       showCustomAlert(
@@ -268,11 +265,11 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
           onConfirm: async () => {
             setCloudSyncing(true);
             try {
-              const restoreRes = await restoreFromGoogleCloud();
+              const restoreRes = await restoreFromGoogleCloud(cleanEmail, cloudSnapshot);
               if (restoreRes.success) {
                 showCustomAlert(
                   'Backup Restored!',
-                  `Successfully restored ${restoreRes.count} transactions and ${restoreRes.accountsCount || 0} accounts!`,
+                  `Successfully restored & updated ${restoreRes.count} transactions and ${restoreRes.accountsCount || 0} accounts from cloud!`,
                   { type: 'success' }
                 );
               } else {
@@ -295,7 +292,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     } else {
       showCustomAlert(
         'Connected with Google',
-        'No previous backup found for this account. Automatic backups will now protect your data.',
+        `Logged in as ${cleanEmail}. Automatic backup is active.`,
         { type: 'success' }
       );
     }
@@ -352,91 +349,25 @@ Status: Healthy. No fatal crash exceptions recorded.
   const handleCloudRestoreNow = async () => {
     setCloudSyncing(true);
     try {
-      const res = await restoreFromGoogleCloud();
+      const res = await restoreFromGoogleCloud(googleUser?.email);
       if (res.success && res.count > 0) {
         showCustomAlert(
           'Cloud Restore Successful',
-          `Restored ${res.count} transactions and ${res.accountsCount || 0} accounts from Cloud Vault!`,
+          `Restored & updated ${res.count} transactions and ${res.accountsCount || 0} accounts from Cloud Vault!`,
           { type: 'success' }
         );
       } else if (res.success && (!res.count || res.count === 0)) {
         showCustomAlert(
           'Cloud Vault Empty',
-          'Cloud restore connected, but 0 transactions were found in the current cloud slot.\n\nIf you have a saved backup file on your phone storage, tap "Restore from Storage" below to restore your complete transaction ledger.',
+          'Cloud restore connected, but 0 transactions were found in the current cloud slot.',
           { type: 'info' }
         );
       } else {
         showCustomAlert(
           'No Cloud Snapshot Found',
-          res.error || 'No backup found in cloud. If you saved a backup file to your phone storage, tap "Restore from Storage" below.',
+          res.error || 'No backup found in cloud for this Google Account.',
           { type: 'info' }
         );
-      }
-    } finally {
-      setCloudSyncing(false);
-    }
-  };
-
-  const handleSaveJSONToInternalStorage = async () => {
-    setCloudSyncing(true);
-    try {
-      const json = exportAsJSON();
-      const dateStr = new Date().toISOString().split('T')[0];
-      const safeEmail = (googleUser?.email || 'user').split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-      const fileName = `wealthflow_backup_${safeEmail}_${dateStr}.json`;
-
-      const res = await saveToDeviceStorage(json, fileName, 'application/json');
-      if (res.success) {
-        showCustomAlert(
-          'Backup Saved to Device!',
-          `Backup file "${res.fileName}" saved successfully to your selected folder (Internal Storage / Downloads).\n\nThis file will remain safe even if you uninstall the app.`,
-          { type: 'success' }
-        );
-      } else {
-        showCustomAlert(
-          'Save Cancelled',
-          res.error || 'Folder selection was cancelled.',
-          { type: 'info' }
-        );
-      }
-    } catch (e) {
-      showCustomAlert('Save Failed', e.message || 'Could not save file', { type: 'danger' });
-    } finally {
-      setCloudSyncing(false);
-    }
-  };
-
-  const handleImportFromDriveFile = async () => {
-    setCloudSyncing(true);
-    try {
-      const res = await pickAndRestoreFromDriveFile();
-      if (res.canceled) return;
-      if (res.success) {
-        if (res.format === 'csv' || res.rawCsv) {
-          const csvRes = await importFromCSV(res.rawCsv);
-          if (csvRes.success) {
-            showCustomAlert(
-              'CSV Restored Successfully!',
-              `Restored ${csvRes.count || 'all'} records from "${res.fileName}".`,
-              { type: 'success' }
-            );
-          } else {
-            showCustomAlert('Import Failed', 'Failed to parse CSV file: ' + (csvRes.error || 'Invalid CSV format'), { type: 'danger' });
-          }
-        } else if (res.rawJson) {
-          const importRes = await importFromJSON(res.rawJson);
-          if (importRes.success) {
-            showCustomAlert(
-              'Backup Restored Successfully!',
-              `Restored ${importRes.count || 0} transactions and ${importRes.accountsCount || 0} accounts from "${res.fileName}".`,
-              { type: 'success' }
-            );
-          } else {
-            showCustomAlert('Restore Failed', 'Failed to parse JSON backup: ' + (importRes.error || 'Invalid format'), { type: 'danger' });
-          }
-        }
-      } else {
-        showCustomAlert('File Read Error', res.error || 'Could not read selected file', { type: 'danger' });
       }
     } finally {
       setCloudSyncing(false);
@@ -847,31 +778,6 @@ Status: Healthy. No fatal crash exceptions recorded.
                 </TouchableOpacity>
               </View>
 
-              {/* Action Buttons Row 2: Direct Internal Storage Save & Restore */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                <TouchableOpacity
-                  onPress={handleSaveJSONToInternalStorage}
-                  disabled={cloudSyncing}
-                  style={[styles.cloudBtn, { backgroundColor: '#10B981' }]}
-                >
-                  <Ionicons name="save-outline" size={14} color="#FFF" />
-                  <Text style={styles.cloudBtnText} numberOfLines={1} adjustsFontSizeToFit>
-                    Save to Internal Storage
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleImportFromDriveFile}
-                  disabled={cloudSyncing}
-                  style={[styles.cloudBtn, { backgroundColor: theme.cardAlt, borderColor: theme.border, borderWidth: 1 }]}
-                >
-                  <Ionicons name="folder-open-outline" size={14} color={theme.text} />
-                  <Text style={[styles.cloudBtnText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
-                    Restore from Storage
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
               <TouchableOpacity
                 onPress={logoutGoogle}
                 style={{ alignSelf: 'flex-start', marginTop: 4, paddingVertical: 4 }}
@@ -1002,44 +908,6 @@ Status: Healthy. No fatal crash exceptions recorded.
               <Ionicons name="send-outline" size={16} color={theme.textMuted} />
             </TouchableOpacity>
           )}
-        </View>
-      </View>
-
-      {/* Reset & Maintenance */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('DATA RESET (CONFIRMATION PROTECTED)', 'DATA RESET (CONFIRMATION PROTECTED)')}</Text>
-
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            onPress={resetToSampleData}
-            style={[styles.row, { borderBottomColor: theme.border }]}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: `${theme.info}20` }]}>
-                <Ionicons name="refresh-outline" size={18} color={theme.info} />
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Load Sample Data', 'Load Sample Data')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {t('Restore initial demo accounts, transactions & loans', 'Restore initial demo accounts, transactions & loans')}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={clearAllData} style={styles.row}>
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: theme.dangerBg }]}>
-                <Ionicons name="trash-outline" size={18} color={theme.danger} />
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.danger }]}>{t('Clear All App Data', 'Clear All App Data')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {t('Erase all records to a clean blank slate (0 records)', 'Erase all records to a clean blank slate (0 records)')}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
         </View>
       </View>
 

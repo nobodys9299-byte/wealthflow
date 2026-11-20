@@ -51,30 +51,7 @@ export const DEFAULT_FRIEND_CATEGORIES = [
   { id: 'fcat_other', name: 'Shared Expense', emoji: '🤝', color: '#64748B' },
 ];
 
-const INITIAL_LENDING = [
-  {
-    id: 'lend_1',
-    friendName: 'Alex Johnson',
-    type: 'lent',
-    amount: 150,
-    date: new Date().toISOString().split('T')[0],
-    note: 'Weekend group dinner bill split',
-    friendCategoryId: 'fcat_dinner',
-    friendCategoryName: 'Dinner & Food Split',
-    status: 'pending',
-  },
-  {
-    id: 'lend_2',
-    friendName: 'Sarah Miller',
-    type: 'borrowed',
-    amount: 45,
-    date: new Date().toISOString().split('T')[0],
-    note: 'Concert ticket advance',
-    friendCategoryId: 'fcat_outing',
-    friendCategoryName: 'Movies & Outing',
-    status: 'pending',
-  },
-];
+const INITIAL_LENDING = [];
 
 const FinanceContext = createContext(null);
 
@@ -546,11 +523,7 @@ export const FinanceProvider = ({ children }) => {
     setGoogleUser(userObj);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(userObj));
-      // Only cache snapshot if there are actual transactions locally to avoid wiping cloud cache with an empty database
-      if (transactions && transactions.length > 0) {
-        const snapshot = exportAsJSON();
-        await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, snapshot);
-      }
+      await AsyncStorage.setItem('@wealthflow_last_cloud_email', customEmail);
 
       // Check if remote cloud backup exists for this account (e.g. after fresh reinstall)
       const remoteCheck = await CloudBackupService.checkCloudBackupExists(customEmail);
@@ -612,35 +585,53 @@ export const FinanceProvider = ({ children }) => {
     }
   };
 
-  const restoreFromGoogleCloud = async () => {
+  const restoreFromGoogleCloud = async (targetEmail = null, explicitSnapshot = null) => {
     try {
-      const email = googleUser?.email || 'user@gmail.com';
-      // First try cloud vault
-      const remote = await CloudBackupService.fetchFromCloudVault(email);
-      if (remote.success && remote.data) {
-        const res = await importFromJSON(JSON.stringify(remote.data));
+      let email = targetEmail || googleUser?.email;
+      if (!email) {
+        const saved = await AsyncStorage.getItem(STORAGE_KEYS.GOOGLE_USER);
+        if (saved) {
+          try { email = JSON.parse(saved)?.email; } catch (e) {}
+        }
+      }
+      if (!email) {
+        email = await AsyncStorage.getItem('@wealthflow_last_cloud_email');
+      }
+      if (!email) email = 'user@gmail.com';
+
+      // 1. If explicitSnapshot passed directly (from remoteCheck in handleGoogleSignIn)
+      if (explicitSnapshot) {
+        const res = await importFromJSON(explicitSnapshot, { merge: true });
+        setTimeout(async () => {
+          try {
+            const currentStr = exportAsJSON();
+            await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, currentStr);
+            await CloudBackupService.syncToCloudVault(email, JSON.parse(currentStr));
+          } catch (e) {}
+        }, 300);
         return { ...res, source: 'cloud_vault' };
       }
 
-      // Fallback to local snapshot
+      // 2. Fetch from cloud vault
+      const remote = await CloudBackupService.fetchFromCloudVault(email);
+      if (remote.success && remote.data) {
+        const res = await importFromJSON(remote.data, { merge: true });
+        setTimeout(async () => {
+          try {
+            const currentStr = exportAsJSON();
+            await AsyncStorage.setItem(STORAGE_KEYS.CLOUD_BACKUP, currentStr);
+            await CloudBackupService.syncToCloudVault(email, JSON.parse(currentStr));
+          } catch (e) {}
+        }, 300);
+        return { ...res, source: 'cloud_vault' };
+      }
+
+      // 3. Fallback to local snapshot
       const snapshot = await AsyncStorage.getItem(STORAGE_KEYS.CLOUD_BACKUP);
       if (!snapshot) {
         return { success: false, error: 'No cloud backup snapshot found yet.' };
       }
-      try {
-        const parsed = JSON.parse(snapshot);
-        const txCount = Array.isArray(parsed?.transactions) ? parsed.transactions.length : 0;
-        if (txCount === 0) {
-          return {
-            success: false,
-            error: 'No transactions found in this cloud slot.\n\nIf you have a saved backup file on your phone storage, tap "Restore from Storage" below to restore your transactions.',
-          };
-        }
-      } catch (parseErr) {
-        // Continue to importFromJSON
-      }
-
-      const res = await importFromJSON(snapshot);
+      const res = await importFromJSON(snapshot, { merge: true });
       return { ...res, source: 'local_cache' };
     } catch (e) {
       return { success: false, error: e.message };
@@ -1276,19 +1267,67 @@ export const FinanceProvider = ({ children }) => {
     );
   };
 
-  const importFromJSON = async (jsonString) => {
+  const importFromJSON = async (jsonStringOrObj, options = { merge: false }) => {
     try {
-      const data = JSON.parse(jsonString);
+      const data = typeof jsonStringOrObj === 'string' ? JSON.parse(jsonStringOrObj) : jsonStringOrObj;
       let count = 0;
       let accountsCount = 0;
+
+      // Current local transactions from state or AsyncStorage
+      let localTx = transactions || [];
+      if (localTx.length === 0) {
+        const savedTx = await AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+        if (savedTx) {
+          try { localTx = JSON.parse(savedTx) || []; } catch (e) {}
+        }
+      }
+
+      // Current local accounts from state or AsyncStorage
+      let localAcc = accounts || [];
+      if (localAcc.length === 0) {
+        const savedAcc = await AsyncStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+        if (savedAcc) {
+          try { localAcc = JSON.parse(savedAcc) || []; } catch (e) {}
+        }
+      }
+
       if (data.transactions && Array.isArray(data.transactions)) {
-        await persistTransactions(data.transactions);
-        count = data.transactions.length;
+        let finalTx = data.transactions;
+        if (options.merge && localTx.length > 0) {
+          // Merge: keep all cloud transactions, plus keep any new local transactions created on device
+          const txMap = new Map();
+          data.transactions.forEach((t) => { if (t && t.id) txMap.set(t.id, t); });
+          localTx.forEach((t) => {
+            if (t && t.id && !txMap.has(t.id)) {
+              txMap.set(t.id, t);
+            }
+          });
+          finalTx = Array.from(txMap.values());
+        }
+        await persistTransactions(finalTx);
+        count = finalTx.length;
+      } else if (options.merge && localTx.length > 0) {
+        count = localTx.length;
       }
+
       if (data.accounts && Array.isArray(data.accounts)) {
-        await persistAccounts(data.accounts);
-        accountsCount = data.accounts.length;
+        let finalAcc = data.accounts;
+        if (options.merge && localAcc.length > 0) {
+          const accMap = new Map();
+          data.accounts.forEach((a) => { if (a && a.id) accMap.set(a.id, a); });
+          localAcc.forEach((a) => {
+            if (a && a.id && !accMap.has(a.id)) {
+              accMap.set(a.id, a);
+            }
+          });
+          finalAcc = Array.from(accMap.values());
+        }
+        await persistAccounts(finalAcc);
+        accountsCount = finalAcc.length;
+      } else if (options.merge && localAcc.length > 0) {
+        accountsCount = localAcc.length;
       }
+
       if (data.budgets && Array.isArray(data.budgets)) {
         await persistBudgets(data.budgets);
       }
@@ -1296,7 +1335,18 @@ export const FinanceProvider = ({ children }) => {
         await persistRecurring(data.recurring);
       }
       if (data.lendingRecords && Array.isArray(data.lendingRecords)) {
-        await persistLending(data.lendingRecords);
+        let finalLending = data.lendingRecords;
+        if (options.merge && lendingRecords && lendingRecords.length > 0) {
+          const lMap = new Map();
+          data.lendingRecords.forEach((l) => { if (l && l.id) lMap.set(l.id, l); });
+          lendingRecords.forEach((l) => {
+            if (l && l.id && !lMap.has(l.id)) {
+              lMap.set(l.id, l);
+            }
+          });
+          finalLending = Array.from(lMap.values());
+        }
+        await persistLending(finalLending);
       }
       if (data.currency) {
         await persistCurrency(data.currency);
@@ -1448,7 +1498,7 @@ export const FinanceProvider = ({ children }) => {
         loginWithGoogle,
         logoutGoogle,
         backupToGoogleCloud,
-        restoreFromGoogleCloud,
+        restoreFromGoogleCloud: (email, snapshot) => restoreFromGoogleCloud(email, snapshot),
         removeCloudBackup: (email) => CloudBackupService.removeCloudBackup(email),
         updateGoogleAutoBackupSettings,
         saveToDeviceStorage: (data, fileName, mimeType) => CloudBackupService.saveToDeviceInternalStorage(data, fileName, mimeType),

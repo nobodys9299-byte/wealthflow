@@ -66,7 +66,7 @@ export const CloudBackupService = {
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
-          mimeType,
+          mimeType: Platform.OS === 'android' ? '*/*' : mimeType,
           dialogTitle: `Save ${defaultFileName}`,
           UTI: mimeType === 'application/json' ? 'public.json' : 'public.comma-separated-values-text',
         });
