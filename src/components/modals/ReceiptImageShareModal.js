@@ -272,6 +272,7 @@ export const ReceiptImageShareModal = ({
               </tbody>
             </table>
 
+            ${type !== 'account' ? `
             <!-- Instant UPI Payment Details with Payment Link & Dynamic QR Code -->
             <div style="margin-top: 20px; padding: 16px 18px; background-color: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid;">
               <div style="flex: 1; padding-right: 18px;">
@@ -295,6 +296,7 @@ export const ReceiptImageShareModal = ({
                 </a>
               </div>
             </div>
+            ` : ''}
 
             <div class="footer">
               <div>WealthFlow Personal Finance App</div>

@@ -23,7 +23,8 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#0F172A",
@@ -39,7 +40,14 @@
           "photosPermission": "WealthFlow needs access to your photo gallery to select contact photos."
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#4F46E5"
+        }
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"

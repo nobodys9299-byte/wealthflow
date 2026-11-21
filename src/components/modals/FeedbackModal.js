@@ -77,7 +77,7 @@ export const FeedbackModal = ({ visible, onClose }) => {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
@@ -115,7 +115,7 @@ export const FeedbackModal = ({ visible, onClose }) => {
               ref={scrollRef}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.scrollBody, { paddingBottom: 60 }]}
+              contentContainerStyle={[styles.scrollBody, { paddingBottom: 12 }]}
             >
             {/* Inspiring Motivational Banner */}
             <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 24,
+    paddingBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.35,

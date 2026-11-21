@@ -21,9 +21,26 @@ import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 const POPULAR_EMOJIS = [
-  '🍽️', '🚗', '🎬', '🛒', '⚡', '💵', '🎁', '🤝',
-  '☕', '🍻', '🍕', '✈️', '🎮', '🏠', '🍿', '🚴',
-  '🏥', '🎉', '🏖️', '🛍️', '🎟️', '🍔', '🚌'
+  // Food & Dining
+  '🍽️', '🍔', '🍕', '🍜', '🍣', '🥗', '☕', '🥪', '🍰', '🍩', '🍦', '🌮', '🍱', '🍻', '🍷', '🍿', '🍲', '🥐',
+  // Groceries & Market
+  '🛒', '🥦', '🍎', '🍞', '🥩', '🥚', '🥛', '🍇', '🍉', '🥑', '🧀', '🥕', '🍓',
+  // Transport & Travel
+  '🚗', '⛽', '🚕', '🚌', '🚆', '✈️', '🛵', '🚲', '🏖️', '🏨', '🛳️', '🚁', '🚀', '🚊', '🚤',
+  // Home, Bills & Utilities
+  '⚡', '💡', '💧', '📶', '📱', '🏡', '🛋️', '🔑', '🧹', '🔧', '📦', '🏢', '🔌', '📡', '🖥️', '🛏️',
+  // Entertainment & Leisure
+  '🎬', '🍿', '🎮', '🎧', '🎵', '🎟️', '🎨', '📸', '🎤', '🎪', '🎳', '🎯', '🎰', '🎸', '🎹',
+  // Shopping & Apparel
+  '🛍️', '👕', '👗', '👠', '👟', '👜', '💄', '💍', '🕶️', '⌚', '🎒', '🧢',
+  // Friends, Social & Gifts
+  '🤝', '🎁', '🎉', '💐', '🎂', '💌', '🎈', '👥', '🥂', '🍻', '🎊',
+  // Health, Fitness & Personal Care
+  '🩺', '💊', '🏋️', '🧘', '💈', '💅', '🦷', '⚽', '🏀', '🏊', '🚴', '🩹', '🧼',
+  // Education & Work
+  '📚', '🎓', '✏️', '🔬', '💻', '💼', '📊', '📈', '📝', '📂', '📐',
+  // Income, Finance & Crypto
+  '💰', '💵', '💳', '🪙', '🏦', '💎', '🧾', '🏷️', '🔄', '💸', '🤑',
 ];
 
 const CATEGORY_COLORS = [
@@ -45,8 +62,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
     editLendingRecord,
     friendCategories = DEFAULT_FRIEND_CATEGORIES,
     addFriendCategory,
+    editFriendCategory,
     deleteFriendCategory,
     resetFriendCategoriesToDefault,
+    lendingRecords = [],
+    lendingSummary = { friends: [] },
     t,
   } = useFinance();
 
@@ -65,6 +85,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
 
   // Manage Categories modal state
   const [showManageCatsModal, setShowManageCatsModal] = useState(false);
+  const [editingFriendCat, setEditingFriendCat] = useState(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [editCatEmoji, setEditCatEmoji] = useState('🍽️');
+  const [editCatColor, setEditCatColor] = useState('#3B82F6');
+  const [inlineDeletingCatId, setInlineDeletingCatId] = useState(null);
 
   // Custom Friend Category Creator state
   const [showAddCatModal, setShowAddCatModal] = useState(false);
@@ -74,23 +99,49 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
   const [newCatEmoji, setNewCatEmoji] = useState('🍽️');
   const [newCatColor, setNewCatColor] = useState('#3B82F6');
 
+  // Helper to find friend profile info
+  const findExistingFriend = (targetName) => {
+    if (!targetName || !targetName.trim()) return null;
+    const norm = targetName.trim().toLowerCase();
+    const fromSummary = lendingSummary?.friends?.find(
+      (f) => f.name && f.name.trim().toLowerCase() === norm
+    );
+    if (fromSummary && (fromSummary.photoUri || fromSummary.avatarEmoji)) return fromSummary;
+    const fromRecords = lendingRecords?.find(
+      (r) => (r.friendName || '').trim().toLowerCase() === norm && (r.photoUri || r.avatarEmoji)
+    );
+    return fromRecords || null;
+  };
+
   useEffect(() => {
     if (initialData) {
-      setFriendName(initialData.friendName || initialFriend || '');
+      const fName = initialData.friendName || initialFriend || '';
+      setFriendName(fName);
       setType(initialData.type || 'lent');
       setAmount(initialData.amount ? String(initialData.amount) : '');
       setCategoryId(initialData.friendCategoryId || initialData.categoryId || friendCategories[0]?.id || 'fcat_dinner');
       setDate(initialData.date || new Date().toISOString().split('T')[0]);
       setNote(initialData.note || '');
-      setPhotoUri(initialData.photoUri || null);
-      setAvatarEmoji(initialData.avatarEmoji || (initialData.photoUri ? null : '👤'));
+      const existing = findExistingFriend(fName);
+      const chosenPhoto = initialData.photoUri || existing?.photoUri || null;
+      setPhotoUri(chosenPhoto);
+      setAvatarEmoji(initialData.avatarEmoji || (chosenPhoto ? null : (existing?.avatarEmoji || '👤')));
     } else if (initialFriend) {
       setFriendName(initialFriend);
       setType('lent');
       setAmount('');
       setNote('');
-      setPhotoUri(null);
-      setAvatarEmoji('👤');
+      const existing = findExistingFriend(initialFriend);
+      if (existing?.photoUri) {
+        setPhotoUri(existing.photoUri);
+        setAvatarEmoji(null);
+      } else if (existing?.avatarEmoji) {
+        setAvatarEmoji(existing.avatarEmoji);
+        setPhotoUri(null);
+      } else {
+        setPhotoUri(null);
+        setAvatarEmoji('👤');
+      }
       setDate(new Date().toISOString().split('T')[0]);
     } else {
       setFriendName('');
@@ -102,6 +153,19 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
       setDate(new Date().toISOString().split('T')[0]);
     }
   }, [initialData, initialFriend, visible]);
+
+  const handleFriendNameChange = (text) => {
+    setFriendName(text);
+    if (!photoUri && text.trim().length > 1) {
+      const existing = findExistingFriend(text);
+      if (existing?.photoUri) {
+        setPhotoUri(existing.photoUri);
+        setAvatarEmoji(null);
+      } else if (existing?.avatarEmoji && existing.avatarEmoji !== '👤') {
+        setAvatarEmoji(existing.avatarEmoji);
+      }
+    }
+  };
 
   useEffect(() => {
     if (friendCategories && friendCategories.length > 0 && !friendCategories.some((c) => c.id === categoryId)) {
@@ -152,6 +216,10 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
       color: '#64748B',
     };
 
+    const existing = findExistingFriend(friendName);
+    const finalPhoto = photoUri || existing?.photoUri || null;
+    const finalAvatar = finalPhoto ? null : (avatarEmoji && avatarEmoji !== '👤' ? avatarEmoji : (existing?.avatarEmoji || '👤'));
+
     const recordPayload = {
       friendName: friendName.trim(),
       type,
@@ -165,8 +233,8 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
       categoryColor: selectedCat.color,
       date,
       note: note.trim(),
-      photoUri: photoUri || null,
-      avatarEmoji: photoUri ? null : (avatarEmoji || '👤'),
+      photoUri: finalPhoto,
+      avatarEmoji: finalAvatar,
     };
 
     if (initialData?.id && editLendingRecord) {
@@ -347,7 +415,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
                   placeholder="e.g. Alex, Sarah, Michael"
                   placeholderTextColor={theme.textMuted}
                   value={friendName}
-                  onChangeText={setFriendName}
+                  onChangeText={handleFriendNameChange}
                 />
               </View>
 
@@ -625,33 +693,103 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         </View>
       </Modal>
 
-      {/* Modal to Manage & Delete ANY Friend Category */}
+      {/* Modal to Manage, Edit & Delete Friend Categories */}
       <Modal
         visible={showManageCatsModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowManageCatsModal(false)}
+        onRequestClose={() => {
+          setShowManageCatsModal(false);
+          setEditingFriendCat(null);
+          setInlineDeletingCatId(null);
+        }}
       >
         <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '80%' }]}>
+          <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '85%' }]}>
             <View style={styles.subModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.danger}25` }]}>
-                  <Ionicons name="trash" size={16} color={theme.danger} />
+                <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.primary}25` }]}>
+                  <Ionicons name="list" size={16} color={theme.primaryLight} />
                 </View>
                 <View>
                   <Text style={[styles.subModalTitle, { color: theme.text }]}>Manage Friend Categories</Text>
                   <Text style={[styles.subModalSub, { color: theme.textMuted }]}>
-                    Delete or reset friend categories
+                    Edit names, emojis, colors or delete
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setShowManageCatsModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowManageCatsModal(false);
+                setEditingFriendCat(null);
+                setInlineDeletingCatId(null);
+              }}>
                 <Ionicons name="close" size={20} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ marginVertical: 12, maxHeight: 280 }}>
+            {/* Editing Category Card */}
+            {editingFriendCat && (
+              <View style={{ padding: 12, backgroundColor: theme.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: theme.primary, marginBottom: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.primaryLight, marginBottom: 6, textTransform: 'uppercase' }}>
+                  Edit Category: {editingFriendCat.name}
+                </Text>
+                <TextInput
+                  style={[styles.textInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border, height: 42, marginBottom: 8 }]}
+                  value={editCatName}
+                  onChangeText={setEditCatName}
+                  placeholder="Category Name"
+                  placeholderTextColor={theme.textMuted}
+                />
+                <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginBottom: 4 }}>SELECT EMOJI</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {POPULAR_EMOJIS.map((em, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => setEditCatEmoji(em)}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: editCatEmoji === em ? `${theme.primary}35` : theme.inputBg,
+                          borderWidth: editCatEmoji === em ? 2 : 1,
+                          borderColor: editCatEmoji === em ? theme.primary : theme.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 18 }}>{em}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => setEditingFriendCat(null)}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: theme.cardHover }}
+                  >
+                    <Text style={{ color: theme.textMuted, fontWeight: '700', fontSize: 12 }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (!editCatName.trim()) return;
+                      await editFriendCategory({
+                        id: editingFriendCat.id,
+                        name: editCatName.trim(),
+                        emoji: editCatEmoji,
+                        color: editCatColor,
+                      });
+                      setEditingFriendCat(null);
+                    }}
+                    style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, backgroundColor: theme.primary }}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12 }}>Save Changes</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <ScrollView style={{ marginVertical: 8, maxHeight: 280 }}>
               {friendCategories.length === 0 ? (
                 <View style={{ padding: 20, alignItems: 'center' }}>
                   <Text style={{ color: theme.textMuted }}>No categories remaining. Create one below.</Text>
@@ -665,29 +803,59 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
                       { backgroundColor: theme.cardAlt, borderColor: theme.border },
                     ]}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
                       <Text style={{ fontSize: 20 }}>{c.emoji || '🤝'}</Text>
-                      <Text style={[styles.manageCatName, { color: theme.text }]}>{c.name}</Text>
+                      <Text style={[styles.manageCatName, { color: theme.text }]} numberOfLines={1}>{c.name}</Text>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteCategory(c)}
-                      style={[styles.manageDelBtn, { backgroundColor: `${theme.danger}20` }]}
-                    >
-                      <Ionicons name="trash-outline" size={15} color={theme.danger} />
-                    </TouchableOpacity>
+
+                    {inlineDeletingCatId === c.id ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 11, color: theme.danger, fontWeight: '700' }}>Delete?</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            deleteFriendCategory(c.id);
+                            if (categoryId === c.id) {
+                              setCategoryId(friendCategories.find((x) => x.id !== c.id)?.id || '');
+                            }
+                            setInlineDeletingCatId(null);
+                          }}
+                          style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.danger, borderRadius: 6 }}
+                        >
+                          <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>Yes</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setInlineDeletingCatId(null)}
+                          style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.cardHover, borderRadius: 6 }}
+                        >
+                          <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '700' }}>No</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setEditingFriendCat(c);
+                            setEditCatName(c.name);
+                            setEditCatEmoji(c.emoji || '🍽️');
+                            setEditCatColor(c.color || '#3B82F6');
+                          }}
+                          style={[styles.manageDelBtn, { backgroundColor: `${theme.primary}20` }]}
+                        >
+                          <Ionicons name="pencil-outline" size={15} color={theme.primaryLight} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setInlineDeletingCatId(c.id)}
+                          style={[styles.manageDelBtn, { backgroundColor: `${theme.danger}20` }]}
+                        >
+                          <Ionicons name="trash-outline" size={15} color={theme.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 ))
               )}
             </ScrollView>
-
-            <View style={{ marginTop: 8 }}>
-              <TouchableOpacity
-                onPress={() => setShowManageCatsModal(false)}
-                style={[styles.saveCatBtn, { backgroundColor: theme.primary, width: '100%' }]}
-              >
-                <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Redundant purple bottom button from Screenshot 6 removed completely */}
           </View>
         </View>
       </Modal>

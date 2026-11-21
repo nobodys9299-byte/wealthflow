@@ -67,7 +67,7 @@ export const CloudBackupService = {
             'android.intent.action.CREATE_DOCUMENT',
             {
               type: actualMime,
-              category: ['android.intent.category.OPENABLE'],
+              category: 'android.intent.category.OPENABLE',
               extra: {
                 'android.intent.extra.TITLE': defaultFileName,
               },

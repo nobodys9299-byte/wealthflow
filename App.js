@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
   View,
@@ -9,6 +9,7 @@ import {
   Modal,
   ScrollView,
   BackHandler,
+  AppState,
   StatusBar as RNStatusBar,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -64,6 +65,46 @@ function MainApp() {
 
   const [donationModalVisible, setDonationModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+
+  // Auto-lock inactivity tracker (1 minute = 60,000 ms)
+  const lastActiveRef = useRef(Date.now());
+  const backgroundTimeRef = useRef(null);
+
+  // Periodic inactivity check (every 5 seconds)
+  useEffect(() => {
+    if (!securitySettings.enabled || !isAppUnlocked) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      if (now - lastActiveRef.current >= 60000) {
+        setIsAppUnlocked(false);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [securitySettings.enabled, isAppUnlocked]);
+
+  // AppState change listener: locks if app backgrounded for >= 1 minute or idle
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        backgroundTimeRef.current = Date.now();
+      } else if (nextAppState === 'active') {
+        const now = Date.now();
+        const backgroundElapsed = backgroundTimeRef.current ? now - backgroundTimeRef.current : 0;
+        const idleElapsed = now - lastActiveRef.current;
+
+        if (securitySettings.enabled && isAppUnlocked && (backgroundElapsed >= 60000 || idleElapsed >= 60000)) {
+          setIsAppUnlocked(false);
+        }
+        lastActiveRef.current = now;
+        backgroundTimeRef.current = null;
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [securitySettings.enabled, isAppUnlocked]);
 
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {
@@ -291,7 +332,13 @@ function MainApp() {
   ];
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.bg }]}
+      onStartShouldSetResponderCapture={() => {
+        lastActiveRef.current = Date.now();
+        return false;
+      }}
+    >
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
 
       {/* Screen Body */}

@@ -23,6 +23,7 @@ import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 import { formatDateDisplay, formatDateTimeDisplay } from '../utils/formatters';
 import { FeedbackModal } from '../components/modals/FeedbackModal';
+import { NotificationService } from '../services/NotificationService';
 
 export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore }) => {
   const {
@@ -51,10 +52,13 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     showCustomAlert,
     crashReportsEnabled,
     updateCrashReportsSetting,
+    notificationSettings = { enabled: true, hour: 20, minute: 0 },
+    updateNotificationSettings,
   } = useFinance();
 
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [notifTimeModalVisible, setNotifTimeModalVisible] = useState(false);
   const [cloudSyncing, setCloudSyncing] = useState(false);
 
   // Hardware Back Handler
@@ -66,6 +70,10 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       }
       if (feedbackModalVisible) {
         setFeedbackModalVisible(false);
+        return true;
+      }
+      if (notifTimeModalVisible) {
+        setNotifTimeModalVisible(false);
         return true;
       }
       if (csvModalVisible) {
@@ -133,16 +141,26 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
             'android.intent.action.CREATE_DOCUMENT',
             {
               type: 'text/csv',
-              category: ['android.intent.category.OPENABLE'],
+              category: 'android.intent.category.OPENABLE',
               extra: {
                 'android.intent.extra.TITLE': fileName,
               },
             }
           );
           if (result && result.resultCode === -1 && result.data) {
-            await FileSystem.writeAsStringAsync(result.data, csv, {
-              encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-            });
+            try {
+              await FileSystem.writeAsStringAsync(result.data, csv, {
+                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+              });
+            } catch (wErr) {
+              if (FileSystem.StorageAccessFramework?.writeAsStringAsync) {
+                await FileSystem.StorageAccessFramework.writeAsStringAsync(result.data, csv, {
+                  encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+                });
+              } else {
+                throw wErr;
+              }
+            }
             showCustomAlert(
               'CSV File Saved!',
               `Successfully saved "${fileName}" to your device storage.`,
@@ -153,8 +171,11 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
             // User cancelled
             return;
           }
+          return;
         } catch (intentErr) {
-          console.warn('IntentLauncher CREATE_DOCUMENT error, falling back:', intentErr);
+          console.warn('IntentLauncher CREATE_DOCUMENT error:', intentErr);
+          showCustomAlert('Save Failed', 'Could not open document creator: ' + intentErr.message, { type: 'danger' });
+          return;
         }
       }
 
@@ -430,6 +451,47 @@ Status: Healthy. No fatal crash exceptions recorded.
         </View>
       </View>
 
+      {/* Visual Themes Picker (Moved to Top as Requested) */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('visual_themes', 'VISUAL THEMES')}</Text>
+
+        <View style={styles.themeGrid}>
+          {Object.values(THEMES).map((th) => {
+            const isSelected = themeId === th.id;
+            return (
+              <TouchableOpacity
+                key={th.id}
+                onPress={() => changeTheme(th.id)}
+                style={[
+                  styles.themeCard,
+                  {
+                    backgroundColor: th.card,
+                    borderColor: isSelected ? th.primary : th.border,
+                    borderWidth: isSelected ? 2.5 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.swatchRow}>
+                  <View style={[styles.swatchDot, { backgroundColor: th.bg }]} />
+                  <View style={[styles.swatchDot, { backgroundColor: th.primary }]} />
+                  <View style={[styles.swatchDot, { backgroundColor: th.success }]} />
+                  <View style={[styles.swatchDot, { backgroundColor: th.danger }]} />
+                </View>
+
+                <View style={styles.themeTitleRow}>
+                  <Text style={[styles.themeName, { color: th.text }]} numberOfLines={1}>
+                    {th.name}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark-circle" size={16} color={th.primary} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
       {/* UPI & Payment Settings */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('payment_settings', 'PAYMENT & UPI SETTINGS')}</Text>
@@ -474,7 +536,7 @@ Status: Healthy. No fatal crash exceptions recorded.
               <View>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Require Passcode to Open', 'Require Passcode to Open')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {securitySettings.enabled ? t('App locks when closed', 'App locks when closed') : t('No lock required', 'No lock required')}
+                  {securitySettings.enabled ? 'Auto-locks after 1 minute of inactivity' : t('No lock required', 'No lock required')}
                 </Text>
               </View>
             </View>
@@ -559,47 +621,6 @@ Status: Healthy. No fatal crash exceptions recorded.
         </View>
       </View>
 
-      {/* Multiple Theme Picker */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('visual_themes', 'VISUAL THEMES')}</Text>
-
-        <View style={styles.themeGrid}>
-          {Object.values(THEMES).map((th) => {
-            const isSelected = themeId === th.id;
-            return (
-              <TouchableOpacity
-                key={th.id}
-                onPress={() => changeTheme(th.id)}
-                style={[
-                  styles.themeCard,
-                  {
-                    backgroundColor: th.card,
-                    borderColor: isSelected ? th.primary : th.border,
-                    borderWidth: isSelected ? 2.5 : 1,
-                  },
-                ]}
-              >
-                <View style={styles.swatchRow}>
-                  <View style={[styles.swatchDot, { backgroundColor: th.bg }]} />
-                  <View style={[styles.swatchDot, { backgroundColor: th.primary }]} />
-                  <View style={[styles.swatchDot, { backgroundColor: th.success }]} />
-                  <View style={[styles.swatchDot, { backgroundColor: th.danger }]} />
-                </View>
-
-                <View style={styles.themeTitleRow}>
-                  <Text style={[styles.themeName, { color: th.text }]} numberOfLines={1}>
-                    {th.name}
-                  </Text>
-                  {isSelected && (
-                    <Ionicons name="checkmark-circle" size={16} color={th.primary} />
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
       {/* Currency Section */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('currency_symbols', 'CURRENCY & SYMBOLS')}</Text>
@@ -619,31 +640,6 @@ Status: Healthy. No fatal crash exceptions recorded.
                 <Text style={[styles.rowTitle, { color: theme.text }]}>{t('base_currency', 'Base Currency')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   {currency.code} ({currency.name})
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Developer Feedback Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('feedback_suggestions', 'FEEDBACK & SUGGESTIONS')}</Text>
-
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            onPress={() => setFeedbackModalVisible(true)}
-            style={styles.row}
-          >
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconWrap, { backgroundColor: '#38BDF820' }]}>
-                <Ionicons name="chatbox-ellipses-outline" size={18} color="#38BDF8" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('send_dev_feedback', 'Send Developer Feedback')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {t('Direct to iashwini914@gmail.com • Suggestions & bug reports', 'Direct to iashwini914@gmail.com • Suggestions & bug reports')}
                 </Text>
               </View>
             </View>
@@ -859,6 +855,112 @@ Status: Healthy. No fatal crash exceptions recorded.
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Developer Feedback Section (Moved below Local Device Backup as Requested) */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('feedback_suggestions', 'FEEDBACK & SUGGESTIONS')}</Text>
+
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <TouchableOpacity
+            onPress={() => setFeedbackModalVisible(true)}
+            style={styles.row}
+          >
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: '#38BDF820' }]}>
+                <Ionicons name="chatbox-ellipses-outline" size={18} color="#38BDF8" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('send_dev_feedback', 'Send Developer Feedback')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                  {t('Direct to iashwini914@gmail.com • Suggestions & bug reports', 'Direct to iashwini914@gmail.com • Suggestions & bug reports')}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Notifications Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('notifications', 'NOTIFICATIONS')}</Text>
+
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Remind everyday Toggle */}
+          <View style={[styles.row, notificationSettings?.enabled && { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: '#F59E0B20' }]}>
+                <Ionicons name="notifications-outline" size={18} color="#F59E0B" />
+              </View>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>Remind everyday</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                  Remind to add expenses occasionally
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={!!notificationSettings?.enabled}
+              onValueChange={async (val) => {
+                if (updateNotificationSettings) {
+                  await updateNotificationSettings({ enabled: val });
+                }
+              }}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={notificationSettings?.enabled ? '#FFFFFF' : '#94A3B8'}
+            />
+          </View>
+
+          {notificationSettings?.enabled && (
+            <>
+              {/* Daily Reminder Time Picker */}
+              <TouchableOpacity
+                onPress={() => setNotifTimeModalVisible(true)}
+                style={[styles.row, { borderBottomColor: theme.border, borderBottomWidth: 1 }]}
+              >
+                <View style={styles.rowLeft}>
+                  <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}20` }]}>
+                    <Ionicons name="time-outline" size={18} color={theme.primaryLight} />
+                  </View>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={[styles.rowTitle, { color: theme.text }]}>Notification Time</Text>
+                    <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                      {`Daily at ${((notificationSettings.hour % 12) || 12)}:${String(notificationSettings.minute || 0).padStart(2, '0')} ${notificationSettings.hour >= 12 ? 'PM' : 'AM'}`}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+              </TouchableOpacity>
+
+              {/* Instant Test Notification Button */}
+              <TouchableOpacity
+                onPress={async () => {
+                  const sent = await NotificationService.sendTestNotification();
+                  if (sent) {
+                    showCustomAlert('Notification Sent! 🔔', 'Check your notification shade to preview the daily reminder.', { type: 'success' });
+                  } else {
+                    showCustomAlert('Notification Permission Required', 'Please enable notification permissions in your phone settings to receive reminders.', { type: 'danger' });
+                  }
+                }}
+                style={styles.row}
+              >
+                <View style={styles.rowLeft}>
+                  <View style={[styles.iconWrap, { backgroundColor: '#10B98120' }]}>
+                    <Ionicons name="paper-plane-outline" size={18} color="#10B981" />
+                  </View>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={[styles.rowTitle, { color: theme.text }]}>Send Test Notification Now</Text>
+                    <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                      Instantly preview the daily reminder on your device
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="arrow-forward" size={16} color={theme.textMuted} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 
@@ -1199,6 +1301,81 @@ Status: Healthy. No fatal crash exceptions recorded.
                 <Ionicons name="checkmark-circle" size={18} color="#FFF" />
                 <Text style={styles.modalBtnText}>Save UPI Settings</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notification Time Picker Modal */}
+      <Modal
+        visible={notifTimeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNotifTimeModalVisible(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}20` }]}>
+                  <Ionicons name="time" size={18} color={theme.primaryLight} />
+                </View>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Daily Reminder Time</Text>
+              </View>
+              <TouchableOpacity onPress={() => setNotifTimeModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+              Choose when WealthFlow sends your daily reminder to record transactions.
+            </Text>
+
+            <View style={{ gap: 8, marginVertical: 14 }}>
+              {[
+                { label: '8:00 PM (Evening Wrap-Up • Recommended)', hour: 20, minute: 0 },
+                { label: '9:00 PM (Night Review)', hour: 21, minute: 0 },
+                { label: '10:00 PM (Before Bedtime)', hour: 22, minute: 0 },
+                { label: '7:00 PM (After Dinner)', hour: 19, minute: 0 },
+                { label: '1:00 PM (Lunch Break)', hour: 13, minute: 0 },
+                { label: '9:00 AM (Morning Reminder)', hour: 9, minute: 0 },
+              ].map((timeOption, idx) => {
+                const isSelected =
+                  notificationSettings.hour === timeOption.hour &&
+                  notificationSettings.minute === timeOption.minute;
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={async () => {
+                      if (updateNotificationSettings) {
+                        await updateNotificationSettings({
+                          hour: timeOption.hour,
+                          minute: timeOption.minute,
+                        });
+                      }
+                      setNotifTimeModalVisible(false);
+                    }}
+                    style={[
+                      styles.row,
+                      {
+                        backgroundColor: isSelected ? `${theme.primary}20` : theme.cardAlt,
+                        borderRadius: 12,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        borderWidth: 1,
+                        borderColor: isSelected ? theme.primary : theme.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.rowTitle, { color: isSelected ? theme.primaryLight : theme.text, flex: 1, fontWeight: isSelected ? '800' : '600' }]}>
+                      {timeOption.label}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={18} color={theme.primaryLight} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>

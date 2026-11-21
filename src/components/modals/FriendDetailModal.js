@@ -47,6 +47,7 @@ export const FriendDetailModal = ({
     deleteLendingRecord,
     friendCategories = DEFAULT_FRIEND_CATEGORIES,
     addFriendCategory,
+    editFriendCategory,
     deleteFriendCategory,
     resetFriendCategoriesToDefault,
     t,
@@ -65,6 +66,13 @@ export const FriendDetailModal = ({
   const [newCatColor, setNewCatColor] = useState('#3B82F6');
   const [deletingCat, setDeletingCat] = useState(null);
   const [modalAlert, setModalAlert] = useState(null);
+
+  // Friend Category Editing & Inline Delete state
+  const [editingCat, setEditingCat] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editEmoji, setEditEmoji] = useState('🍽️');
+  const [editColor, setEditColor] = useState('#3B82F6');
+  const [inlineDeletingCatId, setInlineDeletingCatId] = useState(null);
 
   const isOwed = (friend?.balance || 0) >= 0;
   const absBalance = Math.abs(friend?.balance || 0);
@@ -104,7 +112,7 @@ export const FriendDetailModal = ({
           (t.date && t.date.includes(q))
       );
     }
-    return list;
+    return [...list].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   }, [friend?.transactions, selectedCatFilter, searchFilter]);
 
   if (!visible || !friend) return null;
@@ -556,7 +564,7 @@ export const FriendDetailModal = ({
         {/* Manage Friend Categories Overlay */}
         {showManageCatsModal && (
           <View style={[StyleSheet.absoluteFillObject, styles.subModalOverlay, { backgroundColor: theme.modalOverlay, zIndex: 102 }]}>
-            <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '80%' }]}>
+            <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '85%' }]}>
               {/* Top Drag Pill */}
               <View style={styles.dragPillWrap}>
                 <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
@@ -564,20 +572,86 @@ export const FriendDetailModal = ({
 
               <View style={styles.subModalHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.danger}25` }]}>
-                    <Ionicons name="trash" size={16} color={theme.danger} />
+                  <View style={[styles.iconBadgeSmall, { backgroundColor: `${theme.primary}25` }]}>
+                    <Ionicons name="list" size={16} color={theme.primaryLight} />
                   </View>
                   <View>
                     <Text style={[styles.subModalTitle, { color: theme.text }]}>Manage Friend Categories</Text>
-                    <Text style={[styles.subModalSub, { color: theme.textMuted }]}>Delete or reset categories</Text>
+                    <Text style={[styles.subModalSub, { color: theme.textMuted }]}>Edit names, emojis, colors or delete</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => setShowManageCatsModal(false)}>
+                <TouchableOpacity onPress={() => {
+                  setShowManageCatsModal(false);
+                  setEditingCat(null);
+                  setInlineDeletingCatId(null);
+                }}>
                   <Ionicons name="close" size={20} color={theme.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={{ marginVertical: 12, maxHeight: 260 }}>
+              {/* Editing Category Card */}
+              {editingCat && (
+                <View style={{ padding: 12, backgroundColor: theme.cardAlt, borderRadius: 14, borderWidth: 1, borderColor: theme.primary, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: theme.primaryLight, marginBottom: 6, textTransform: 'uppercase' }}>
+                    Edit Category: {editingCat.name}
+                  </Text>
+                  <TextInput
+                    style={[styles.textInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border, height: 40, marginBottom: 8 }]}
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder="Category Name"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                  <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginBottom: 4 }}>SELECT EMOJI</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      {['🍽️', '🍔', '🍕', '🍜', '☕', '🛒', '🚗', '⛽', '🚕', '🚌', '✈️', '⚡', '💡', '💧', '📱', '🎬', '🍿', '🎮', '🎧', '🎟️', '🛍️', '🤝', '🎁', '🎉', '💐', '🎂', '🩺', '💊', '🏋️', '💻', '💼', '💵', '💰', '💳'].map((em, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => setEditEmoji(em)}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 8,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: editEmoji === em ? `${theme.primary}35` : theme.inputBg,
+                            borderWidth: editEmoji === em ? 2 : 1,
+                            borderColor: editEmoji === em ? theme.primary : theme.border,
+                          }}
+                        >
+                          <Text style={{ fontSize: 18 }}>{em}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => setEditingCat(null)}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: theme.cardHover }}
+                    >
+                      <Text style={{ color: theme.textMuted, fontWeight: '700', fontSize: 12 }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        if (!editName.trim()) return;
+                        await editFriendCategory({
+                          id: editingCat.id,
+                          name: editName.trim(),
+                          emoji: editEmoji,
+                          color: editColor,
+                        });
+                        setEditingCat(null);
+                      }}
+                      style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, backgroundColor: theme.primary }}
+                    >
+                      <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12 }}>Save Changes</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              <ScrollView style={{ marginVertical: 8, maxHeight: 260 }}>
                 {friendCategories.length === 0 ? (
                   <View style={{ padding: 20, alignItems: 'center' }}>
                     <Text style={{ color: theme.textMuted }}>No categories remaining.</Text>
@@ -599,36 +673,70 @@ export const FriendDetailModal = ({
                         marginBottom: 8,
                       }}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
                         <Text style={{ fontSize: 18 }}>{c.emoji || '🤝'}</Text>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>{c.name}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }} numberOfLines={1}>{c.name}</Text>
                       </View>
-                      <TouchableOpacity
-                        onPress={() => setDeletingCat(c)}
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 8,
-                          backgroundColor: `${theme.danger}20`,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Ionicons name="trash-outline" size={14} color={theme.danger} />
-                      </TouchableOpacity>
+
+                      {inlineDeletingCatId === c.id ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 11, color: theme.danger, fontWeight: '700' }}>Delete?</Text>
+                          <TouchableOpacity
+                            onPress={() => {
+                              deleteFriendCategory(c.id);
+                              setInlineDeletingCatId(null);
+                            }}
+                            style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.danger, borderRadius: 6 }}
+                          >
+                            <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>Yes</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => setInlineDeletingCatId(null)}
+                            style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.cardHover, borderRadius: 6 }}
+                          >
+                            <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '700' }}>No</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setEditingCat(c);
+                              setEditName(c.name);
+                              setEditEmoji(c.emoji || '🍽️');
+                              setEditColor(c.color || '#3B82F6');
+                            }}
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: 8,
+                              backgroundColor: `${theme.primary}20`,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Ionicons name="pencil-outline" size={14} color={theme.primaryLight} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => setInlineDeletingCatId(c.id)}
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: 8,
+                              backgroundColor: `${theme.danger}20`,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Ionicons name="trash-outline" size={14} color={theme.danger} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   ))
                 )}
               </ScrollView>
-
-              <View style={{ marginTop: 8 }}>
-                <TouchableOpacity
-                  onPress={() => setShowManageCatsModal(false)}
-                  style={[styles.saveCatBtn, { backgroundColor: theme.primary, width: '100%' }]}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: '800' }}>Done</Text>
-                </TouchableOpacity>
-              </View>
+              {/* Redundant purple bottom button from Screenshot 6 removed completely */}
             </View>
           </View>
         )}

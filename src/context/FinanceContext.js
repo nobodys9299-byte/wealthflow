@@ -7,6 +7,7 @@ import { INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING } from '../con
 import { generateFullAppCSV, parseFullAppCSV } from '../utils/formatters';
 import { CloudBackupService } from '../services/CloudBackupService';
 import { googleDriveService } from '../services/GoogleDriveService';
+import { NotificationService } from '../services/NotificationService';
 
 const STORAGE_KEYS = {
   TRANSACTIONS: '@wealthflow_transactions_v3',
@@ -24,6 +25,7 @@ const STORAGE_KEYS = {
   CLOUD_BACKUP: '@wealthflow_cloud_backup_v3',
   HOME_SECTIONS: '@wealthflow_home_sections_v3',
   CRASH_REPORTS: '@wealthflow_crash_reports_v3',
+  NOTIFICATION_SETTINGS: '@wealthflow_notification_settings_v3',
 };
 
 export const sortTransactionsByDateDesc = (txList) => {
@@ -48,7 +50,11 @@ export const DEFAULT_FRIEND_CATEGORIES = [
   { id: 'fcat_grocery', name: 'Groceries & Supplies', emoji: '🛒', color: '#10B981' },
   { id: 'fcat_rent', name: 'Rent & Bills', emoji: '⚡', color: '#EAB308' },
   { id: 'fcat_cash', name: 'Cash Advance / Loan', emoji: '💵', color: '#3B82F6' },
-  { id: 'fcat_gift', name: 'Gifts & Treats', emoji: '🎁', color: '#EC4899' },
+  { id: 'fcat_drinks', name: 'Chai, Coffee & Drinks', emoji: '☕', color: '#D97706' },
+  { id: 'fcat_party', name: 'Party & Celebration', emoji: '🎉', color: '#EC4899' },
+  { id: 'fcat_trip', name: 'Vacation & Trips', emoji: '🏖️', color: '#0284C7' },
+  { id: 'fcat_shopping', name: 'Shopping & Malls', emoji: '🛍️', color: '#F43F5E' },
+  { id: 'fcat_gift', name: 'Gifts & Treats', emoji: '🎁', color: '#A855F7' },
   { id: 'fcat_other', name: 'Shared Expense', emoji: '🤝', color: '#64748B' },
 ];
 
@@ -83,6 +89,13 @@ export const FinanceProvider = ({ children }) => {
     upiId: 'wealthflow@upi',
     payeeName: 'WealthFlow User',
     qrCodeUri: '',
+  });
+
+  // Push & Local Notification Settings
+  const [notificationSettings, setNotificationSettings] = useState({
+    enabled: true,
+    hour: 20,
+    minute: 0,
   });
 
   // Google Cloud Backup & Sync State
@@ -313,6 +326,20 @@ export const FinanceProvider = ({ children }) => {
         const savedCrash = await AsyncStorage.getItem(STORAGE_KEYS.CRASH_REPORTS);
         if (savedCrash !== null) {
           setCrashReportsEnabled(savedCrash === 'true');
+        }
+
+        const savedNotif = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_SETTINGS);
+        if (savedNotif) {
+          try {
+            const parsedNotif = JSON.parse(savedNotif);
+            setNotificationSettings(parsedNotif);
+            if (parsedNotif.enabled) {
+              NotificationService.scheduleDailyReminder(parsedNotif.hour ?? 20, parsedNotif.minute ?? 0);
+            }
+          } catch (e) {}
+        } else {
+          // Default to active daily reminder at 8:00 PM
+          NotificationService.scheduleDailyReminder(20, 0);
         }
 
         // Automatic logging of due recurring bills
@@ -1180,7 +1207,10 @@ export const FinanceProvider = ({ children }) => {
       }
     });
 
-    const friends = Object.values(map);
+    const friends = Object.values(map).map((f) => ({
+      ...f,
+      transactions: [...f.transactions].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)),
+    }));
 
     return {
       totalLent,
@@ -1189,6 +1219,21 @@ export const FinanceProvider = ({ children }) => {
       friends,
     };
   }, [lendingRecords]);
+
+  const updateNotificationSettings = async (newSettings) => {
+    const merged = { ...notificationSettings, ...newSettings };
+    setNotificationSettings(merged);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATION_SETTINGS, JSON.stringify(merged));
+      if (merged.enabled) {
+        await NotificationService.scheduleDailyReminder(merged.hour ?? 20, merged.minute ?? 0);
+      } else {
+        await NotificationService.cancelDailyReminder();
+      }
+    } catch (e) {
+      console.warn('Failed to update notification settings:', e);
+    }
+  };
 
   // Calculated Account Balances
   const accountsWithBalances = useMemo(() => {
@@ -1508,6 +1553,9 @@ export const FinanceProvider = ({ children }) => {
         // UPI Settings for WhatsApp requests
         userUpiSettings,
         updateUpiSettings,
+        // Daily Notification Settings
+        notificationSettings,
+        updateNotificationSettings,
         // Recurring processing
         processDueRecurringTransactions: () => checkAndLogRecurringBills(recurring, transactions, accounts),
         netWorth,
