@@ -49,12 +49,12 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
           <TouchableOpacity
-            style={{ flex: 1 }}
+            style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
             onPress={onClose}
           />

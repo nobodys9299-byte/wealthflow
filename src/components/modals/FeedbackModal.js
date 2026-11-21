@@ -82,7 +82,7 @@ export const FeedbackModal = ({ visible, onClose }) => {
       >
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
           <TouchableOpacity
-            style={{ flex: 1 }}
+            style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
             onPress={onClose}
           />
@@ -113,9 +113,11 @@ export const FeedbackModal = ({ visible, onClose }) => {
 
             <ScrollView
               ref={scrollRef}
-              showsVerticalScrollIndicator={false}
+              style={{ flexShrink: 1 }}
+              showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.scrollBody, { paddingBottom: 12 }]}
+              nestedScrollEnabled={true}
+              contentContainerStyle={[styles.scrollBody, { flexGrow: 1, paddingBottom: 40 }]}
             >
             {/* Inspiring Motivational Banner */}
             <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
@@ -236,14 +238,14 @@ const styles = StyleSheet.create({
   },
   dialogCard: {
     width: '100%',
-    maxHeight: '90%',
+    maxHeight: '92%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
     borderBottomWidth: 0,
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.35,

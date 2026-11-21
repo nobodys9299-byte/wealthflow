@@ -126,7 +126,7 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
         <TouchableOpacity
-          style={{ flex: 1 }}
+          style={StyleSheet.absoluteFillObject}
           activeOpacity={1}
           onPress={onClose}
         />
@@ -234,7 +234,12 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
 
               {/* Emoji choices */}
               <Text style={[styles.pickerLabel, { color: theme.textMuted }]}>Choose Emoji Icon</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pickerRow}>
+              <ScrollView
+                style={{ height: 136 }}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 4 }}
+              >
                 {EMOJI_OPTIONS.map((em) => (
                   <TouchableOpacity
                     key={em}
@@ -314,7 +319,12 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
 
               {/* Emoji choices */}
               <Text style={[styles.pickerLabel, { color: theme.textMuted }]}>Select Emoji Icon</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pickerRow}>
+              <ScrollView
+                style={{ height: 136 }}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 4 }}
+              >
                 {EMOJI_OPTIONS.map((em) => (
                   <TouchableOpacity
                     key={em}

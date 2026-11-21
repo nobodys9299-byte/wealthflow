@@ -60,6 +60,18 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
   const [notifTimeModalVisible, setNotifTimeModalVisible] = useState(false);
   const [cloudSyncing, setCloudSyncing] = useState(false);
+  const [selectedNotifHour, setSelectedNotifHour] = useState(notificationSettings?.hour !== undefined ? (notificationSettings.hour % 12 || 12) : 8);
+  const [selectedNotifMinute, setSelectedNotifMinute] = useState(notificationSettings?.minute || 0);
+  const [selectedNotifAmPm, setSelectedNotifAmPm] = useState(notificationSettings?.hour !== undefined && notificationSettings.hour < 12 ? 'AM' : 'PM');
+
+  useEffect(() => {
+    if (notifTimeModalVisible && notificationSettings) {
+      const h24 = notificationSettings.hour !== undefined ? notificationSettings.hour : 20;
+      setSelectedNotifHour(h24 % 12 || 12);
+      setSelectedNotifMinute(notificationSettings.minute || 0);
+      setSelectedNotifAmPm(h24 < 12 ? 'AM' : 'PM');
+    }
+  }, [notifTimeModalVisible, notificationSettings]);
 
   // Hardware Back Handler
   useEffect(() => {
@@ -148,13 +160,20 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
             }
           );
           if (result && result.resultCode === -1 && result.data) {
+            let targetUri = result.data;
+            if (typeof targetUri === 'string') {
+              const match = targetUri.match(/dat=([^\s\}]+)/);
+              if (match && match[1]) {
+                targetUri = match[1];
+              }
+            }
             try {
-              await FileSystem.writeAsStringAsync(result.data, csv, {
+              await FileSystem.writeAsStringAsync(targetUri, csv, {
                 encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
               });
             } catch (wErr) {
               if (FileSystem.StorageAccessFramework?.writeAsStringAsync) {
-                await FileSystem.StorageAccessFramework.writeAsStringAsync(result.data, csv, {
+                await FileSystem.StorageAccessFramework.writeAsStringAsync(targetUri, csv, {
                   encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
                 });
               } else {
@@ -598,25 +617,24 @@ Status: Healthy. No fatal crash exceptions recorded.
             </View>
           )}
 
-          {/* Test Lock Screen button */}
+          {/* Lock App After 1 Min Feature */}
           {securitySettings.enabled && (
-            <TouchableOpacity
-              onPress={onLockApp}
-              style={styles.row}
-            >
+            <View style={styles.row}>
               <View style={styles.rowLeft}>
-                <View style={[styles.iconWrap, { backgroundColor: theme.cardAlt }]}>
-                  <Ionicons name="lock-closed-outline" size={18} color={theme.primaryLight} />
+                <View style={[styles.iconWrap, { backgroundColor: '#8B5CF620' }]}>
+                  <Ionicons name="timer-outline" size={18} color="#8B5CF6" />
                 </View>
-                <View>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>{t('lock_app_now', 'Lock App Now (Test Screen)')}</Text>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>Lock App After 1 Min</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    {t('Verify keypad & hidden PIN', 'Verify keypad & hidden PIN')}
+                    Automatically locks after 1 min of inactivity or background
                   </Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-            </TouchableOpacity>
+              <View style={{ backgroundColor: '#10B98125', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+                <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '800' }}>Active (1m)</Text>
+              </View>
+            </View>
           )}
         </View>
       </View>
@@ -1306,7 +1324,7 @@ Status: Healthy. No fatal crash exceptions recorded.
         </View>
       </Modal>
 
-      {/* Notification Time Picker Modal */}
+      {/* Custom Notification Time Setter Modal */}
       <Modal
         visible={notifTimeModalVisible}
         transparent
@@ -1314,7 +1332,15 @@ Status: Healthy. No fatal crash exceptions recorded.
         onRequestClose={() => setNotifTimeModalVisible(false)}
       >
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {/* Backdrop: click outside to close */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setNotifTimeModalVisible(false)}
+          />
+
+          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border, padding: 20 }]}>
+            {/* Header */}
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}20` }]}>
@@ -1328,54 +1354,232 @@ Status: Healthy. No fatal crash exceptions recorded.
             </View>
 
             <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Choose when WealthFlow sends your daily reminder to record transactions.
+              Customize the exact hour and minute you want WealthFlow to send your daily expense logging reminder.
             </Text>
 
-            <View style={{ gap: 8, marginVertical: 14 }}>
+            {/* Custom Digital Time Setter Box */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.cardAlt,
+              borderRadius: 18,
+              paddingVertical: 14,
+              paddingHorizontal: 12,
+              marginVertical: 10,
+              borderWidth: 1,
+              borderColor: theme.border,
+              gap: 12,
+            }}>
+              {/* Hour Control */}
+              <View style={{ alignItems: 'center' }}>
+                <TouchableOpacity
+                  onPress={() => setSelectedNotifHour((prev) => (prev >= 12 ? 1 : prev + 1))}
+                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginBottom: 4 }}
+                >
+                  <Ionicons name="chevron-up" size={18} color={theme.primaryLight} />
+                </TouchableOpacity>
+                <View style={{
+                  backgroundColor: theme.inputBg,
+                  borderRadius: 12,
+                  paddingVertical: 6,
+                  paddingHorizontal: 14,
+                  minWidth: 54,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                }}>
+                  <Text style={{ fontSize: 26, fontWeight: '900', color: theme.text }}>
+                    {String(selectedNotifHour).padStart(2, '0')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setSelectedNotifHour((prev) => (prev <= 1 ? 12 : prev - 1))}
+                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginTop: 4 }}
+                >
+                  <Ionicons name="chevron-down" size={18} color={theme.primaryLight} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginTop: 2 }}>HOUR</Text>
+              </View>
+
+              {/* Colon Separator */}
+              <Text style={{ fontSize: 26, fontWeight: '900', color: theme.textMuted, marginBottom: 14 }}>:</Text>
+
+              {/* Minute Control */}
+              <View style={{ alignItems: 'center' }}>
+                <TouchableOpacity
+                  onPress={() => setSelectedNotifMinute((prev) => (prev >= 55 ? 0 : prev + 5))}
+                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginBottom: 4 }}
+                >
+                  <Ionicons name="chevron-up" size={18} color={theme.primaryLight} />
+                </TouchableOpacity>
+                <View style={{
+                  backgroundColor: theme.inputBg,
+                  borderRadius: 12,
+                  paddingVertical: 6,
+                  paddingHorizontal: 14,
+                  minWidth: 54,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                }}>
+                  <Text style={{ fontSize: 26, fontWeight: '900', color: theme.text }}>
+                    {String(selectedNotifMinute).padStart(2, '0')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setSelectedNotifMinute((prev) => (prev <= 0 ? 55 : prev - 5))}
+                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginTop: 4 }}
+                >
+                  <Ionicons name="chevron-down" size={18} color={theme.primaryLight} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginTop: 2 }}>MINUTE</Text>
+              </View>
+
+              {/* AM / PM Toggle */}
+              <View style={{ flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                <TouchableOpacity
+                  onPress={() => setSelectedNotifAmPm('AM')}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderRadius: 10,
+                    backgroundColor: selectedNotifAmPm === 'AM' ? theme.primary : theme.inputBg,
+                    borderWidth: 1,
+                    borderColor: selectedNotifAmPm === 'AM' ? theme.primary : theme.border,
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 12,
+                    fontWeight: '800',
+                    color: selectedNotifAmPm === 'AM' ? '#FFFFFF' : theme.textMuted,
+                  }}>
+                    AM
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setSelectedNotifAmPm('PM')}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderRadius: 10,
+                    backgroundColor: selectedNotifAmPm === 'PM' ? theme.primary : theme.inputBg,
+                    borderWidth: 1,
+                    borderColor: selectedNotifAmPm === 'PM' ? theme.primary : theme.border,
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 12,
+                    fontWeight: '800',
+                    color: selectedNotifAmPm === 'PM' ? '#FFFFFF' : theme.textMuted,
+                  }}>
+                    PM
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Quick Preset Pills */}
+            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase' }}>
+              Quick Presets
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {[
-                { label: '8:00 PM (Evening Wrap-Up • Recommended)', hour: 20, minute: 0 },
-                { label: '9:00 PM (Night Review)', hour: 21, minute: 0 },
-                { label: '10:00 PM (Before Bedtime)', hour: 22, minute: 0 },
-                { label: '7:00 PM (After Dinner)', hour: 19, minute: 0 },
-                { label: '1:00 PM (Lunch Break)', hour: 13, minute: 0 },
-                { label: '9:00 AM (Morning Reminder)', hour: 9, minute: 0 },
-              ].map((timeOption, idx) => {
-                const isSelected =
-                  notificationSettings.hour === timeOption.hour &&
-                  notificationSettings.minute === timeOption.minute;
+                { label: '8:00 PM', h: 8, m: 0, ap: 'PM' },
+                { label: '9:00 PM', h: 9, m: 0, ap: 'PM' },
+                { label: '10:00 PM', h: 10, m: 0, ap: 'PM' },
+                { label: '9:00 AM', h: 9, m: 0, ap: 'AM' },
+                { label: '1:00 PM', h: 1, m: 0, ap: 'PM' },
+                { label: '7:30 PM', h: 7, m: 30, ap: 'PM' },
+              ].map((pst, idx) => {
+                const isSelected = selectedNotifHour === pst.h && selectedNotifMinute === pst.m && selectedNotifAmPm === pst.ap;
                 return (
                   <TouchableOpacity
                     key={idx}
-                    onPress={async () => {
-                      if (updateNotificationSettings) {
-                        await updateNotificationSettings({
-                          hour: timeOption.hour,
-                          minute: timeOption.minute,
-                        });
-                      }
-                      setNotifTimeModalVisible(false);
+                    onPress={() => {
+                      setSelectedNotifHour(pst.h);
+                      setSelectedNotifMinute(pst.m);
+                      setSelectedNotifAmPm(pst.ap);
                     }}
-                    style={[
-                      styles.row,
-                      {
-                        backgroundColor: isSelected ? `${theme.primary}20` : theme.cardAlt,
-                        borderRadius: 12,
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        borderWidth: 1,
-                        borderColor: isSelected ? theme.primary : theme.border,
-                      },
-                    ]}
+                    style={{
+                      paddingVertical: 5,
+                      paddingHorizontal: 9,
+                      borderRadius: 8,
+                      backgroundColor: isSelected ? `${theme.primary}25` : theme.cardAlt,
+                      borderWidth: 1,
+                      borderColor: isSelected ? theme.primary : theme.border,
+                    }}
                   >
-                    <Text style={[styles.rowTitle, { color: isSelected ? theme.primaryLight : theme.text, flex: 1, fontWeight: isSelected ? '800' : '600' }]}>
-                      {timeOption.label}
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: isSelected ? '800' : '600',
+                      color: isSelected ? theme.primaryLight : theme.text,
+                    }}>
+                      {pst.label}
                     </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={18} color={theme.primaryLight} />
-                    )}
                   </TouchableOpacity>
                 );
               })}
+            </View>
+
+            {/* Live Scheduled Banner */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: `${theme.primary}15`,
+              padding: 9,
+              borderRadius: 10,
+              gap: 8,
+              marginBottom: 14,
+            }}>
+              <Ionicons name="notifications" size={16} color={theme.primaryLight} />
+              <Text style={{ fontSize: 12, color: theme.text, flex: 1, fontWeight: '600' }}>
+                Reminder fires daily at <Text style={{ fontWeight: '800', color: theme.primaryLight }}>{String(selectedNotifHour).padStart(2, '0')}:{String(selectedNotifMinute).padStart(2, '0')} {selectedNotifAmPm}</Text>
+              </Text>
+            </View>
+
+            {/* Modal Action Buttons */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setNotifTimeModalVisible(false)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 11,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  backgroundColor: theme.cardAlt,
+                }}
+              >
+                <Text style={{ color: theme.textMuted, fontWeight: '700', fontSize: 13 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  let h24 = selectedNotifHour % 12;
+                  if (selectedNotifAmPm === 'PM') h24 += 12;
+                  if (updateNotificationSettings) {
+                    await updateNotificationSettings({
+                      hour: h24,
+                      minute: selectedNotifMinute,
+                    });
+                  }
+                  setNotifTimeModalVisible(false);
+                }}
+                style={{
+                  flex: 1.5,
+                  paddingVertical: 11,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  backgroundColor: theme.primary,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="checkmark" size={16} color="#FFF" />
+                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>Save Reminder Time</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

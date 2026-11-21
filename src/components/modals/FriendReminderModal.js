@@ -10,6 +10,7 @@ import {
   Linking,
   Platform,
   TouchableWithoutFeedback,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
@@ -130,7 +131,7 @@ export const FriendReminderModal = ({
     >
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
         <TouchableOpacity
-          style={{ flex: 1 }}
+          style={StyleSheet.absoluteFillObject}
           activeOpacity={1}
           onPress={onClose}
         />
@@ -226,8 +227,12 @@ export const FriendReminderModal = ({
             {/* Friend Balance Hero Banner */}
             <View style={[styles.requestHeroCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={[styles.friendAvatarSmall, { backgroundColor: `${theme.primary}25` }]}>
-                  <Text style={{ fontSize: 16 }}>👤</Text>
+                <View style={[styles.friendAvatarSmall, { backgroundColor: `${theme.primary}25`, overflow: 'hidden' }]}>
+                  {friend.photoUri ? (
+                    <Image source={{ uri: friend.photoUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
+                  ) : (
+                    <Text style={{ fontSize: 18 }}>{friend.avatarEmoji || '👤'}</Text>
+                  )}
                 </View>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={[styles.requestFriendName, { color: theme.text }]} numberOfLines={1}>

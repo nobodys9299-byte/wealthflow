@@ -74,13 +74,30 @@ export const CloudBackupService = {
             }
           );
           if (result && result.resultCode === -1 && result.data) {
-            await FileSystem.writeAsStringAsync(result.data, fileData, {
-              encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-            });
+            let targetUri = result.data;
+            if (typeof targetUri === 'string') {
+              const match = targetUri.match(/dat=([^\s\}]+)/);
+              if (match && match[1]) {
+                targetUri = match[1];
+              }
+            }
+            try {
+              await FileSystem.writeAsStringAsync(targetUri, fileData, {
+                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+              });
+            } catch (wErr) {
+              if (FileSystem.StorageAccessFramework?.writeAsStringAsync) {
+                await FileSystem.StorageAccessFramework.writeAsStringAsync(targetUri, fileData, {
+                  encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+                });
+              } else {
+                throw wErr;
+              }
+            }
             return {
               success: true,
               fileName: defaultFileName,
-              fileUri: result.data,
+              fileUri: targetUri,
               mode: 'create_document',
             };
           } else if (result && result.resultCode === 0) {

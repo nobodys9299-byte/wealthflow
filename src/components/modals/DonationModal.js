@@ -93,7 +93,7 @@ export const DonationModal = ({ visible, onClose }) => {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
         <TouchableOpacity
-          style={{ flex: 1 }}
+          style={StyleSheet.absoluteFillObject}
           activeOpacity={1}
           onPress={onClose}
         />

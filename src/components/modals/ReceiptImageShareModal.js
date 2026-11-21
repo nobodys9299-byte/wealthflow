@@ -249,9 +249,18 @@ export const ReceiptImageShareModal = ({
             </div>
 
             <div class="meta-box">
-              <div>
-                <div class="meta-title">${data.name || data.title || 'Statement'}</div>
-                <div class="meta-sub">Generated on ${formatDateDisplay(new Date().toISOString().split('T')[0])} • ${txs.length} total records</div>
+              <div style="display: flex; align-items: center; gap: 14px;">
+                ${
+                  type === 'friend'
+                    ? data.photoUri
+                      ? `<img src="${data.photoUri}" style="width: 52px; height: 52px; border-radius: 26px; object-fit: cover; border: 2px solid #3B82F6;" />`
+                      : `<div style="width: 52px; height: 52px; border-radius: 26px; background-color: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid #CBD5E1;">${data.avatarEmoji || '👤'}</div>`
+                    : ''
+                }
+                <div>
+                  <div class="meta-title">${data.name || data.title || 'Statement'}</div>
+                  <div class="meta-sub">Generated on ${formatDateDisplay(new Date().toISOString().split('T')[0])} • ${txs.length} total records</div>
+                </div>
               </div>
               <div class="meta-bal">${balanceText}</div>
             </div>
@@ -332,7 +341,7 @@ export const ReceiptImageShareModal = ({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
         <TouchableOpacity
-          style={{ flex: 1 }}
+          style={StyleSheet.absoluteFillObject}
           activeOpacity={1}
           onPress={onClose}
         />
@@ -474,8 +483,22 @@ export const ReceiptImageShareModal = ({
               {/* 2. Friend Lending Statement Layout */}
               {type === 'friend' && (
                 <View style={styles.receiptBody}>
-                  <Text style={styles.receiptLabel}>CONTACT STATEMENT</Text>
-                  <Text style={styles.friendName}>{data.name}</Text>
+                  <View style={styles.friendHeaderRow}>
+                    <View style={styles.friendAvatarWrap}>
+                      {data.photoUri ? (
+                        <Image source={{ uri: data.photoUri }} style={styles.friendAvatarImg} />
+                      ) : (
+                        <Text style={styles.friendAvatarEmojiText}>{data.avatarEmoji || '👤'}</Text>
+                      )}
+                    </View>
+                    <View style={styles.friendInfoCol}>
+                      <Text style={styles.friendLabel}>CONTACT STATEMENT</Text>
+                      <Text style={styles.friendNameLeft}>{data.name}</Text>
+                      {data.phone ? (
+                        <Text style={styles.friendPhoneText}>{data.phone}</Text>
+                      ) : null}
+                    </View>
+                  </View>
 
                   <View
                     style={[
@@ -925,6 +948,55 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontSize: 11,
     fontWeight: '700',
+  },
+  friendHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  friendAvatarWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+  },
+  friendAvatarImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  friendAvatarEmojiText: {
+    fontSize: 24,
+  },
+  friendInfoCol: {
+    justifyContent: 'center',
+    flexShrink: 1,
+  },
+  friendLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1,
+  },
+  friendNameLeft: {
+    fontSize: 19,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    letterSpacing: 0.3,
+    marginTop: 1,
+  },
+  friendPhoneText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginTop: 2,
   },
   friendName: {
     color: '#F8FAFC',

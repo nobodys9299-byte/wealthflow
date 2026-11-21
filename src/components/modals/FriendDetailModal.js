@@ -144,7 +144,7 @@ export const FriendDetailModal = ({
       <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
           <TouchableOpacity
-            style={{ flex: 1 }}
+            style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
             onPress={onClose}
           />
@@ -468,6 +468,11 @@ export const FriendDetailModal = ({
         {/* Dedicated Custom Category Creator Overlay for Friends Tab */}
         {showAddCatModal && (
           <View style={[StyleSheet.absoluteFillObject, styles.subModalOverlay, { backgroundColor: theme.modalOverlay, zIndex: 101 }]}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={() => setShowAddCatModal(false)}
+            />
             <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               {/* Top Drag Pill */}
               <View style={styles.dragPillWrap}>
@@ -507,7 +512,12 @@ export const FriendDetailModal = ({
               {/* Choose Emoji */}
               <View style={{ marginBottom: 12 }}>
                 <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Choose Emoji</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiRow}>
+                <ScrollView
+                  style={{ height: 136 }}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                  contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 4 }}
+                >
                   {POPULAR_EMOJIS.map((emoji, idx) => (
                     <TouchableOpacity
                       key={`emoji_${idx}`}
@@ -564,6 +574,15 @@ export const FriendDetailModal = ({
         {/* Manage Friend Categories Overlay */}
         {showManageCatsModal && (
           <View style={[StyleSheet.absoluteFillObject, styles.subModalOverlay, { backgroundColor: theme.modalOverlay, zIndex: 102 }]}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFillObject}
+              activeOpacity={1}
+              onPress={() => {
+                setShowManageCatsModal(false);
+                setEditingCat(null);
+                setInlineDeletingCatId(null);
+              }}
+            />
             <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '85%' }]}>
               {/* Top Drag Pill */}
               <View style={styles.dragPillWrap}>
@@ -603,27 +622,30 @@ export const FriendDetailModal = ({
                     placeholderTextColor={theme.textMuted}
                   />
                   <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginBottom: 4 }}>SELECT EMOJI</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      {['🍽️', '🍔', '🍕', '🍜', '☕', '🛒', '🚗', '⛽', '🚕', '🚌', '✈️', '⚡', '💡', '💧', '📱', '🎬', '🍿', '🎮', '🎧', '🎟️', '🛍️', '🤝', '🎁', '🎉', '💐', '🎂', '🩺', '💊', '🏋️', '💻', '💼', '💵', '💰', '💳'].map((em, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          onPress={() => setEditEmoji(em)}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 8,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: editEmoji === em ? `${theme.primary}35` : theme.inputBg,
-                            borderWidth: editEmoji === em ? 2 : 1,
-                            borderColor: editEmoji === em ? theme.primary : theme.border,
-                          }}
-                        >
-                          <Text style={{ fontSize: 18 }}>{em}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                  <ScrollView
+                    style={{ height: 124, marginBottom: 10 }}
+                    showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled={true}
+                    contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 2 }}
+                  >
+                    {POPULAR_EMOJIS.map((em, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => setEditEmoji(em)}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: editEmoji === em ? `${theme.primary}35` : theme.inputBg,
+                          borderWidth: editEmoji === em ? 2 : 1,
+                          borderColor: editEmoji === em ? theme.primary : theme.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 18 }}>{em}</Text>
+                      </TouchableOpacity>
+                    ))}
                   </ScrollView>
                   <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
                     <TouchableOpacity

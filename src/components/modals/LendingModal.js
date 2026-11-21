@@ -285,7 +285,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
           style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
         >
           <TouchableOpacity
-            style={{ flex: 1 }}
+            style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
             onPress={onClose}
           />
@@ -497,13 +497,6 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
                         >
                           {cat.name}
                         </Text>
-                        <TouchableOpacity
-                          onPress={() => handleDeleteCategory(cat)}
-                          style={styles.delCatIcon}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="close-circle" size={14} color={theme.textMuted} />
-                        </TouchableOpacity>
                       </TouchableOpacity>
                     );
                   })}
@@ -605,6 +598,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         onRequestClose={() => setShowAddCatModal(false)}
       >
         <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowAddCatModal(false)}
+          />
           <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.subModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -639,7 +637,12 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
             {/* Choose Emoji */}
             <View style={{ marginBottom: 12 }}>
               <Text style={[styles.label, { color: theme.textMuted }]}>Choose Emoji</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiRow}>
+              <ScrollView
+                style={{ height: 136 }}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 4 }}
+              >
                 {POPULAR_EMOJIS.map((emoji, idx) => (
                   <TouchableOpacity
                     key={`emoji_${idx}`}
@@ -705,6 +708,15 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         }}
       >
         <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => {
+              setShowManageCatsModal(false);
+              setEditingFriendCat(null);
+              setInlineDeletingCatId(null);
+            }}
+          />
           <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: '85%' }]}>
             <View style={styles.subModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -741,27 +753,30 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
                   placeholderTextColor={theme.textMuted}
                 />
                 <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginBottom: 4 }}>SELECT EMOJI</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {POPULAR_EMOJIS.map((em, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        onPress={() => setEditCatEmoji(em)}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 8,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: editCatEmoji === em ? `${theme.primary}35` : theme.inputBg,
-                          borderWidth: editCatEmoji === em ? 2 : 1,
-                          borderColor: editCatEmoji === em ? theme.primary : theme.border,
-                        }}
-                      >
-                        <Text style={{ fontSize: 18 }}>{em}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                <ScrollView
+                  style={{ height: 124, marginBottom: 10 }}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                  contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 2 }}
+                >
+                  {POPULAR_EMOJIS.map((em, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => setEditCatEmoji(em)}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: editCatEmoji === em ? `${theme.primary}35` : theme.inputBg,
+                        borderWidth: editCatEmoji === em ? 2 : 1,
+                        borderColor: editCatEmoji === em ? theme.primary : theme.border,
+                      }}
+                    >
+                      <Text style={{ fontSize: 18 }}>{em}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </ScrollView>
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
                   <TouchableOpacity
@@ -868,6 +883,11 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         onRequestClose={() => setShowAvatarPicker(false)}
       >
         <View style={[styles.subModalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowAvatarPicker(false)}
+          />
           <View style={[styles.subModalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.subModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

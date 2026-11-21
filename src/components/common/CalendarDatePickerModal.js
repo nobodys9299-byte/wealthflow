@@ -5,7 +5,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
@@ -16,12 +16,20 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const SHORT_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+const YEARS = Array.from({ length: 15 }, (_, i) => 2020 + i);
+
 export const CalendarDatePickerModal = ({ visible, onClose, onSelectDate, selectedDate }) => {
   const { theme, t } = useFinance();
 
   const initial = selectedDate ? new Date(selectedDate) : new Date();
   const [viewYear, setViewYear] = useState(initial.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial.getMonth()); // 0-indexed
+  const [pickerMode, setPickerMode] = useState('calendar'); // 'calendar' | 'month' | 'year'
 
   // Month navigation
   const prevMonth = () => {
@@ -56,12 +64,18 @@ export const CalendarDatePickerModal = ({ visible, onClose, onSelectDate, select
   const today = new Date();
   const isCurrentMonth = today.getFullYear() === viewYear && today.getMonth() === viewMonth;
 
+  if (!visible) return null;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={StyleSheet.absoluteFillObject} />
-        </TouchableWithoutFeedback>
+        {/* Backdrop: Clicking outside closes calendar */}
+        <TouchableOpacity
+          style={StyleSheet.absoluteFillObject}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Header */}
           <View style={styles.header}>
@@ -69,63 +83,171 @@ export const CalendarDatePickerModal = ({ visible, onClose, onSelectDate, select
               <Ionicons name="chevron-back" size={18} color={theme.text} />
             </TouchableOpacity>
 
-            <Text style={[styles.monthYearText, { color: theme.text }]}>
-              {t(MONTH_NAMES[viewMonth].toLowerCase(), MONTH_NAMES[viewMonth])} {viewYear}
-            </Text>
+            {/* Clickable Month & Year selectors */}
+            <View style={styles.headerTitleWrap}>
+              <TouchableOpacity
+                onPress={() => setPickerMode(pickerMode === 'month' ? 'calendar' : 'month')}
+                style={[
+                  styles.headerPill,
+                  { backgroundColor: pickerMode === 'month' ? `${theme.primary}25` : theme.cardAlt },
+                ]}
+              >
+                <Text style={[styles.headerPillText, { color: pickerMode === 'month' ? theme.primaryLight : theme.text }]}>
+                  {MONTH_NAMES[viewMonth]}
+                </Text>
+                <Ionicons
+                  name={pickerMode === 'month' ? 'chevron-up' : 'chevron-down'}
+                  size={12}
+                  color={pickerMode === 'month' ? theme.primaryLight : theme.textMuted}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setPickerMode(pickerMode === 'year' ? 'calendar' : 'year')}
+                style={[
+                  styles.headerPill,
+                  { backgroundColor: pickerMode === 'year' ? `${theme.primary}25` : theme.cardAlt },
+                ]}
+              >
+                <Text style={[styles.headerPillText, { color: pickerMode === 'year' ? theme.primaryLight : theme.text }]}>
+                  {viewYear}
+                </Text>
+                <Ionicons
+                  name={pickerMode === 'year' ? 'chevron-up' : 'chevron-down'}
+                  size={12}
+                  color={pickerMode === 'year' ? theme.primaryLight : theme.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, { backgroundColor: theme.cardAlt }]}>
               <Ionicons name="chevron-forward" size={18} color={theme.text} />
             </TouchableOpacity>
           </View>
 
-          {/* Days of week header */}
-          <View style={styles.daysRow}>
-            {DAYS.map((d) => (
-              <Text key={d} style={[styles.dayLabel, { color: theme.textMuted }]}>
-                {d}
-              </Text>
-            ))}
-          </View>
-
-          {/* Days Grid */}
-          <View style={styles.grid}>
-            {/* Empty offset days */}
-            {Array.from({ length: firstDayIndex }).map((_, i) => (
-              <View key={`empty_${i}`} style={styles.dayCell} />
-            ))}
-
-            {/* Days in month */}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-              const isSelected = selectedDate === dateStr;
-              const isToday = isCurrentMonth && today.getDate() === day;
-
-              return (
-                <TouchableOpacity
-                  key={`day_${day}`}
-                  onPress={() => handleDayPress(day)}
-                  style={[
-                    styles.dayCell,
-                    isSelected && { backgroundColor: theme.primary },
-                    isToday && !isSelected && { borderColor: theme.primaryLight, borderWidth: 1.5 },
-                  ]}
-                >
-                  <Text
+          {/* Quick Month Picker View */}
+          {pickerMode === 'month' && (
+            <View style={styles.pickerGrid}>
+              {SHORT_MONTHS.map((m, idx) => {
+                const isCurrent = idx === viewMonth;
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    onPress={() => {
+                      setViewMonth(idx);
+                      setPickerMode('calendar');
+                    }}
                     style={[
-                      styles.dayText,
-                      { color: isSelected ? '#FFF' : theme.text },
-                      isToday && !isSelected && { color: theme.primaryLight, fontWeight: '800' },
+                      styles.pickerGridItem,
+                      {
+                        backgroundColor: isCurrent ? theme.primary : theme.cardAlt,
+                        borderColor: isCurrent ? theme.primary : theme.border,
+                      },
                     ]}
                   >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    <Text
+                      style={[
+                        styles.pickerGridText,
+                        { color: isCurrent ? '#FFFFFF' : theme.text, fontWeight: isCurrent ? '800' : '600' },
+                      ]}
+                    >
+                      {m}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
-          {/* Bottom Cancel */}
+          {/* Quick Year Picker View */}
+          {pickerMode === 'year' && (
+            <ScrollView style={{ maxHeight: 220, marginVertical: 6 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.pickerGrid}>
+                {YEARS.map((yr) => {
+                  const isCurrent = yr === viewYear;
+                  return (
+                    <TouchableOpacity
+                      key={yr}
+                      onPress={() => {
+                        setViewYear(yr);
+                        setPickerMode('calendar');
+                      }}
+                      style={[
+                        styles.pickerGridItem,
+                        {
+                          backgroundColor: isCurrent ? theme.primary : theme.cardAlt,
+                          borderColor: isCurrent ? theme.primary : theme.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerGridText,
+                          { color: isCurrent ? '#FFFFFF' : theme.text, fontWeight: isCurrent ? '800' : '600' },
+                        ]}
+                      >
+                        {yr}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
+
+          {/* Standard Days Calendar View */}
+          {pickerMode === 'calendar' && (
+            <>
+              {/* Days of week header */}
+              <View style={styles.daysRow}>
+                {DAYS.map((d) => (
+                  <Text key={d} style={[styles.dayLabel, { color: theme.textMuted }]}>
+                    {d}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Days Grid */}
+              <View style={styles.grid}>
+                {/* Empty offset days */}
+                {Array.from({ length: firstDayIndex }).map((_, i) => (
+                  <View key={`empty_${i}`} style={styles.dayCell} />
+                ))}
+
+                {/* Days in month */}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const isSelected = selectedDate === dateStr;
+                  const isToday = isCurrentMonth && today.getDate() === day;
+
+                  return (
+                    <TouchableOpacity
+                      key={`day_${day}`}
+                      onPress={() => handleDayPress(day)}
+                      style={[
+                        styles.dayCell,
+                        isSelected && { backgroundColor: theme.primary },
+                        isToday && !isSelected && { borderColor: theme.primaryLight, borderWidth: 1.5 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          { color: isSelected ? '#FFF' : theme.text },
+                          isToday && !isSelected && { color: theme.primaryLight, fontWeight: '800' },
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {/* Bottom Cancel & Today */}
           <View style={styles.footer}>
             <TouchableOpacity
               onPress={() => {
@@ -171,11 +293,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  monthYearText: {
-    fontSize: 16,
+  headerTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  headerPillText: {
+    fontSize: 14,
     fontWeight: '800',
+  },
+  pickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  pickerGridItem: {
+    width: '30%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  pickerGridText: {
+    fontSize: 13,
   },
   navBtn: {
     width: 34,

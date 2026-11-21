@@ -10,6 +10,16 @@ Notifications.setNotificationHandler({
   }),
 });
 
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync('default', {
+    name: 'WealthFlow Reminders',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#3B82F6',
+    sound: 'default',
+  }).catch(() => {});
+}
+
 const REMINDER_NOTIFICATION_ID = 'wealthflow_daily_reminder';
 
 export const NotificationService = {
@@ -52,6 +62,8 @@ export const NotificationService = {
           title: 'WealthFlow Daily Reminder 💰',
           body: 'Remember to record today\'s expenses and income to keep your balance up to date!',
           sound: true,
+          color: '#3B82F6',
+          channelId: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
@@ -95,6 +107,8 @@ export const NotificationService = {
           title: 'WealthFlow Notifications Active! 🔔',
           body: 'Daily reminders are configured and working perfectly.',
           sound: true,
+          color: '#3B82F6',
+          channelId: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: null, // deliver immediately
