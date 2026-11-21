@@ -146,54 +146,49 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       // Allow modal dismiss transition to finish cleanly before opening SAF dialog
       await new Promise((resolve) => setTimeout(resolve, 250));
 
-      // Android: Native ACTION_CREATE_DOCUMENT picker (Screenshot 5 "Save to" with SAVE button)
+      // Android: Storage Access Framework folder picker to save directly to internal storage
       if (Platform.OS === 'android') {
         try {
-          const result = await IntentLauncher.startActivityAsync(
-            'android.intent.action.CREATE_DOCUMENT',
-            {
-              type: 'text/csv',
-              category: 'android.intent.category.OPENABLE',
-              extra: {
-                'android.intent.extra.TITLE': fileName,
-              },
-            }
-          );
-          if (result && result.resultCode === -1 && result.data) {
-            let targetUri = result.data;
-            if (typeof targetUri === 'string') {
-              const match = targetUri.match(/dat=([^\s\}]+)/);
-              if (match && match[1]) {
-                targetUri = match[1];
-              }
-            }
-            try {
-              await FileSystem.writeAsStringAsync(targetUri, csv, {
+          if (FileSystem.StorageAccessFramework?.requestDirectoryPermissionsAsync) {
+            const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+            if (permissions.granted) {
+              const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+                permissions.directoryUri,
+                fileName,
+                'text/csv'
+              );
+              await FileSystem.writeAsStringAsync(fileUri, csv, {
                 encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
               });
-            } catch (wErr) {
-              if (FileSystem.StorageAccessFramework?.writeAsStringAsync) {
-                await FileSystem.StorageAccessFramework.writeAsStringAsync(targetUri, csv, {
-                  encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-                });
-              } else {
-                throw wErr;
-              }
+              showCustomAlert(
+                'CSV File Saved!',
+                `Successfully saved "${fileName}" to your selected folder in internal storage.`,
+                { type: 'success' }
+              );
+              return;
+            } else {
+              // User cancelled folder picker
+              return;
             }
-            showCustomAlert(
-              'CSV File Saved!',
-              `Successfully saved "${fileName}" to your device storage.`,
-              { type: 'success' }
-            );
-            return;
-          } else if (result && result.resultCode === 0) {
-            // User cancelled
-            return;
           }
+        } catch (safErr) {
+          console.warn('StorageAccessFramework error, falling back to Sharing:', safErr);
+        }
+
+        // Sharing fallback if SAF unavailable or errored
+        try {
+          const localPath = `${FileSystem.cacheDirectory}${fileName}`;
+          await FileSystem.writeAsStringAsync(localPath, csv, {
+            encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+          });
+          await Sharing.shareAsync(localPath, {
+            mimeType: 'text/csv',
+            dialogTitle: 'Save CSV to Internal Storage',
+            UTI: 'public.comma-separated-values-text',
+          });
           return;
-        } catch (intentErr) {
-          console.warn('IntentLauncher CREATE_DOCUMENT error:', intentErr);
-          showCustomAlert('Save Failed', 'Could not open document creator: ' + intentErr.message, { type: 'danger' });
+        } catch (shareErr) {
+          showCustomAlert('Save Failed', 'Could not save CSV file: ' + shareErr.message, { type: 'danger' });
           return;
         }
       }
@@ -631,9 +626,12 @@ Status: Healthy. No fatal crash exceptions recorded.
                   </Text>
                 </View>
               </View>
-              <View style={{ backgroundColor: '#10B98125', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
-                <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '800' }}>Active (1m)</Text>
-              </View>
+              <Switch
+                value={securitySettings.autoLock1Min !== false}
+                onValueChange={(val) => updateSecurity({ autoLock1Min: val })}
+                trackColor={{ false: '#CBD5E1', true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
             </View>
           )}
         </View>

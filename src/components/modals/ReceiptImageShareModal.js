@@ -90,6 +90,22 @@ export const ReceiptImageShareModal = ({
     try {
       setIsGeneratingPdf(true);
 
+      // Convert friend photo to base64 if present so it renders reliably in Android WebView Print
+      let friendPhotoBase64 = null;
+      if (type === 'friend' && data.photoUri) {
+        try {
+          const rawBase64 = await FileSystem.readAsStringAsync(data.photoUri, {
+            encoding: FileSystem.EncodingType?.Base64 || 'base64',
+          });
+          if (rawBase64) {
+            const isPng = data.photoUri.toLowerCase().endsWith('.png');
+            friendPhotoBase64 = `data:${isPng ? 'image/png' : 'image/jpeg'};base64,${rawBase64}`;
+          }
+        } catch (photoErr) {
+          console.warn('Friend photo base64 conversion failed:', photoErr);
+        }
+      }
+
       // Generate vector SVG QR code offline (pure JS in memory, no remote HTTP request)
       let qrSvg = '';
       try {
@@ -252,8 +268,8 @@ export const ReceiptImageShareModal = ({
               <div style="display: flex; align-items: center; gap: 14px;">
                 ${
                   type === 'friend'
-                    ? data.photoUri
-                      ? `<img src="${data.photoUri}" style="width: 52px; height: 52px; border-radius: 26px; object-fit: cover; border: 2px solid #3B82F6;" />`
+                    ? friendPhotoBase64
+                      ? `<img src="${friendPhotoBase64}" style="width: 52px; height: 52px; border-radius: 26px; object-fit: cover; border: 2px solid #3B82F6;" />`
                       : `<div style="width: 52px; height: 52px; border-radius: 26px; background-color: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid #CBD5E1;">${data.avatarEmoji || '👤'}</div>`
                     : ''
                 }
@@ -610,7 +626,7 @@ export const ReceiptImageShareModal = ({
               {/* 3. Account Statement Layout with Full Transaction Ledger */}
               {type === 'account' && (
                 <View style={styles.receiptBody}>
-                  <Text style={styles.receiptLabel}>WALLET / ACCOUNT STATEMENT</Text>
+                  <Text style={styles.receiptLabel}>ACCOUNT STATEMENT</Text>
                   <Text style={styles.friendName}>
                     {data.emoji ? `${data.emoji} ` : ''}{data.name}
                   </Text>

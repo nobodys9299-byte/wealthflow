@@ -72,7 +72,8 @@ function MainApp() {
 
   // Periodic inactivity check (every 5 seconds)
   useEffect(() => {
-    if (!securitySettings.enabled || !isAppUnlocked) return;
+    const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
+    if (!isAutoLockEnabled || !isAppUnlocked) return;
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -82,7 +83,7 @@ function MainApp() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [securitySettings.enabled, isAppUnlocked]);
+  }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked]);
 
   // AppState change listener: locks if app backgrounded for >= 1 minute or idle
   useEffect(() => {
@@ -93,8 +94,9 @@ function MainApp() {
         const now = Date.now();
         const backgroundElapsed = backgroundTimeRef.current ? now - backgroundTimeRef.current : 0;
         const idleElapsed = now - lastActiveRef.current;
+        const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
 
-        if (securitySettings.enabled && isAppUnlocked && (backgroundElapsed >= 60000 || idleElapsed >= 60000)) {
+        if (isAutoLockEnabled && isAppUnlocked && (backgroundElapsed >= 60000 || idleElapsed >= 60000)) {
           setIsAppUnlocked(false);
         }
         lastActiveRef.current = now;
@@ -104,7 +106,7 @@ function MainApp() {
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
-  }, [securitySettings.enabled, isAppUnlocked]);
+  }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked]);
 
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {

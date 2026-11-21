@@ -59,58 +59,8 @@ export const CloudBackupService = {
         return { success: true, fileName: defaultFileName, mode: 'web_download' };
       }
 
-      // Android: Native ACTION_CREATE_DOCUMENT picker (Save to Downloads, Drive, etc.)
-      if (Platform.OS === 'android') {
-        try {
-          const actualMime = mimeType === 'text/csv' ? 'text/csv' : (mimeType || 'application/json');
-          const result = await IntentLauncher.startActivityAsync(
-            'android.intent.action.CREATE_DOCUMENT',
-            {
-              type: actualMime,
-              category: 'android.intent.category.OPENABLE',
-              extra: {
-                'android.intent.extra.TITLE': defaultFileName,
-              },
-            }
-          );
-          if (result && result.resultCode === -1 && result.data) {
-            let targetUri = result.data;
-            if (typeof targetUri === 'string') {
-              const match = targetUri.match(/dat=([^\s\}]+)/);
-              if (match && match[1]) {
-                targetUri = match[1];
-              }
-            }
-            try {
-              await FileSystem.writeAsStringAsync(targetUri, fileData, {
-                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-              });
-            } catch (wErr) {
-              if (FileSystem.StorageAccessFramework?.writeAsStringAsync) {
-                await FileSystem.StorageAccessFramework.writeAsStringAsync(targetUri, fileData, {
-                  encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-                });
-              } else {
-                throw wErr;
-              }
-            }
-            return {
-              success: true,
-              fileName: defaultFileName,
-              fileUri: targetUri,
-              mode: 'create_document',
-            };
-          } else if (result && result.resultCode === 0) {
-            // User cancelled
-            return { success: false, cancelled: true, error: 'Document creation was cancelled.' };
-          }
-        } catch (intentErr) {
-          console.warn('IntentLauncher CREATE_DOCUMENT error, falling back to SAF / Sharing:', intentErr);
-        }
-      }
-
-      // Android Fallback: Storage Access Framework (SAF) folder picker
-      if (Platform.OS === 'android' && FileSystem.StorageAccessFramework) {
+      // Android: Storage Access Framework folder picker to save directly to internal storage
+      if (Platform.OS === 'android' && FileSystem.StorageAccessFramework?.requestDirectoryPermissionsAsync) {
         try {
           const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
           if (permissions.granted) {
@@ -130,12 +80,14 @@ export const CloudBackupService = {
               mode: 'saf',
             };
           } else {
-            return { success: false, cancelled: true, error: 'Folder selection was cancelled.' };
+            return { success: false, cancelled: true, error: 'Directory selection was cancelled.' };
           }
         } catch (safErr) {
           console.warn('StorageAccessFramework error, falling back to Sharing:', safErr);
         }
       }
+
+
 
       // Fallback for iOS or if SAF fails
       const fileUri = `${FileSystem.documentDirectory}${defaultFileName}`;

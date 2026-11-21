@@ -117,19 +117,18 @@ export const FeedbackModal = ({ visible, onClose }) => {
               showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled={true}
-              contentContainerStyle={[styles.scrollBody, { flexGrow: 1, paddingBottom: 40 }]}
+              contentContainerStyle={[styles.scrollBody, { flexGrow: 1, paddingBottom: 240 }]}
             >
-            {/* Inspiring Motivational Banner */}
-            <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-              <View style={styles.quoteTop}>
-                <Ionicons name="sparkles" size={16} color="#38BDF8" />
-                <Text style={styles.quoteBadgeText}>{t('your_voice_powers', 'YOUR VOICE POWERS OUR APP 🚀')}</Text>
+            {/* Inspiring Compact Banner */}
+            <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155', paddingVertical: 10, paddingHorizontal: 12, marginBottom: 10 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="sparkles" size={15} color="#38BDF8" />
+                <Text style={{ color: '#38BDF8', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>
+                  YOUR VOICE POWERS OUR APP 🚀
+                </Text>
               </View>
-              <Text style={styles.quoteText}>
-                &ldquo;{t('feedback_quote', 'Every great improvement in WealthFlow begins with an honest suggestion from people like you.')}&rdquo;
-              </Text>
-              <Text style={styles.quoteDesc}>
-                {t('feedback_desc', 'We read every single email personally. Found a glitch? Want a brand new feature? Have an idea to make money tracking even smoother? Tell us directly and watch your ideas come alive in upcoming updates! ❤️')}
+              <Text style={{ color: '#CBD5E1', fontSize: 11, lineHeight: 16, marginTop: 4 }}>
+                We read every email personally. Have an idea, request, or found a glitch? Tell us below!
               </Text>
             </View>
 
@@ -194,7 +193,10 @@ export const FeedbackModal = ({ visible, onClose }) => {
                 onFocus={() => {
                   setTimeout(() => {
                     scrollRef.current?.scrollToEnd({ animated: true });
-                  }, 250);
+                  }, 100);
+                  setTimeout(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }, 350);
                 }}
               />
             </View>

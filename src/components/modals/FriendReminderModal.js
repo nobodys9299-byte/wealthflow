@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -11,6 +11,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Image,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
@@ -129,13 +130,17 @@ export const FriendReminderModal = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Top Drag Pill */}
           <View style={styles.dragPillWrap}>
             <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
@@ -271,53 +276,50 @@ export const FriendReminderModal = ({
               </TouchableOpacity>
 
               <TouchableOpacity
+                activeOpacity={1}
                 onPress={() => setRequestAmountType('custom')}
                 style={[
                   styles.amountOption,
                   {
-                    backgroundColor: requestAmountType === 'custom' ? theme.primary : theme.cardAlt,
-                    borderColor: requestAmountType === 'custom' ? theme.primaryLight : theme.border,
+                    backgroundColor: requestAmountType === 'custom' ? `${theme.primary}20` : theme.cardAlt,
+                    borderColor: requestAmountType === 'custom' ? theme.primary : theme.border,
+                    borderWidth: requestAmountType === 'custom' ? 2 : 1,
                   },
                 ]}
               >
-                <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'custom' ? '#FFF' : theme.textMuted }]}>
+                <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'custom' ? theme.primaryLight : theme.textMuted }]}>
                   Custom Amount
                 </Text>
-                <Text style={[styles.amountOptionVal, { color: requestAmountType === 'custom' ? '#FFF' : theme.text }]}>
-                  {requestAmountType === 'custom' && customAmount
-                    ? `${currency.symbol}${customAmount}`
-                    : 'Enter Amount'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Dedicated Custom Amount Input Row */}
-            {requestAmountType === 'custom' && (
-              <View style={[styles.customInputCard, { backgroundColor: theme.cardAlt, borderColor: theme.primary }]}>
-                <Text style={[styles.customInputLabel, { color: theme.textMuted }]}>
-                  Enter Custom Amount to Request:
-                </Text>
-                <View style={styles.customInputRow}>
-                  <Text style={[styles.customCurrencySymbol, { color: theme.primaryLight }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: requestAmountType === 'custom' ? theme.primaryLight : theme.textMuted, marginRight: 2 }}>
                     {currency.symbol}
                   </Text>
                   <TextInput
-                    style={[styles.customTextInput, { color: theme.text }]}
-                    keyboardType="numeric"
-                    placeholder="0.00"
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '800',
+                      color: theme.text,
+                      flex: 1,
+                      padding: 0,
+                    }}
+                    placeholder="Enter Amount"
                     placeholderTextColor={theme.textMuted}
+                    keyboardType="numeric"
                     value={customAmount}
-                    onChangeText={setCustomAmount}
-                    autoFocus
+                    onChangeText={(txt) => {
+                      setCustomAmount(txt);
+                      setRequestAmountType('custom');
+                    }}
+                    onFocus={() => setRequestAmountType('custom')}
                   />
-                  {customAmount.length > 0 && (
+                  {requestAmountType === 'custom' && customAmount.length > 0 && (
                     <TouchableOpacity onPress={() => setCustomAmount('')}>
-                      <Ionicons name="close-circle" size={18} color={theme.textMuted} />
+                      <Ionicons name="close-circle" size={16} color={theme.textMuted} />
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
-            )}
+              </TouchableOpacity>
+            </View>
 
             {/* UPI Configuration & Live Link Preview */}
             <View style={[styles.upiCardContainer, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
@@ -397,6 +399,7 @@ export const FriendReminderModal = ({
           </ScrollView>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
