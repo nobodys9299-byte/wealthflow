@@ -66,41 +66,16 @@ function MainApp() {
   const [donationModalVisible, setDonationModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
-  // Auto-lock inactivity tracker (1 minute = 60,000 ms)
-  const lastActiveRef = useRef(Date.now());
-  const backgroundTimeRef = useRef(null);
-
-  // Periodic inactivity check (every 5 seconds)
-  useEffect(() => {
-    const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
-    if (!isAutoLockEnabled || !isAppUnlocked) return;
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      if (now - lastActiveRef.current >= 60000) {
-        setIsAppUnlocked(false);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked]);
-
-  // AppState change listener: locks if app backgrounded for >= 1 minute or idle
+  // Auto-lock on phone lock / background
+  // When phone is locked or app minimized, locks immediately if security enabled.
+  // When on-screen / active, the app never locks automatically so user is never interrupted.
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
+      const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
       if (nextAppState === 'background' || nextAppState === 'inactive') {
-        backgroundTimeRef.current = Date.now();
-      } else if (nextAppState === 'active') {
-        const now = Date.now();
-        const backgroundElapsed = backgroundTimeRef.current ? now - backgroundTimeRef.current : 0;
-        const idleElapsed = now - lastActiveRef.current;
-        const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
-
-        if (isAutoLockEnabled && isAppUnlocked && (backgroundElapsed >= 60000 || idleElapsed >= 60000)) {
+        if (isAutoLockEnabled && isAppUnlocked) {
           setIsAppUnlocked(false);
         }
-        lastActiveRef.current = now;
-        backgroundTimeRef.current = null;
       }
     };
 

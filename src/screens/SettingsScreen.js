@@ -157,9 +157,15 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
                 fileName,
                 'text/csv'
               );
-              await FileSystem.writeAsStringAsync(fileUri, csv, {
-                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-              });
+              if (FileSystem.StorageAccessFramework?.writeAsStringAsync) {
+                await FileSystem.StorageAccessFramework.writeAsStringAsync(fileUri, csv, {
+                  encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+                });
+              } else {
+                await FileSystem.writeAsStringAsync(fileUri, csv, {
+                  encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+                });
+              }
               showCustomAlert(
                 'CSV File Saved!',
                 `Successfully saved "${fileName}" to your selected folder in internal storage.`,

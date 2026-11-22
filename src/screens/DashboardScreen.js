@@ -278,8 +278,10 @@ export const DashboardScreen = ({
         </View>
       )}
 
-      {/* Main Net Worth and Cash Flow Summary */}
-      <SummaryCards />
+      {/* Main Net Worth and Cash Flow Summary (Long-press to customize dashboard layout) */}
+      <TouchableOpacity activeOpacity={0.95} onLongPress={handleOpenCustomize}>
+        <SummaryCards />
+      </TouchableOpacity>
 
       {/* Quick Action Buttons (Balanced 3-Button Layout) */}
       <View style={styles.quickActions}>
@@ -346,7 +348,7 @@ export const DashboardScreen = ({
           return (
             <View key="accounts">
               {/* Accounts Section */}
-              <View style={styles.sectionHeader}>
+              <TouchableOpacity activeOpacity={0.9} onLongPress={handleOpenCustomize} style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Accounts')}</Text>
                 <TouchableOpacity
                   onPress={onOpenAddAccount}
@@ -355,7 +357,7 @@ export const DashboardScreen = ({
                   <Ionicons name="add-circle-outline" size={16} color={theme.primaryLight} />
                   <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>{t('Add', 'Add')}</Text>
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.accountsRow}>
                 {accounts.map((acc) => (
@@ -380,7 +382,7 @@ export const DashboardScreen = ({
           return (
             <View key="recurring">
               {/* Recurring Bills & Auto-Pay Section */}
-              <View style={[styles.sectionHeader, { marginTop: 20 }]}>
+              <TouchableOpacity activeOpacity={0.9} onLongPress={handleOpenCustomize} style={[styles.sectionHeader, { marginTop: 20 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('recurring_bills', 'Recurring Pay & Bills')}</Text>
                   <View style={[styles.recBadge, { backgroundColor: '#8B5CF625' }]}>
@@ -396,7 +398,7 @@ export const DashboardScreen = ({
                   <Ionicons name="add" size={14} color="#8B5CF6" />
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B5CF6' }}>{t('add_recurring', 'Add Recurring')}</Text>
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
 
               {recurring.length === 0 ? (
                 <TouchableOpacity
@@ -488,7 +490,7 @@ export const DashboardScreen = ({
           return (
             <View key="transactions">
               {/* Transactions Section: Scrollable list of ALL transactions directly on Home */}
-              <View style={[styles.sectionHeader, { marginTop: 22 }]}>
+              <TouchableOpacity activeOpacity={0.9} onLongPress={handleOpenCustomize} style={[styles.sectionHeader, { marginTop: 22 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
                   <Text style={[styles.sectionTitle, { color: theme.text }]} numberOfLines={1}>
                     {showSearch
@@ -522,7 +524,7 @@ export const DashboardScreen = ({
                   <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>{t('see_all', 'Ledger')}</Text>
                   <Ionicons name="chevron-forward" size={14} color={theme.primaryLight} />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
 
               {displayTransactions.length === 0 ? (
                 <View style={[styles.emptyBox, { borderColor: theme.border }]}>
@@ -640,9 +642,11 @@ export const DashboardScreen = ({
       {/* Customize Home Sections Bottom Sheet Modal */}
       <Modal visible={showCustomizeModal} transparent animationType="slide" onRequestClose={() => setShowCustomizeModal(false)}>
         <View style={[styles.customizeOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={() => setShowCustomizeModal(false)}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowCustomizeModal(false)}
+          />
           <View style={[styles.customizeCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Grab Pill */}
             <View style={styles.dragPillWrap}>

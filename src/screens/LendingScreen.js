@@ -329,7 +329,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
       {/* Dedicated Friend Payment Reminder Dialogue Box */}
       <FriendReminderModal
         visible={!!selectedReminderFriend}
-        friend={selectedReminderFriend}
+        friend={lendingSummary.friends.find((f) => f.name === selectedReminderFriend?.name) || selectedReminderFriend}
         onClose={() => setSelectedReminderFriend(null)}
         onBackToDetails={(friend) => {
           setSelectedReminderFriend(null);
