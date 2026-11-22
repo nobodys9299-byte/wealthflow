@@ -66,6 +66,9 @@ function MainApp() {
   const [donationModalVisible, setDonationModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
+  // Inactivity / active session tracker
+  const lastActiveRef = useRef(Date.now());
+
   // Auto-lock on phone lock / background
   // When phone is locked or app minimized, locks immediately if security enabled.
   // When on-screen / active, the app never locks automatically so user is never interrupted.
@@ -76,6 +79,8 @@ function MainApp() {
         if (isAutoLockEnabled && isAppUnlocked) {
           setIsAppUnlocked(false);
         }
+      } else if (nextAppState === 'active') {
+        lastActiveRef.current = Date.now();
       }
     };
 
@@ -312,7 +317,9 @@ function MainApp() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.bg }]}
       onStartShouldSetResponderCapture={() => {
-        lastActiveRef.current = Date.now();
+        if (lastActiveRef && 'current' in lastActiveRef) {
+          lastActiveRef.current = Date.now();
+        }
         return false;
       }}
     >
