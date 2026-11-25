@@ -58,7 +58,6 @@ export const DashboardScreen = ({
   // Account Long-Press Drag Reorder Mode & Customize Home Sections state
   const outerScrollRef = useRef(null);
   const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
-  const [isDraggingAccount, setIsDraggingAccount] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [tempSections, setTempSections] = useState(homeSections);
@@ -148,7 +147,6 @@ export const DashboardScreen = ({
         style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={!isDraggingAccount}
       >
       {/* Top App Header with 3-Bar Hamburger Menu and Search */}
       <View style={styles.topBar}>
@@ -361,9 +359,9 @@ export const DashboardScreen = ({
               <View style={styles.sectionHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Accounts')}</Text>
-                  {(isDraggingAccount || isReorderingAccounts) && (
+                  {isReorderingAccounts && (
                     <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight }}>
-                      {isDraggingAccount ? 'Drop to place' : 'Drag to reorder'}
+                      Drag to reorder
                     </Text>
                   )}
                 </View>
@@ -391,7 +389,6 @@ export const DashboardScreen = ({
                 axis="x"
                 parentScrollRef={outerScrollRef}
                 onReorder={(ordered) => reorderAccounts && reorderAccounts(ordered)}
-                onDragStateChange={setIsDraggingAccount}
                 onHoldWithoutDrag={() => setIsReorderingAccounts((prev) => !prev)}
                 onCardPress={(acc) =>
                   !isReorderingAccounts &&

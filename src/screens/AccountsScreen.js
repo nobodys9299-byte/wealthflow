@@ -47,7 +47,6 @@ export const AccountsScreen = ({
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedAccountForImage, setSelectedAccountForImage] = useState(null);
   const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
-  const [isDraggingAccount, setIsDraggingAccount] = useState(false);
 
   // Handle hardware and UI back button so pressing back navigates to home instead of quitting
   useEffect(() => {
@@ -77,7 +76,6 @@ export const AccountsScreen = ({
       style={[styles.container, { backgroundColor: theme.bg }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
-      scrollEnabled={!isDraggingAccount}
     >
       {/* Top Header with More Menu Button */}
       <View style={styles.topHeader}>
@@ -205,7 +203,6 @@ export const AccountsScreen = ({
         axis="y"
         parentScrollRef={outerScrollRef}
         onReorder={(ordered) => reorderAccounts && reorderAccounts(ordered)}
-        onDragStateChange={setIsDraggingAccount}
         onHoldWithoutDrag={() => setIsReorderingAccounts((prev) => !prev)}
         renderItem={(acc, _idx, drag) => (
           <View style={{ marginBottom: 14 }}>

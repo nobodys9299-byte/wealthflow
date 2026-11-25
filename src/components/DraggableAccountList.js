@@ -4,6 +4,7 @@ import {
   ScrollView,
   Animated,
   PanResponder,
+  Easing,
 } from 'react-native';
 
 const DraggableAccountSlot = ({
@@ -11,6 +12,7 @@ const DraggableAccountSlot = ({
   index,
   axis,
   isDragging,
+  anyDragging,
   shiftAnim,
   scaleAnim,
   slotPanHandlers,
@@ -20,11 +22,12 @@ const DraggableAccountSlot = ({
 }) => {
   return (
     <Animated.View
+      collapsable={false}
       onLayout={(e) => registerLayout(account.id, e.nativeEvent.layout)}
       {...slotPanHandlers}
       style={{
-        zIndex: isDragging ? 999 : 1,
-        elevation: isDragging ? 14 : 0,
+        zIndex: isDragging ? 999 : anyDragging ? 0 : 1,
+        elevation: isDragging ? 24 : 0,
         transform: [
           axis === 'x' ? { translateX: shiftAnim } : { translateY: shiftAnim },
           { scale: scaleAnim },
@@ -43,7 +46,6 @@ export const DraggableAccountList = ({
   accounts = [],
   axis = 'x', // 'x' for horizontal Dashboard carousel | 'y' for vertical Accounts tab list
   onReorder,
-  onDragStateChange,
   onHoldWithoutDrag,
   onCardPress,
   parentScrollRef,
@@ -84,7 +86,6 @@ export const DraggableAccountList = ({
 
   const latestPropsRef = useRef({
     onReorder,
-    onDragStateChange,
     onHoldWithoutDrag,
     onCardPress,
     axis,
@@ -92,7 +93,6 @@ export const DraggableAccountList = ({
   });
   latestPropsRef.current = {
     onReorder,
-    onDragStateChange,
     onHoldWithoutDrag,
     onCardPress,
     axis,
@@ -144,7 +144,8 @@ export const DraggableAccountList = ({
 
       Animated.timing(getShiftAnim(item.id), {
         toValue: offset,
-        duration: 150,
+        duration: 110,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     });
@@ -183,13 +184,12 @@ export const DraggableAccountList = ({
 
     setScrollLocked(true);
     setDraggingId(accId);
-    latestPropsRef.current.onDragStateChange?.(true);
 
-    Animated.spring(getScaleAnim(accId), {
-      toValue: 1.04,
+    Animated.timing(getScaleAnim(accId), {
+      toValue: 1.03,
+      duration: 90,
+      easing: Easing.out(Easing.quad),
       useNativeDriver: true,
-      speed: 26,
-      bounciness: 6,
     }).start();
   }, [setScrollLocked]);
 
@@ -216,8 +216,9 @@ export const DraggableAccountList = ({
     let curTarget = targetIndexRef.current;
 
     while (curTarget > 0) {
-      const midPrev = (slots[curTarget].center + slots[curTarget - 1].center) / 2;
-      if (draggedCenter < midPrev) {
+      const stepPrev = Math.abs(slots[curTarget].center - slots[curTarget - 1].center);
+      const triggerPrev = slots[curTarget].center - stepPrev * 0.35;
+      if (draggedCenter < triggerPrev) {
         curTarget -= 1;
       } else {
         break;
@@ -225,8 +226,9 @@ export const DraggableAccountList = ({
     }
 
     while (curTarget < orderedRef.current.length - 1) {
-      const midNext = (slots[curTarget].center + slots[curTarget + 1].center) / 2;
-      if (draggedCenter > midNext) {
+      const stepNext = Math.abs(slots[curTarget + 1].center - slots[curTarget].center);
+      const triggerNext = slots[curTarget].center + stepNext * 0.35;
+      if (draggedCenter > triggerNext) {
         curTarget += 1;
       } else {
         break;
@@ -261,12 +263,14 @@ export const DraggableAccountList = ({
     Animated.parallel([
       Animated.timing(getShiftAnim(activeId), {
         toValue: destOffset,
-        duration: 140,
+        duration: 95,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(getScaleAnim(activeId), {
         toValue: 1,
-        duration: 140,
+        duration: 95,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -293,7 +297,6 @@ export const DraggableAccountList = ({
       settlingRef.current = false;
       setDraggingId(null);
       setScrollLocked(false);
-      latestPropsRef.current.onDragStateChange?.(false);
     });
   }, [setScrollLocked]);
 
@@ -404,6 +407,7 @@ export const DraggableAccountList = ({
         index={index}
         axis={axis}
         isDragging={isDragging}
+        anyDragging={Boolean(draggingId)}
         shiftAnim={getShiftAnim(acc.id)}
         scaleAnim={getScaleAnim(acc.id)}
         slotPanHandlers={slotPanHandlers}
@@ -423,10 +427,16 @@ export const DraggableAccountList = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={contentContainerStyle}
       >
-        {items}
+        <View collapsable={false} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {items}
+        </View>
       </ScrollView>
     );
   }
 
-  return <View style={contentContainerStyle}>{items}</View>;
+  return (
+    <View collapsable={false} style={contentContainerStyle}>
+      {items}
+    </View>
+  );
 };

@@ -59,7 +59,13 @@ function MainApp() {
   const lastActiveRef = useRef(Date.now());
   const backgroundAtRef = useRef(null);
   const bgLockTimerRef = useRef(null);
+  const screenCheckTimersRef = useRef([]);
   const appStateRef = useRef(AppState.currentState);
+  const hasUnlockedOnceRef = useRef(!securitySettings.enabled || isAppUnlocked);
+
+  if (!securitySettings.enabled || isAppUnlocked) {
+    hasUnlockedOnceRef.current = true;
+  }
 
   const markUserActivity = useCallback(() => {
     lastActiveRef.current = Date.now();
@@ -122,11 +128,17 @@ function MainApp() {
   // 3) Active on screen with no touch movement -> locks after 3 min
   useEffect(() => {
     const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
-    if (!isAutoLockEnabled || !isAppUnlocked) {
+    const clearScreenCheckTimers = () => {
+      screenCheckTimersRef.current.forEach((id) => clearTimeout(id));
+      screenCheckTimersRef.current = [];
+    };
+
+    if (!securitySettings.enabled || !isAppUnlocked) {
       if (bgLockTimerRef.current) {
         clearTimeout(bgLockTimerRef.current);
         bgLockTimerRef.current = null;
       }
+      clearScreenCheckTimers();
       backgroundAtRef.current = null;
       return undefined;
     }
@@ -134,22 +146,36 @@ function MainApp() {
     lastActiveRef.current = Date.now();
     const screenLockNative = Platform.OS === 'android' ? NativeModules?.ScreenLockDetector : null;
 
+    const triggerImmediateLock = () => {
+      if (isSystemInteractionActive()) return;
+      if (bgLockTimerRef.current) {
+        clearTimeout(bgLockTimerRef.current);
+        bgLockTimerRef.current = null;
+      }
+      clearScreenCheckTimers();
+      backgroundAtRef.current = null;
+      setIsAppUnlocked(false);
+    };
+
     let screenOffSub = null;
     if (screenLockNative && typeof screenLockNative.addListener === 'function') {
       try {
         const emitter = new NativeEventEmitter(screenLockNative);
-        screenOffSub = emitter.addListener('WEALTHFLOW_SCREEN_OFF', () => {
-          if (!isSystemInteractionActive()) {
-            if (bgLockTimerRef.current) {
-              clearTimeout(bgLockTimerRef.current);
-              bgLockTimerRef.current = null;
-            }
-            backgroundAtRef.current = null;
-            setIsAppUnlocked(false);
-          }
-        });
+        screenOffSub = emitter.addListener('WEALTHFLOW_SCREEN_OFF', triggerImmediateLock);
       } catch (_e) {}
     }
+
+    const probeScreenOff = async () => {
+      if (!screenLockNative?.isScreenLockedOrOff || isSystemInteractionActive()) return false;
+      try {
+        const isOff = Boolean(await screenLockNative.isScreenLockedOrOff());
+        if (isOff) {
+          triggerImmediateLock();
+          return true;
+        }
+      } catch (_e) {}
+      return false;
+    };
 
     const appStateSub = AppState.addEventListener('change', async (nextAppState) => {
       appStateRef.current = nextAppState;
@@ -157,27 +183,18 @@ function MainApp() {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
         if (isSystemInteractionActive()) return;
 
-        let isScreenOff = false;
-        if (screenLockNative?.isScreenLockedOrOff) {
-          try {
-            isScreenOff = Boolean(await screenLockNative.isScreenLockedOrOff());
-          } catch (_e) {
-            isScreenOff = false;
-          }
-        }
+        // Always lock immediately if the user turned the screen off via power button
+        const offNow = await probeScreenOff();
+        if (offNow) return;
 
-        if (isScreenOff) {
-          // Phone locked via power button / screen turned off -> lock immediately
-          if (bgLockTimerRef.current) {
-            clearTimeout(bgLockTimerRef.current);
-            bgLockTimerRef.current = null;
-          }
-          backgroundAtRef.current = null;
-          setIsAppUnlocked(false);
-          return;
-        }
+        // PowerManager.isInteractive flips ~120-350ms after onPause on Android OEMs
+        clearScreenCheckTimers();
+        screenCheckTimersRef.current = [
+          setTimeout(() => { probeScreenOff(); }, 150),
+          setTimeout(() => { probeScreenOff(); }, 380),
+        ];
 
-        if (nextAppState === 'background') {
+        if (isAutoLockEnabled && nextAppState === 'background') {
           if (!backgroundAtRef.current) {
             backgroundAtRef.current = Date.now();
           }
@@ -192,6 +209,7 @@ function MainApp() {
           }
         }
       } else if (nextAppState === 'active') {
+        clearScreenCheckTimers();
         if (bgLockTimerRef.current) {
           clearTimeout(bgLockTimerRef.current);
           bgLockTimerRef.current = null;
@@ -199,7 +217,17 @@ function MainApp() {
         const bgSince = backgroundAtRef.current;
         backgroundAtRef.current = null;
 
-        if (bgSince && Date.now() - bgSince >= 60 * 1000 && !isSystemInteractionActive()) {
+        if (!isSystemInteractionActive() && screenLockNative?.consumeScreenOffFlag) {
+          try {
+            const wasScreenOff = Boolean(await screenLockNative.consumeScreenOffFlag());
+            if (wasScreenOff) {
+              setIsAppUnlocked(false);
+              return;
+            }
+          } catch (_e) {}
+        }
+
+        if (isAutoLockEnabled && bgSince && Date.now() - bgSince >= 60 * 1000 && !isSystemInteractionActive()) {
           setIsAppUnlocked(false);
           return;
         }
@@ -207,20 +235,23 @@ function MainApp() {
       }
     });
 
-    const idleInterval = setInterval(() => {
-      if (
-        appStateRef.current === 'active' &&
-        !isSystemInteractionActive() &&
-        Date.now() - lastActiveRef.current >= 3 * 60 * 1000
-      ) {
-        setIsAppUnlocked(false);
-      }
-    }, 10000);
+    const idleInterval = isAutoLockEnabled
+      ? setInterval(() => {
+          if (
+            appStateRef.current === 'active' &&
+            !isSystemInteractionActive() &&
+            Date.now() - lastActiveRef.current >= 3 * 60 * 1000
+          ) {
+            setIsAppUnlocked(false);
+          }
+        }, 10000)
+      : null;
 
     return () => {
       if (screenOffSub) screenOffSub.remove();
       appStateSub.remove();
-      clearInterval(idleInterval);
+      clearScreenCheckTimers();
+      if (idleInterval) clearInterval(idleInterval);
       if (bgLockTimerRef.current) {
         clearTimeout(bgLockTimerRef.current);
         bgLockTimerRef.current = null;
@@ -302,19 +333,29 @@ function MainApp() {
     );
   }
 
-  // If security is enabled and app is locked, present LockScreen
-  if (securitySettings.enabled && !isAppUnlocked) {
+  const handleUnlockApp = useCallback(() => {
+    lastActiveRef.current = Date.now();
+    backgroundAtRef.current = null;
+    hasUnlockedOnceRef.current = true;
+    if (Platform.OS === 'android') {
+      try {
+        NativeModules?.ScreenLockDetector?.clearScreenOffFlag?.();
+      } catch (_e) {}
+    }
+    setIsAppUnlocked(true);
+  }, [setIsAppUnlocked]);
+
+  const isVaultLocked = securitySettings.enabled && !isAppUnlocked;
+
+  // Before first unlock on cold boot, show only LockScreen (never mount sensitive screens underneath yet)
+  if (isVaultLocked && !hasUnlockedOnceRef.current) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
         <StatusBar style={theme.isDark ? 'light' : 'dark'} />
         <LockScreen
           correctPin={securitySettings.pin || '1234'}
           biometricsEnabled={securitySettings.biometrics !== false}
-          onUnlock={() => {
-            lastActiveRef.current = Date.now();
-            backgroundAtRef.current = null;
-            setIsAppUnlocked(true);
-          }}
+          onUnlock={handleUnlockApp}
         />
       </SafeAreaView>
     );
@@ -789,6 +830,26 @@ function MainApp() {
         type={confirmDialog.type}
         showCancel={confirmDialog.showCancel !== false}
       />
+
+      {/* Opaque Full-Screen Security Lock Overlay (keeps app mounted underneath for zero unlock lag) */}
+      {isVaultLocked && (
+        <Modal
+          visible={true}
+          animationType="none"
+          statusBarTranslucent
+          presentationStyle="fullScreen"
+          onRequestClose={() => true}
+        >
+          <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
+            <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+            <LockScreen
+              correctPin={securitySettings.pin || '1234'}
+              biometricsEnabled={securitySettings.biometrics !== false}
+              onUnlock={handleUnlockApp}
+            />
+          </SafeAreaView>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }

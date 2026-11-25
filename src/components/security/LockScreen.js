@@ -74,7 +74,7 @@ export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = 
             if (mounted && AppState.currentState === 'active') {
               triggerBiometricAuth(false);
             }
-          }, 280);
+          }, 120);
         }
       } catch (e) {
         console.warn('Biometrics check:', e);
@@ -91,7 +91,7 @@ export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = 
           if (mounted && AppState.currentState === 'active') {
             triggerBiometricAuth(false);
           }
-        }, 320);
+        }, 140);
       }
     });
 
