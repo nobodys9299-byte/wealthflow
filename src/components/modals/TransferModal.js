@@ -202,43 +202,43 @@ export const TransferModal = ({ visible, onClose }) => {
   };
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={t('transfer', 'Transfer Between Accounts')}
-      icon="swap-horizontal"
-      iconColor={theme.primary}
-      overlayChildren={
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'danger'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon="alert-circle-outline"
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={t('transfer', 'Transfer Between Accounts')}
+        icon="swap-horizontal"
+        iconColor={theme.primary}
+      >
+        <TransferFormBody
+          accounts={accounts}
+          fromAccountId={fromAccountId}
+          setFromAccountId={setFromAccountId}
+          toAccountId={toAccountId}
+          setToAccountId={setToAccountId}
+          amount={amount}
+          setAmount={setAmount}
+          note={note}
+          setNote={setNote}
+          handleTransfer={handleTransfer}
+          theme={theme}
+          currency={currency}
+          t={t}
         />
-      }
-    >
-      <TransferFormBody
-        accounts={accounts}
-        fromAccountId={fromAccountId}
-        setFromAccountId={setFromAccountId}
-        toAccountId={toAccountId}
-        setToAccountId={setToAccountId}
-        amount={amount}
-        setAmount={setAmount}
-        note={note}
-        setNote={setNote}
-        handleTransfer={handleTransfer}
-        theme={theme}
-        currency={currency}
-        t={t}
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'danger'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon="alert-circle-outline"
       />
-    </KeyboardSheetModal>
+    </>
   );
 };
 

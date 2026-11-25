@@ -15,9 +15,10 @@ import * as Print from 'expo-print';
 import QRCode from 'qrcode';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
-import { encodeUpiParam, loadPhotoAsBase64DataUri } from '../../utils/pdfGenerator';
+import { encodeUpiParam, buildUpiPaymentLinks, loadPhotoAsBase64DataUri } from '../../utils/pdfGenerator';
 import { getCategoryById } from '../../constants/categories';
 import { KeyboardSheetModal } from '../common/KeyboardSheetModal';
+import { OfflineQrSvg } from '../common/OfflineQrSvg';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 export const ReceiptImageShareModal = ({
@@ -81,8 +82,7 @@ export const ReceiptImageShareModal = ({
       : null) ||
     '👤';
 
-  // Exact UPI link format:
-  // upi://pay?pa=91423592991%40ybl&cu=INR&pn=Ashwini+Kumar&am=5713.00&tn=Loan+to+Ariz+talat%3A+...
+  // Exact UPI link format for QR scanner + HTTPS bridge URL for PDF click reliability
   let noteText = txTitle;
   if (type === 'friend' && data?.name) {
     const latestNote = friendTxs.find((tx) => tx?.note && tx.note.trim())?.note?.trim();
@@ -91,12 +91,12 @@ export const ReceiptImageShareModal = ({
   }
   const cleanNote = noteText.slice(0, 80);
 
-  const dynamicUpiUrl =
-    targetAmount > 0
-      ? `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&am=${targetAmount.toFixed(2)}&tn=${encodeUpiParam(cleanNote)}`
-      : `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&tn=${encodeUpiParam(cleanNote)}`;
-
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(dynamicUpiUrl)}&margin=2`;
+  const { upiUrl: dynamicUpiUrl, httpsBridgeUrl } = buildUpiPaymentLinks({
+    upiId,
+    payeeName,
+    amount: targetAmount,
+    note: cleanNote,
+  });
 
   const totalLentAmount = friendTxs.length > 0
     ? friendTxs.filter((tx) => tx.type === 'lent').reduce((s, tx) => s + (parseFloat(tx.amount) || 0), 0)
@@ -339,27 +339,31 @@ export const ReceiptImageShareModal = ({
 
             ${type !== 'account' ? `
             <!-- Instant UPI Payment Details with Payment Link & Dynamic QR Code -->
-            <div style="margin-top: 20px; padding: 16px 18px; background-color: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid;">
-              <div style="flex: 1; padding-right: 18px;">
-                <div style="font-size: 11px; font-weight: 800; color: #0284C7; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Instant UPI Payment Details</div>
-                <div style="font-size: 16px; font-weight: 800; color: #0F172A; margin-top: 3px;">Amount: ${currency.symbol}${targetAmount.toFixed(2)}</div>
-                <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
-                <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
-                <div style="margin-top: 12px; margin-bottom: 8px;">
-                  <a href="${dynamicUpiUrl}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
-                    ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)}) &rarr;
-                  </a>
-                </div>
-                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap the blue 'PAY NOW' button to launch your UPI app with amount & details pre-filled, or scan the QR code.</div>
-              </div>
-              <div style="text-align: center;">
-                <a href="${dynamicUpiUrl}" style="text-decoration: none; display: inline-block;">
-                  <div style="width: 115px; height: 115px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF; overflow: hidden;">
-                    ${qrSvg || `<img src="${qrCodeUrl}" width="115" height="115" onerror="this.style.display='none'" alt="UPI QR" />`}
-                  </div>
-                  <div style="font-size: 9px; font-weight: 800; color: #0284C7; margin-top: 4px;">SCAN &amp; PAY</div>
-                </a>
-              </div>
+            <div style="margin-top: 20px; padding: 16px 18px; background-color: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; page-break-inside: avoid;">
+              <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                <tr>
+                  <td style="border: none; padding: 0 16px 0 0; vertical-align: middle;">
+                    <div style="font-size: 11px; font-weight: 800; color: #0284C7; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Instant UPI Payment Details</div>
+                    <div style="font-size: 16px; font-weight: 800; color: #0F172A; margin-top: 3px;">Amount: ${currency.symbol}${targetAmount.toFixed(2)}</div>
+                    <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
+                    <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
+                    <div style="margin-top: 12px; margin-bottom: 8px;">
+                      <a href="${httpsBridgeUrl}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
+                        ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)}) &rarr;
+                      </a>
+                    </div>
+                    <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap the blue 'PAY NOW' button to launch your UPI app with amount &amp; details pre-filled, or scan the QR code.</div>
+                  </td>
+                  <td style="border: none; padding: 0; width: 126px; text-align: center; vertical-align: middle;">
+                    <a href="${httpsBridgeUrl}" style="text-decoration: none; display: inline-block;">
+                      <div style="width: 115px; height: 115px; display: inline-block; border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF; overflow: hidden;">
+                        ${qrSvg}
+                      </div>
+                      <div style="font-size: 9px; font-weight: 800; color: #0284C7; margin-top: 4px;">SCAN &amp; PAY</div>
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
             ` : ''}
 
@@ -407,28 +411,15 @@ export const ReceiptImageShareModal = ({
   };
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={t('share_as_image', 'Share as WhatsApp Image')}
-      icon="logo-whatsapp"
-      iconColor="#25D366"
-      contentContainerStyle={styles.scrollContent}
-      overlayChildren={
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'info'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
-        />
-      }
-    >
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={t('share_as_image', 'Share as WhatsApp Image')}
+        icon="logo-whatsapp"
+        iconColor="#25D366"
+        contentContainerStyle={styles.scrollContent}
+      >
             {/* The Actual Rendered Card that gets captured into a PNG image */}
             <View
               ref={cardRef}
@@ -447,7 +438,7 @@ export const ReceiptImageShareModal = ({
                   <View style={styles.brandIcon}>
                     <Ionicons name="wallet" size={16} color="#38BDF8" />
                   </View>
-                  <Text style={styles.brandText}>WEALTHFLOW FINANCE</Text>
+                  <Text style={styles.brandText} numberOfLines={1} adjustsFontSizeToFit>WEALTHFLOW FINANCE</Text>
                 </View>
                 <Text style={styles.receiptTypeTag}>
                   {type === 'transaction'
@@ -531,7 +522,7 @@ export const ReceiptImageShareModal = ({
                         <Text style={styles.paymentScanHint}>Scan QR with Google Pay, PhonePe, or Paytm to pay</Text>
                       </View>
                       <View style={styles.qrCol}>
-                        <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
+                        <OfflineQrSvg value={dynamicUpiUrl} size={95} />
                         <Text style={styles.qrTag}>SCAN & PAY</Text>
                       </View>
                     </View>
@@ -551,7 +542,7 @@ export const ReceiptImageShareModal = ({
                       )}
                     </View>
                     <View style={styles.friendInfoCol}>
-                      <Text style={styles.friendLabel}>CONTACT STATEMENT</Text>
+                      <Text style={styles.friendLabel}>Name</Text>
                       <Text style={styles.friendNameLeft}>{data.name}</Text>
                       {data.phone ? (
                         <Text style={styles.friendPhoneText}>{data.phone}</Text>
@@ -631,7 +622,7 @@ export const ReceiptImageShareModal = ({
                           <Text style={styles.paymentScanHint}>Scan QR with Google Pay, PhonePe, or Paytm to pay</Text>
                         </View>
                         <View style={styles.qrCol}>
-                          <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
+                          <OfflineQrSvg value={dynamicUpiUrl} size={95} />
                           <Text style={styles.qrTag}>SCAN & PAY</Text>
                         </View>
                       </View>
@@ -835,7 +826,20 @@ export const ReceiptImageShareModal = ({
                 )}
               </TouchableOpacity>
             </View>
-    </KeyboardSheetModal>
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'info'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
+      />
+    </>
   );
 };
 
@@ -891,7 +895,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 10,
-    alignItems: 'center',
+    width: '100%',
   },
   captureCard: {
     width: '100%',
@@ -899,16 +903,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 18,
     marginBottom: 16,
+    overflow: 'hidden',
   },
   receiptBrandRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   brandLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flex: 1,
+    flexShrink: 1,
   },
   brandIcon: {
     width: 26,
@@ -922,13 +930,15 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
+    flexShrink: 1,
   },
   receiptTypeTag: {
     color: '#38BDF8',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
+    flexShrink: 0,
   },
   dashedDivider: {
     height: 1,
@@ -970,16 +980,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
   metaKey: {
     color: '#94A3B8',
     fontSize: 12,
     fontWeight: '500',
+    flexShrink: 0,
   },
   metaVal: {
     color: '#F8FAFC',
     fontSize: 12,
     fontWeight: '700',
+    flex: 1,
+    textAlign: 'right',
   },
   verifiedBadge: {
     flexDirection: 'row',
@@ -996,7 +1010,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 8,
-    alignSelf: 'flex-start',
+    width: '100%',
   },
   friendAvatarWrap: {
     width: 48,

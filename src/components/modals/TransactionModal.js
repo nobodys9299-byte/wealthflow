@@ -367,68 +367,66 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
     : (categories?.expense || EXPENSE_CATEGORIES);
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={
-        initialData
-          ? `${t('edit', 'Edit')} ${t('transactions', 'Transaction')}`
-          : t('add_transaction', 'Record Transaction')
-      }
-      icon={type === 'expense' ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline'}
-      iconColor={type === 'expense' ? theme.danger : theme.success}
-      overlayChildren={
-        <>
-          <ConfirmDeleteModal
-            useModal={false}
-            visible={!!modalAlert}
-            onClose={() => setModalAlert(null)}
-            onConfirm={() => setModalAlert(null)}
-            title={modalAlert?.title || 'Notice'}
-            message={modalAlert?.message || ''}
-            type={modalAlert?.type || 'danger'}
-            showCancel={false}
-            confirmText="OK"
-            confirmIcon="alert-circle-outline"
-          />
-          <CalendarDatePickerModal
-            visible={showDatePicker}
-            selectedDate={date}
-            onSelectDate={(newDate) => setDate(newDate)}
-            onClose={() => setShowDatePicker(false)}
-          />
-          <CategoryManagerModal
-            visible={showCategoryManager}
-            onClose={() => setShowCategoryManager(false)}
-          />
-        </>
-      }
-    >
-      <TransactionFormBody
-        type={type}
-        handleTypeChange={handleTypeChange}
-        amount={amount}
-        setAmount={setAmount}
-        title={title}
-        setTitle={setTitle}
-        categoryId={categoryId}
-        setCategoryId={setCategoryId}
-        categoryList={categoryList}
-        accountId={accountId}
-        setAccountId={setAccountId}
-        accounts={accounts}
-        date={date}
-        note={note}
-        setNote={setNote}
-        initialData={initialData}
-        setShowDatePicker={setShowDatePicker}
-        setShowCategoryManager={setShowCategoryManager}
-        handleSave={handleSave}
-        theme={theme}
-        currency={currency}
-        t={t}
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={
+          initialData
+            ? `${t('edit', 'Edit')} ${t('transactions', 'Transaction')}`
+            : t('add_transaction', 'Record Transaction')
+        }
+        icon={type === 'expense' ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline'}
+        iconColor={type === 'expense' ? theme.danger : theme.success}
+      >
+        <TransactionFormBody
+          type={type}
+          handleTypeChange={handleTypeChange}
+          amount={amount}
+          setAmount={setAmount}
+          title={title}
+          setTitle={setTitle}
+          categoryId={categoryId}
+          setCategoryId={setCategoryId}
+          categoryList={categoryList}
+          accountId={accountId}
+          setAccountId={setAccountId}
+          accounts={accounts}
+          date={date}
+          note={note}
+          setNote={setNote}
+          initialData={initialData}
+          setShowDatePicker={setShowDatePicker}
+          setShowCategoryManager={setShowCategoryManager}
+          handleSave={handleSave}
+          theme={theme}
+          currency={currency}
+          t={t}
+        />
+      </KeyboardSheetModal>
+
+      <ConfirmDeleteModal
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'danger'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon="alert-circle-outline"
       />
-    </KeyboardSheetModal>
+      <CalendarDatePickerModal
+        visible={showDatePicker}
+        selectedDate={date}
+        onSelectDate={(newDate) => setDate(newDate)}
+        onClose={() => setShowDatePicker(false)}
+      />
+      <CategoryManagerModal
+        visible={showCategoryManager}
+        onClose={() => setShowCategoryManager(false)}
+      />
+    </>
   );
 };
 

@@ -366,64 +366,62 @@ export const RecurringModal = ({ visible, onClose, initialData = null }) => {
     : (categories?.expense || EXPENSE_CATEGORIES);
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={
-        initialData
-          ? `${t('edit', 'Edit')} ${t('recurring_bills', 'Recurring Bill / Pay')}`
-          : t('add_recurring', 'New Recurring Bill / Pay')
-      }
-      subtitle={t('Auto-added to transactions on schedule', 'Auto-added to transactions on schedule')}
-      icon={type === 'expense' ? 'receipt-outline' : 'cash-outline'}
-      iconColor={type === 'expense' ? theme.danger : theme.success}
-      overlayChildren={
-        <>
-          <ConfirmDeleteModal
-            useModal={false}
-            visible={!!modalAlert}
-            onClose={() => setModalAlert(null)}
-            onConfirm={() => setModalAlert(null)}
-            title={modalAlert?.title || 'Notice'}
-            message={modalAlert?.message || ''}
-            type={modalAlert?.type || 'danger'}
-            showCancel={false}
-            confirmText="OK"
-            confirmIcon="alert-circle-outline"
-          />
-          <CalendarDatePickerModal
-            visible={showDatePicker}
-            selectedDate={nextDueDate}
-            onSelectDate={(newDate) => setNextDueDate(newDate)}
-            onClose={() => setShowDatePicker(false)}
-          />
-        </>
-      }
-    >
-      <RecurringFormBody
-        type={type}
-        handleTypeChange={handleTypeChange}
-        title={title}
-        setTitle={setTitle}
-        amount={amount}
-        setAmount={setAmount}
-        frequency={frequency}
-        setFrequency={setFrequency}
-        nextDueDate={nextDueDate}
-        setShowDatePicker={setShowDatePicker}
-        categoryId={categoryId}
-        setCategoryId={setCategoryId}
-        categoryList={categoryList}
-        accountId={accountId}
-        setAccountId={setAccountId}
-        accounts={accounts}
-        initialData={initialData}
-        handleSave={handleSave}
-        theme={theme}
-        currency={currency}
-        t={t}
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={
+          initialData
+            ? `${t('edit', 'Edit')} ${t('recurring_bills', 'Recurring Bill / Pay')}`
+            : t('add_recurring', 'New Recurring Bill / Pay')
+        }
+        subtitle={t('Auto-added to transactions on schedule', 'Auto-added to transactions on schedule')}
+        icon={type === 'expense' ? 'receipt-outline' : 'cash-outline'}
+        iconColor={type === 'expense' ? theme.danger : theme.success}
+      >
+        <RecurringFormBody
+          type={type}
+          handleTypeChange={handleTypeChange}
+          title={title}
+          setTitle={setTitle}
+          amount={amount}
+          setAmount={setAmount}
+          frequency={frequency}
+          setFrequency={setFrequency}
+          nextDueDate={nextDueDate}
+          setShowDatePicker={setShowDatePicker}
+          categoryId={categoryId}
+          setCategoryId={setCategoryId}
+          categoryList={categoryList}
+          accountId={accountId}
+          setAccountId={setAccountId}
+          accounts={accounts}
+          initialData={initialData}
+          handleSave={handleSave}
+          theme={theme}
+          currency={currency}
+          t={t}
+        />
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'danger'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon="alert-circle-outline"
       />
-    </KeyboardSheetModal>
+      <CalendarDatePickerModal
+        visible={showDatePicker}
+        selectedDate={nextDueDate}
+        onSelectDate={(newDate) => setNextDueDate(newDate)}
+        onClose={() => setShowDatePicker(false)}
+      />
+    </>
   );
 };
 

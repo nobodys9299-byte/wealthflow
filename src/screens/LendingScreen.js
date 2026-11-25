@@ -15,6 +15,7 @@ import { generateLendingStatementPDF } from '../utils/pdfGenerator';
 import { LendingModal } from '../components/modals/LendingModal';
 import { FriendDetailModal } from '../components/modals/FriendDetailModal';
 import { FriendReminderModal } from '../components/modals/FriendReminderModal';
+import { FriendAvatarPickerModal } from '../components/modals/FriendAvatarPickerModal';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
 export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
@@ -36,10 +37,15 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
   const [selectedFriendDetails, setSelectedFriendDetails] = useState(null);
   const [selectedReminderFriend, setSelectedReminderFriend] = useState(null);
   const [selectedShareFriend, setSelectedShareFriend] = useState(null);
+  const [avatarPickerFriend, setAvatarPickerFriend] = useState(null);
 
   // Hardware back handler
   useEffect(() => {
     const handleBack = () => {
+      if (avatarPickerFriend) {
+        setAvatarPickerFriend(null);
+        return true;
+      }
       if (selectedReminderFriend) {
         setSelectedReminderFriend(null);
         return true;
@@ -69,7 +75,7 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
 
     const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
     return () => sub.remove();
-  }, [selectedReminderFriend, selectedShareFriend, selectedFriendDetails, modalVisible, onBack, onNavigateTab]);
+  }, [avatarPickerFriend, selectedReminderFriend, selectedShareFriend, selectedFriendDetails, modalVisible, onBack, onNavigateTab]);
 
   const handleOpenAddForFriend = (friendName) => {
     setActiveFriend(friendName);
@@ -221,17 +227,30 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
             >
               <View style={styles.cardHeader}>
                 <View style={[styles.friendInfo, { flex: 1, marginRight: 8 }]}>
-                  <View style={[styles.friendAvatar, { backgroundColor: `${theme.primary}25` }]}>
-                    {friend.photoUri ? (
-                      <Image source={{ uri: friend.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
-                    ) : friend.avatarEmoji ? (
-                      <Text style={{ fontSize: 24 }}>{friend.avatarEmoji}</Text>
-                    ) : (
-                      <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
-                        {friend.name.charAt(0).toUpperCase()}
-                      </Text>
-                    )}
-                  </View>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      setAvatarPickerFriend(friend);
+                    }}
+                    activeOpacity={0.75}
+                    accessibilityLabel={`Change photo for ${friend.name}`}
+                    style={[styles.friendAvatar, { backgroundColor: `${theme.primary}25` }]}
+                  >
+                    <View style={styles.friendAvatarClip}>
+                      {friend.photoUri ? (
+                        <Image source={{ uri: friend.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                      ) : friend.avatarEmoji ? (
+                        <Text style={{ fontSize: 24 }}>{friend.avatarEmoji}</Text>
+                      ) : (
+                        <Text style={[styles.avatarText, { color: theme.primaryLight }]}>
+                          {friend.name.charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[styles.friendAvatarCamBadge, { backgroundColor: theme.primary, borderColor: theme.card }]}>
+                      <Ionicons name="camera" size={9} color="#FFF" />
+                    </View>
+                  </TouchableOpacity>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.friendName, { color: theme.text }]} numberOfLines={1}>
                       {friend.name}
@@ -363,6 +382,16 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
           lendingSummary.friends.find(
             (f) => f.name?.trim().toLowerCase() === selectedShareFriend?.name?.trim().toLowerCase()
           ) || selectedShareFriend
+        }
+      />
+      {/* Change Friend Photo / Avatar Modal */}
+      <FriendAvatarPickerModal
+        visible={!!avatarPickerFriend}
+        onClose={() => setAvatarPickerFriend(null)}
+        friend={
+          lendingSummary.friends.find(
+            (f) => f.name?.trim().toLowerCase() === avatarPickerFriend?.name?.trim().toLowerCase()
+          ) || avatarPickerFriend
         }
       />
     </ScrollView>
@@ -544,9 +573,29 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   friendAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  friendAvatarClip: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendAvatarCamBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -13,7 +13,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../../context/FinanceContext';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { KeyboardSheetModal, useSheetScroll } from '../common/KeyboardSheetModal';
-import { encodeUpiParam } from '../../utils/pdfGenerator';
+import { OfflineQrSvg } from '../common/OfflineQrSvg';
+import { buildUpiPaymentLinks } from '../../utils/pdfGenerator';
 
 const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
 const DONATION_UPI_ID = 's8675748237@slc';
@@ -34,7 +35,7 @@ const DonationBody = ({
   customAmount,
   setCustomAmount,
   currentAmount,
-  qrCodeUrl,
+  upiLink,
   copiedUpi,
   handleCopyUpi,
   handlePayViaUPI,
@@ -122,7 +123,7 @@ const DonationBody = ({
 
         <View style={styles.qrRow}>
           <View style={styles.qrWrap}>
-            <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
+            <OfflineQrSvg value={upiLink} size={96} />
             <Text style={styles.qrSubTag}>SCAN TO DONATE</Text>
           </View>
 
@@ -234,11 +235,12 @@ export const DonationModal = ({ visible, onClose }) => {
 
   const currentAmount = customAmount ? (parseFloat(customAmount) || 0) : selectedAmount;
 
-  const upiLink = currentAmount > 0
-    ? `upi://pay?pa=${encodeUpiParam(DONATION_UPI_ID)}&cu=INR&pn=${encodeUpiParam(DONATION_PAYEE)}&am=${currentAmount.toFixed(2)}&tn=${encodeUpiParam('Donation Support for WealthFlow')}`
-    : `upi://pay?pa=${encodeUpiParam(DONATION_UPI_ID)}&cu=INR&pn=${encodeUpiParam(DONATION_PAYEE)}&tn=${encodeUpiParam('Donation Support for WealthFlow')}`;
-
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiLink)}&margin=2`;
+  const { upiUrl: upiLink } = buildUpiPaymentLinks({
+    upiId: DONATION_UPI_ID,
+    payeeName: DONATION_PAYEE,
+    amount: currentAmount,
+    note: 'Donation Support for WealthFlow',
+  });
 
   const handlePayViaUPI = async () => {
     try {
@@ -281,48 +283,48 @@ export const DonationModal = ({ visible, onClose }) => {
   };
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={t('donate_title', 'Support & Donate')}
-      subtitle={t('donate_sub', 'Help keep WealthFlow free & ad-free')}
-      icon="heart"
-      iconColor="#F43F5E"
-      maxHeightRatio={0.92}
-      overlayChildren={
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'success'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={t('donate_title', 'Support & Donate')}
+        subtitle={t('donate_sub', 'Help keep WealthFlow free & ad-free')}
+        icon="heart"
+        iconColor="#F43F5E"
+        maxHeightRatio={0.92}
+      >
+        <DonationBody
+          theme={theme}
+          currency={currency}
+          t={t}
+          selectedAmount={selectedAmount}
+          setSelectedAmount={setSelectedAmount}
+          customAmount={customAmount}
+          setCustomAmount={setCustomAmount}
+          currentAmount={currentAmount}
+          upiLink={upiLink}
+          copiedUpi={copiedUpi}
+          handleCopyUpi={handleCopyUpi}
+          handlePayViaUPI={handlePayViaUPI}
+          copiedAcc={copiedAcc}
+          handleCopyAccountNum={handleCopyAccountNum}
+          copiedIfsc={copiedIfsc}
+          handleCopyIfsc={handleCopyIfsc}
         />
-      }
-    >
-      <DonationBody
-        theme={theme}
-        currency={currency}
-        t={t}
-        selectedAmount={selectedAmount}
-        setSelectedAmount={setSelectedAmount}
-        customAmount={customAmount}
-        setCustomAmount={setCustomAmount}
-        currentAmount={currentAmount}
-        qrCodeUrl={qrCodeUrl}
-        copiedUpi={copiedUpi}
-        handleCopyUpi={handleCopyUpi}
-        handlePayViaUPI={handlePayViaUPI}
-        copiedAcc={copiedAcc}
-        handleCopyAccountNum={handleCopyAccountNum}
-        copiedIfsc={copiedIfsc}
-        handleCopyIfsc={handleCopyIfsc}
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'success'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
       />
-    </KeyboardSheetModal>
+    </>
   );
 };
 

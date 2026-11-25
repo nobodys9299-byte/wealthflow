@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import { AccountCard } from '../components/AccountCard';
+import { DraggableAccountList } from '../components/DraggableAccountList';
 import { formatCurrency } from '../utils/formatters';
 import { generateAccountStatementPDF } from '../utils/pdfGenerator';
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal';
@@ -45,20 +46,7 @@ export const AccountsScreen = ({
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedAccountForImage, setSelectedAccountForImage] = useState(null);
   const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
-
-  const handleMoveAccount = (index, delta) => {
-    const newIndex = index + delta;
-    if (newIndex < 0 || newIndex >= accounts.length) return;
-    try {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    } catch (_e) {}
-    const updated = [...accounts];
-    const [moved] = updated.splice(index, 1);
-    updated.splice(newIndex, 0, moved);
-    if (reorderAccounts) {
-      reorderAccounts(updated);
-    }
-  };
+  const [isDraggingAccount, setIsDraggingAccount] = useState(false);
 
   // Handle hardware and UI back button so pressing back navigates to home instead of quitting
   useEffect(() => {
@@ -87,6 +75,7 @@ export const AccountsScreen = ({
       style={[styles.container, { backgroundColor: theme.bg }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      scrollEnabled={!isDraggingAccount}
     >
       {/* Top Header with More Menu Button */}
       <View style={styles.topHeader}>
@@ -209,37 +198,43 @@ export const AccountsScreen = ({
         </View>
       </View>
 
-      {accounts.map((acc, accIdx) => (
-        <View key={acc.id} style={{ marginBottom: 14 }}>
-          <AccountCard
-            account={acc}
-            onEdit={onEditAccount}
-            onDelete={accounts.length > 1 ? deleteAccount : null}
-            reorderMode={isReorderingAccounts}
-            canMoveBackward={accIdx > 0}
-            canMoveForward={accIdx < accounts.length - 1}
-            onMoveBackward={() => handleMoveAccount(accIdx, -1)}
-            onMoveForward={() => handleMoveAccount(accIdx, 1)}
-            onLongPress={() => setIsReorderingAccounts((prev) => !prev)}
-          />
-          {/* Statement Share Action Bar */}
-          <TouchableOpacity
-            onPress={() => setSelectedAccountForImage({
-              ...acc,
-              transactions: transactions.filter((t) => t.accountId === acc.id),
-            })}
-            style={[styles.statementBar, { backgroundColor: theme.card, borderColor: theme.border }]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="image-outline" size={16} color="#25D366" />
-              <Text style={[styles.statementText, { color: theme.text }]}>
-                Share <Text style={{ fontWeight: '800' }}>{acc.name}</Text> Statement as Image
-              </Text>
-            </View>
-            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
-          </TouchableOpacity>
-        </View>
-      ))}
+      <DraggableAccountList
+        accounts={accounts}
+        axis="y"
+        onReorder={(ordered) => reorderAccounts && reorderAccounts(ordered)}
+        onDragStateChange={setIsDraggingAccount}
+        onHoldWithoutDrag={() => setIsReorderingAccounts((prev) => !prev)}
+        renderItem={(acc, _idx, drag) => (
+          <View style={{ marginBottom: 14 }}>
+            <AccountCard
+              account={acc}
+              onEdit={onEditAccount}
+              onDelete={accounts.length > 1 ? deleteAccount : null}
+              reorderMode={isReorderingAccounts}
+              isDragging={drag.isDragging}
+              dragHandleHandlers={drag.dragHandleHandlers}
+              onLongPress={drag.beginDrag}
+              onPressOut={drag.finishIdleHold}
+            />
+            {/* Statement Share Action Bar */}
+            <TouchableOpacity
+              onPress={() => setSelectedAccountForImage({
+                ...acc,
+                transactions: transactions.filter((t) => t.accountId === acc.id),
+              })}
+              style={[styles.statementBar, { backgroundColor: theme.card, borderColor: theme.border }]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="image-outline" size={16} color="#25D366" />
+                <Text style={[styles.statementText, { color: theme.text }]}>
+                  Share <Text style={{ fontWeight: '800' }}>{acc.name}</Text> Statement as Image
+                </Text>
+              </View>
+              <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+            </TouchableOpacity>
+          </View>
+        )}
+      />
 
       {/* Category Manager Modal */}
       <CategoryManagerModal

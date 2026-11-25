@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Animated,
   Easing,
@@ -12,6 +12,8 @@ import {
   ScrollView,
   BackHandler,
   AppState,
+  NativeModules,
+  NativeEventEmitter,
   StatusBar as RNStatusBar,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -54,6 +56,14 @@ function MainApp() {
   const tabAnimOpacity = useRef(new Animated.Value(1)).current;
   const tabAnimTranslate = useRef(new Animated.Value(0)).current;
   const drawerAnimX = useRef(new Animated.Value(-320)).current;
+  const lastActiveRef = useRef(Date.now());
+  const backgroundAtRef = useRef(null);
+  const bgLockTimerRef = useRef(null);
+  const appStateRef = useRef(AppState.currentState);
+
+  const markUserActivity = useCallback(() => {
+    lastActiveRef.current = Date.now();
+  }, []);
 
   // Modals state
   const [txModalVisible, setTxModalVisible] = useState(false);
@@ -106,19 +116,116 @@ function MainApp() {
     }
   }, [drawerOpen, drawerAnimX]);
 
-  // Lock immediately when phone locks or app enters background (never locks while active on screen)
+  // Smart security lock:
+  // 1) Power button / screen off -> locks immediately
+  // 2) Background / home while phone stays unlocked -> locks after 1 min (not right away)
+  // 3) Active on screen with no touch movement -> locks after 3 min
   useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
-      if (nextAppState === 'background') {
-        if (isAutoLockEnabled && isAppUnlocked && !isSystemInteractionActive()) {
-          setIsAppUnlocked(false);
+    const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
+    if (!isAutoLockEnabled || !isAppUnlocked) {
+      if (bgLockTimerRef.current) {
+        clearTimeout(bgLockTimerRef.current);
+        bgLockTimerRef.current = null;
+      }
+      backgroundAtRef.current = null;
+      return undefined;
+    }
+
+    lastActiveRef.current = Date.now();
+    const screenLockNative = Platform.OS === 'android' ? NativeModules?.ScreenLockDetector : null;
+
+    let screenOffSub = null;
+    if (screenLockNative && typeof screenLockNative.addListener === 'function') {
+      try {
+        const emitter = new NativeEventEmitter(screenLockNative);
+        screenOffSub = emitter.addListener('WEALTHFLOW_SCREEN_OFF', () => {
+          if (!isSystemInteractionActive()) {
+            if (bgLockTimerRef.current) {
+              clearTimeout(bgLockTimerRef.current);
+              bgLockTimerRef.current = null;
+            }
+            backgroundAtRef.current = null;
+            setIsAppUnlocked(false);
+          }
+        });
+      } catch (_e) {}
+    }
+
+    const appStateSub = AppState.addEventListener('change', async (nextAppState) => {
+      appStateRef.current = nextAppState;
+
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        if (isSystemInteractionActive()) return;
+
+        let isScreenOff = false;
+        if (screenLockNative?.isScreenLockedOrOff) {
+          try {
+            isScreenOff = Boolean(await screenLockNative.isScreenLockedOrOff());
+          } catch (_e) {
+            isScreenOff = false;
+          }
         }
+
+        if (isScreenOff) {
+          // Phone locked via power button / screen turned off -> lock immediately
+          if (bgLockTimerRef.current) {
+            clearTimeout(bgLockTimerRef.current);
+            bgLockTimerRef.current = null;
+          }
+          backgroundAtRef.current = null;
+          setIsAppUnlocked(false);
+          return;
+        }
+
+        if (nextAppState === 'background') {
+          if (!backgroundAtRef.current) {
+            backgroundAtRef.current = Date.now();
+          }
+          if (!bgLockTimerRef.current) {
+            bgLockTimerRef.current = setTimeout(() => {
+              bgLockTimerRef.current = null;
+              if (appStateRef.current === 'background' && !isSystemInteractionActive()) {
+                backgroundAtRef.current = null;
+                setIsAppUnlocked(false);
+              }
+            }, 60 * 1000);
+          }
+        }
+      } else if (nextAppState === 'active') {
+        if (bgLockTimerRef.current) {
+          clearTimeout(bgLockTimerRef.current);
+          bgLockTimerRef.current = null;
+        }
+        const bgSince = backgroundAtRef.current;
+        backgroundAtRef.current = null;
+
+        if (bgSince && Date.now() - bgSince >= 60 * 1000 && !isSystemInteractionActive()) {
+          setIsAppUnlocked(false);
+          return;
+        }
+        lastActiveRef.current = Date.now();
+      }
+    });
+
+    const idleInterval = setInterval(() => {
+      if (
+        appStateRef.current === 'active' &&
+        !isSystemInteractionActive() &&
+        Date.now() - lastActiveRef.current >= 3 * 60 * 1000
+      ) {
+        setIsAppUnlocked(false);
+      }
+    }, 10000);
+
+    return () => {
+      if (screenOffSub) screenOffSub.remove();
+      appStateSub.remove();
+      clearInterval(idleInterval);
+      if (bgLockTimerRef.current) {
+        clearTimeout(bgLockTimerRef.current);
+        bgLockTimerRef.current = null;
       }
     };
-
-    const sub = AppState.addEventListener('change', handleAppStateChange);
-    return () => sub.remove();
   }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked, isSystemInteractionActive, setIsAppUnlocked]);
 
   // Handle Android Back Button so user returns to Home tab instead of closing app
@@ -203,7 +310,11 @@ function MainApp() {
         <LockScreen
           correctPin={securitySettings.pin || '1234'}
           biometricsEnabled={securitySettings.biometrics !== false}
-          onUnlock={() => setIsAppUnlocked(true)}
+          onUnlock={() => {
+            lastActiveRef.current = Date.now();
+            backgroundAtRef.current = null;
+            setIsAppUnlocked(true);
+          }}
         />
       </SafeAreaView>
     );
@@ -348,7 +459,10 @@ function MainApp() {
   ];
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.bg }]}
+      onTouchStart={markUserActivity}
+    >
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
 
       {/* Screen Body with uniform animated transitions */}

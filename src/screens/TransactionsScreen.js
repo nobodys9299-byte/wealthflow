@@ -208,7 +208,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
           <View style={{ marginBottom: 6 }}>
             <TransactionItem
               transaction={item}
-              onPress={() => onEditTransaction && onEditTransaction(item)}
+              onEdit={onEditTransaction}
               onDelete={deleteTransaction}
             />
             {/* Quick Share Receipt Image via WhatsApp */}

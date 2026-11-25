@@ -445,54 +445,54 @@ export const FriendReminderModal = ({
   ) : null;
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={t('payment_reminder', 'Payment Reminder')}
-      subtitle={`Direct UPI link for ${friend.name}`}
-      icon={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
-      iconColor={reminderChannel === 'whatsapp' ? '#25D366' : '#3B82F6'}
-      headerLeft={headerLeftControl}
-      maxHeightRatio={0.92}
-      overlayChildren={
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'info'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon={modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={t('payment_reminder', 'Payment Reminder')}
+        subtitle={`Direct UPI link for ${friend.name}`}
+        icon={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
+        iconColor={reminderChannel === 'whatsapp' ? '#25D366' : '#3B82F6'}
+        headerLeft={headerLeftControl}
+        maxHeightRatio={0.92}
+      >
+        <FriendReminderBody
+          theme={theme}
+          currency={currency}
+          friend={friend}
+          resolvedPhotoUri={resolvedPhotoUri}
+          resolvedAvatarEmoji={resolvedAvatarEmoji}
+          reminderChannel={reminderChannel}
+          setReminderChannel={setReminderChannel}
+          absBalance={absBalance}
+          requestAmountType={requestAmountType}
+          setRequestAmountType={setRequestAmountType}
+          customAmount={customAmount}
+          setCustomAmount={setCustomAmount}
+          showEditUpi={showEditUpi}
+          setShowEditUpi={setShowEditUpi}
+          reminderUpiId={reminderUpiId}
+          setReminderUpiId={setReminderUpiId}
+          reminderPayee={reminderPayee}
+          setReminderPayee={setReminderPayee}
+          upiLink={upiLink}
+          handleSendWhatsApp={handleSendWhatsApp}
+          handleSendSMS={handleSendSMS}
         />
-      }
-    >
-      <FriendReminderBody
-        theme={theme}
-        currency={currency}
-        friend={friend}
-        resolvedPhotoUri={resolvedPhotoUri}
-        resolvedAvatarEmoji={resolvedAvatarEmoji}
-        reminderChannel={reminderChannel}
-        setReminderChannel={setReminderChannel}
-        absBalance={absBalance}
-        requestAmountType={requestAmountType}
-        setRequestAmountType={setRequestAmountType}
-        customAmount={customAmount}
-        setCustomAmount={setCustomAmount}
-        showEditUpi={showEditUpi}
-        setShowEditUpi={setShowEditUpi}
-        reminderUpiId={reminderUpiId}
-        setReminderUpiId={setReminderUpiId}
-        reminderPayee={reminderPayee}
-        setReminderPayee={setReminderPayee}
-        upiLink={upiLink}
-        handleSendWhatsApp={handleSendWhatsApp}
-        handleSendSMS={handleSendSMS}
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'info'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
       />
-    </KeyboardSheetModal>
+    </>
   );
 };
 

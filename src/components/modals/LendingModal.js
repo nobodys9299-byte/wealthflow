@@ -10,9 +10,8 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceContext';
+import { PERSON_AVATARS, pickFriendPhotoFromGallery } from '../../utils/friendPhoto';
 import { formatDateDisplay } from '../../utils/formatters';
 import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
@@ -44,12 +43,6 @@ const POPULAR_EMOJIS = [
 const CATEGORY_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
   '#8B5CF6', '#EC4899', '#06B6D4', '#64748B'
-];
-
-const PERSON_AVATARS = [
-  '👨‍💼', '👩‍💼', '🧔', '👱‍♀️', '🧑‍💻', '👵', '👴', '👮',
-  '🧑‍🌾', '🧑‍🍳', '🧑‍🎓', '🧑‍🔬', '🧑‍🎨', '🧑‍✈️', '🦸', '🧕',
-  '🧔‍♂️', '👩‍🦰', '👨‍🦱', '👩‍🦱', '🧑‍🦰', '🤠', '😎', '🧐'
 ];
 
 const LendingFormBody = ({
@@ -462,11 +455,7 @@ const ManageFriendCategoriesBody = ({
   setEditCatColor,
   editFriendCategory,
   friendCategories,
-  inlineDeletingCatId,
-  setInlineDeletingCatId,
-  deleteFriendCategory,
-  categoryId,
-  setCategoryId,
+  setDeletingFriendCategory,
 }) => {
   const { scrollToInput } = useSheetScroll();
 
@@ -557,49 +546,25 @@ const ManageFriendCategoriesBody = ({
                 <Text style={[styles.manageCatName, { color: theme.text }]} numberOfLines={1}>{c.name}</Text>
               </View>
 
-              {inlineDeletingCatId === c.id ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 11, color: theme.danger, fontWeight: '700' }}>Delete?</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      deleteFriendCategory(c.id);
-                      if (categoryId === c.id) {
-                        setCategoryId(friendCategories.find((x) => x.id !== c.id)?.id || '');
-                      }
-                      setInlineDeletingCatId(null);
-                    }}
-                    style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.danger, borderRadius: 6 }}
-                  >
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>Yes</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setInlineDeletingCatId(null)}
-                    style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.cardHover, borderRadius: 6 }}
-                  >
-                    <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '700' }}>No</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditingFriendCat(c);
-                      setEditCatName(c.name);
-                      setEditCatEmoji(c.emoji || '🍽️');
-                      setEditCatColor(c.color || '#3B82F6');
-                    }}
-                    style={[styles.manageDelBtn, { backgroundColor: `${theme.primary}20` }]}
-                  >
-                    <Ionicons name="pencil-outline" size={15} color={theme.primaryLight} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setInlineDeletingCatId(c.id)}
-                    style={[styles.manageDelBtn, { backgroundColor: `${theme.danger}20` }]}
-                  >
-                    <Ionicons name="trash-outline" size={15} color={theme.danger} />
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setEditingFriendCat(c);
+                    setEditCatName(c.name);
+                    setEditCatEmoji(c.emoji || '🍽️');
+                    setEditCatColor(c.color || '#3B82F6');
+                  }}
+                  style={[styles.manageDelBtn, { backgroundColor: `${theme.primary}20` }]}
+                >
+                  <Ionicons name="pencil-outline" size={15} color={theme.primaryLight} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setDeletingFriendCategory(c)}
+                  style={[styles.manageDelBtn, { backgroundColor: `${theme.danger}20` }]}
+                >
+                  <Ionicons name="trash-outline" size={15} color={theme.danger} />
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
@@ -644,7 +609,6 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
   const [editCatName, setEditCatName] = useState('');
   const [editCatEmoji, setEditCatEmoji] = useState('🍽️');
   const [editCatColor, setEditCatColor] = useState('#3B82F6');
-  const [inlineDeletingCatId, setInlineDeletingCatId] = useState(null);
 
   // Custom Friend Category Creator state
   const [showAddCatModal, setShowAddCatModal] = useState(false);
@@ -728,56 +692,15 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
     }
   }, [friendCategories]);
 
-  const persistFriendPhotoUri = async (asset) => {
-    const rawUri = asset?.uri;
-    if (!rawUri) return null;
-
-    if (Platform.OS === 'web') {
-      if (asset?.base64) {
-        return `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`;
-      }
-      return rawUri;
-    }
-
-    try {
-      if (FileSystem.documentDirectory && FileSystem.copyAsync) {
-        const dir = `${FileSystem.documentDirectory}friend_photos/`;
-        if (FileSystem.makeDirectoryAsync) {
-          await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
-        }
-        const isPng = rawUri.toLowerCase().includes('.png');
-        const dest = `${dir}friend_${Date.now()}.${isPng ? 'png' : 'jpg'}`;
-        await FileSystem.copyAsync({ from: rawUri, to: dest });
-        return dest;
-      }
-    } catch (copyErr) {
-      console.warn('Friend photo copy fallback:', copyErr);
-    }
-    return rawUri;
-  };
-
   const handlePickFromGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const result = await pickFriendPhotoFromGallery(runWithSystemPicker);
+      if (result.status === 'denied') {
         setModalAlert({ title: 'Permission Needed', message: 'Please allow gallery access to select a photo from your device.', type: 'info' });
         return;
       }
-      const invokePicker = () =>
-        ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.85,
-          base64: Platform.OS === 'web',
-        });
-      const res = typeof runWithSystemPicker === 'function'
-        ? await runWithSystemPicker(invokePicker)
-        : await invokePicker();
-      if (res?.canceled) return;
-      if (res?.assets && res.assets.length > 0 && res.assets[0]?.uri) {
-        const storedUri = await persistFriendPhotoUri(res.assets[0]);
-        setPhotoUri(storedUri || res.assets[0].uri);
+      if (result.status === 'ok' && result.uri) {
+        setPhotoUri(result.uri);
         setAvatarEmoji(null);
         setShowAvatarPicker(false);
       }
@@ -875,47 +798,6 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         subtitle={initialData ? 'Update lending details & amount' : 'Track money given or taken'}
         icon="swap-horizontal"
         iconColor={theme.primaryLight}
-        overlayChildren={
-          <>
-            <ConfirmDeleteModal
-              useModal={false}
-              visible={!!deletingFriendCategory}
-              onClose={() => setDeletingFriendCategory(null)}
-              onConfirm={() => {
-                if (deletingFriendCategory) {
-                  deleteFriendCategory(deletingFriendCategory.id);
-                  if (categoryId === deletingFriendCategory.id) {
-                    setCategoryId(friendCategories.find((c) => c.id !== deletingFriendCategory.id)?.id || '');
-                  }
-                  setDeletingFriendCategory(null);
-                }
-              }}
-              title="Delete Category?"
-              message={`Are you sure you want to delete "${deletingFriendCategory?.name}"?`}
-              confirmText="Yes, Delete"
-              confirmIcon="trash-outline"
-              type="danger"
-            />
-            <ConfirmDeleteModal
-              useModal={false}
-              visible={!!modalAlert && !showAddCatModal}
-              onClose={() => setModalAlert(null)}
-              onConfirm={() => setModalAlert(null)}
-              title={modalAlert?.title || 'Notice'}
-              message={modalAlert?.message || ''}
-              type={modalAlert?.type || 'info'}
-              showCancel={false}
-              confirmText="OK"
-              confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
-            />
-            <CalendarDatePickerModal
-              visible={showDatePicker}
-              selectedDate={date}
-              onSelectDate={(newDate) => setDate(newDate)}
-              onClose={() => setShowDatePicker(false)}
-            />
-          </>
-        }
       >
         <LendingFormBody
           theme={theme}
@@ -955,20 +837,6 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         icon="pricetag"
         iconColor={theme.primaryLight}
         maxHeightRatio={0.85}
-        overlayChildren={
-          <ConfirmDeleteModal
-            useModal={false}
-            visible={!!modalAlert && showAddCatModal}
-            onClose={() => setModalAlert(null)}
-            onConfirm={() => setModalAlert(null)}
-            title={modalAlert?.title || 'Notice'}
-            message={modalAlert?.message || ''}
-            type={modalAlert?.type || 'info'}
-            showCancel={false}
-            confirmText="OK"
-            confirmIcon="information-circle-outline"
-          />
-        }
       >
         <AddFriendCategoryBody
           theme={theme}
@@ -989,7 +857,6 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
         onClose={() => {
           setShowManageCatsModal(false);
           setEditingFriendCat(null);
-          setInlineDeletingCatId(null);
         }}
         title="Manage Friend Categories"
         subtitle="Edit names, emojis, colors or delete"
@@ -1009,11 +876,7 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
           setEditCatColor={setEditCatColor}
           editFriendCategory={editFriendCategory}
           friendCategories={friendCategories}
-          inlineDeletingCatId={inlineDeletingCatId}
-          setInlineDeletingCatId={setInlineDeletingCatId}
-          deleteFriendCategory={deleteFriendCategory}
-          categoryId={categoryId}
-          setCategoryId={setCategoryId}
+          setDeletingFriendCategory={setDeletingFriendCategory}
         />
       </KeyboardSheetModal>
 
@@ -1086,6 +949,44 @@ export const LendingModal = ({ visible, onClose, initialFriend = '', initialData
           )}
         </View>
       </KeyboardSheetModal>
+
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!deletingFriendCategory}
+        onClose={() => setDeletingFriendCategory(null)}
+        onConfirm={() => {
+          if (deletingFriendCategory) {
+            deleteFriendCategory(deletingFriendCategory.id);
+            if (categoryId === deletingFriendCategory.id) {
+              setCategoryId(friendCategories.find((c) => c.id !== deletingFriendCategory.id)?.id || '');
+            }
+            setDeletingFriendCategory(null);
+          }
+        }}
+        title="Delete Category?"
+        message={`Are you sure you want to delete "${deletingFriendCategory?.name}"?`}
+        confirmText="Yes, Delete"
+        confirmIcon="trash-outline"
+        type="danger"
+      />
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'info'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
+      />
+      <CalendarDatePickerModal
+        visible={showDatePicker}
+        selectedDate={date}
+        onSelectDate={(newDate) => setDate(newDate)}
+        onClose={() => setShowDatePicker(false)}
+      />
     </>
   );
 };

@@ -433,68 +433,66 @@ export const CategoryManagerModal = ({ visible, onClose }) => {
   };
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={t('manage_categories', 'Manage Categories')}
-      subtitle={`${categoryList.length} ${t(activeTab, activeTab)} ${t('categories', 'categories')} • ${t('edit_or_delete_anytime', 'Edit or delete anytime')}`}
-      icon="pricetags-outline"
-      iconColor={theme.primaryLight}
-      overlayChildren={
-        <>
-          <ConfirmDeleteModal
-            useModal={false}
-            visible={!!deletingCategory}
-            onClose={() => setDeletingCategory(null)}
-            onConfirm={handleConfirmDelete}
-            title={`Delete "${deletingCategory?.name}"?`}
-            message="Are you sure you want to remove this category? Existing transactions will retain their history."
-            confirmText="Yes, Delete"
-          />
-          <ConfirmDeleteModal
-            useModal={false}
-            visible={!!modalAlert}
-            onClose={() => setModalAlert(null)}
-            onConfirm={() => setModalAlert(null)}
-            title={modalAlert?.title || 'Notice'}
-            message={modalAlert?.message || ''}
-            type={modalAlert?.type || 'success'}
-            showCancel={false}
-            confirmText="OK"
-            confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'alert-circle-outline'}
-          />
-        </>
-      }
-    >
-      <CategoryManagerBody
-        theme={theme}
-        categories={categories}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        showAddForm={showAddForm}
-        setShowAddForm={setShowAddForm}
-        newCatName={newCatName}
-        setNewCatName={setNewCatName}
-        selectedEmoji={selectedEmoji}
-        setSelectedEmoji={setSelectedEmoji}
-        selectedColor={selectedColor}
-        setSelectedColor={setSelectedColor}
-        editingCategory={editingCategory}
-        setEditingCategory={setEditingCategory}
-        editName={editName}
-        setEditName={setEditName}
-        editEmoji={editEmoji}
-        setEditEmoji={setEditEmoji}
-        editColor={editColor}
-        setEditColor={setEditColor}
-        setDeletingCategory={setDeletingCategory}
-        categoryList={categoryList}
-        handleCreateCategory={handleCreateCategory}
-        handleStartEdit={handleStartEdit}
-        handleSaveEdit={handleSaveEdit}
-        t={t}
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={t('manage_categories', 'Manage Categories')}
+        subtitle={`${categoryList.length} ${t(activeTab, activeTab)} ${t('categories', 'categories')} • ${t('edit_or_delete_anytime', 'Edit or delete anytime')}`}
+        icon="pricetags-outline"
+        iconColor={theme.primaryLight}
+      >
+        <CategoryManagerBody
+          theme={theme}
+          categories={categories}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          showAddForm={showAddForm}
+          setShowAddForm={setShowAddForm}
+          newCatName={newCatName}
+          setNewCatName={setNewCatName}
+          selectedEmoji={selectedEmoji}
+          setSelectedEmoji={setSelectedEmoji}
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
+          editingCategory={editingCategory}
+          setEditingCategory={setEditingCategory}
+          editName={editName}
+          setEditName={setEditName}
+          editEmoji={editEmoji}
+          setEditEmoji={setEditEmoji}
+          editColor={editColor}
+          setEditColor={setEditColor}
+          setDeletingCategory={setDeletingCategory}
+          categoryList={categoryList}
+          handleCreateCategory={handleCreateCategory}
+          handleStartEdit={handleStartEdit}
+          handleSaveEdit={handleSaveEdit}
+          t={t}
+        />
+      </KeyboardSheetModal>
+
+      <ConfirmDeleteModal
+        visible={!!deletingCategory}
+        onClose={() => setDeletingCategory(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Delete "${deletingCategory?.name}"?`}
+        message="Are you sure you want to remove this category? Existing transactions will retain their history."
+        confirmText="Yes, Delete"
       />
-    </KeyboardSheetModal>
+
+      <ConfirmDeleteModal
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'success'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+      />
+    </>
   );
 };
 

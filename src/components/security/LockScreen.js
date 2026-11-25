@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Platform,
+  AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -16,42 +16,91 @@ export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = 
   const [hasBiometrics, setHasBiometrics] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const isPromptingRef = useRef(false);
+  const lastPromptAtRef = useRef(0);
+  const appStateRef = useRef(AppState.currentState);
+
   const targetLength = correctPin.length === 6 ? 6 : 4;
 
-  useEffect(() => {
-    if (biometricsEnabled) {
-      checkBiometrics();
-    } else {
-      setHasBiometrics(false);
-    }
-  }, [biometricsEnabled]);
+  const triggerBiometricAuth = useCallback(async (forceManual = false) => {
+    if (!biometricsEnabled) return;
+    if (AppState.currentState !== 'active') return;
+    if (isPromptingRef.current) return;
+    if (!forceManual && Date.now() - lastPromptAtRef.current < 1500) return;
 
-  const checkBiometrics = async () => {
+    isPromptingRef.current = true;
+    lastPromptAtRef.current = Date.now();
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (compatible && enrolled) {
-        setHasBiometrics(true);
-        triggerBiometricAuth();
+      if (!compatible || !enrolled) {
+        setHasBiometrics(false);
+        return;
       }
-    } catch (e) {
-      console.warn('Biometrics check:', e);
-    }
-  };
-
-  const triggerBiometricAuth = async () => {
-    try {
+      setHasBiometrics(true);
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: t('unlock_biometrics', 'Unlock WealthFlow with Biometrics'),
+        promptMessage: t('unlock_biometrics', 'Unlock WealthFlow'),
+        cancelLabel: t('use_pin', 'Use PIN'),
         fallbackLabel: t('use_pin', 'Use PIN'),
+        disableDeviceFallback: false,
       });
       if (result.success) {
         onUnlock();
       }
     } catch (e) {
-      console.warn(e);
+      console.warn('Biometric auth error:', e);
+    } finally {
+      isPromptingRef.current = false;
     }
-  };
+  }, [biometricsEnabled, onUnlock, t]);
+
+  useEffect(() => {
+    let mounted = true;
+    let timer = null;
+
+    const checkAndAutoPrompt = async () => {
+      if (!biometricsEnabled) {
+        if (mounted) setHasBiometrics(false);
+        return;
+      }
+      try {
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        if (mounted) {
+          setHasBiometrics(Boolean(compatible && enrolled));
+        }
+        if (compatible && enrolled && AppState.currentState === 'active') {
+          timer = setTimeout(() => {
+            if (mounted && AppState.currentState === 'active') {
+              triggerBiometricAuth(false);
+            }
+          }, 280);
+        }
+      } catch (e) {
+        console.warn('Biometrics check:', e);
+      }
+    };
+
+    checkAndAutoPrompt();
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      if (prev !== 'active' && nextState === 'active' && biometricsEnabled) {
+        timer = setTimeout(() => {
+          if (mounted && AppState.currentState === 'active') {
+            triggerBiometricAuth(false);
+          }
+        }, 320);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      if (timer) clearTimeout(timer);
+      sub.remove();
+    };
+  }, [biometricsEnabled, triggerBiometricAuth]);
 
   const handleDigit = (digit) => {
     if (pin.length >= targetLength) return;
@@ -96,7 +145,7 @@ export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = 
         </Text>
       </View>
 
-      {/* Dynamic PIN Dots Display (4 or 6 dots, NO PIN text leakage!) */}
+      {/* Dynamic PIN Dots Display */}
       <View style={styles.dotsContainer}>
         {Array.from({ length: targetLength }).map((_, index) => {
           const filled = pin.length > index;
@@ -119,10 +168,30 @@ export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = 
         })}
       </View>
 
-      {/* Only show error message if failed, never show secret PIN! */}
+      {/* Error Message / Fingerprint Quick Prompt Pill */}
       <View style={styles.messageBox}>
         {errorMsg ? (
           <Text style={[styles.errorText, { color: theme.danger }]}>{errorMsg}</Text>
+        ) : biometricsEnabled && hasBiometrics ? (
+          <TouchableOpacity
+            onPress={() => triggerBiometricAuth(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: `${theme.primary}18`,
+              borderWidth: 1,
+              borderColor: `${theme.primary}40`,
+            }}
+          >
+            <Ionicons name="finger-print" size={16} color={theme.primaryLight} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: theme.primaryLight }}>
+              {t('use_fingerprint', 'Tap to Scan Fingerprint')}
+            </Text>
+          </TouchableOpacity>
         ) : null}
       </View>
 
@@ -135,10 +204,19 @@ export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = 
                 return (
                   <TouchableOpacity
                     key="bio"
-                    onPress={triggerBiometricAuth}
-                    style={[styles.keyBtn, { backgroundColor: theme.cardAlt }]}
+                    onPress={() => triggerBiometricAuth(true)}
+                    disabled={!biometricsEnabled}
+                    style={[
+                      styles.keyBtn,
+                      {
+                        backgroundColor: biometricsEnabled ? `${theme.primary}20` : theme.cardAlt,
+                        borderColor: biometricsEnabled ? `${theme.primary}50` : theme.border,
+                        opacity: biometricsEnabled ? 1 : 0.35,
+                      },
+                    ]}
+                    accessibilityLabel="Scan Fingerprint"
                   >
-                    <Ionicons name="finger-print-outline" size={26} color={theme.primaryLight} />
+                    <Ionicons name="finger-print" size={28} color={theme.primaryLight} />
                   </TouchableOpacity>
                 );
               }

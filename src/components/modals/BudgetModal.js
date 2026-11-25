@@ -145,43 +145,43 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
   };
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={
-        initialData
-          ? `${t('edit', 'Edit')} ${t('budget_goals', 'Budget')}`
-          : t('create_budget', 'Set Category Budget')
-      }
-      icon="shield-checkmark-outline"
-      iconColor={theme.primary}
-      overlayChildren={
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'danger'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon="alert-circle-outline"
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={
+          initialData
+            ? `${t('edit', 'Edit')} ${t('budget_goals', 'Budget')}`
+            : t('create_budget', 'Set Category Budget')
+        }
+        icon="shield-checkmark-outline"
+        iconColor={theme.primary}
+      >
+        <BudgetFormBody
+          availableCategories={availableCategories}
+          categoryId={categoryId}
+          setCategoryId={setCategoryId}
+          limit={limit}
+          setLimit={setLimit}
+          handleSave={handleSave}
+          theme={theme}
+          currency={currency}
+          t={t}
         />
-      }
-    >
-      <BudgetFormBody
-        availableCategories={availableCategories}
-        categoryId={categoryId}
-        setCategoryId={setCategoryId}
-        limit={limit}
-        setLimit={setLimit}
-        handleSave={handleSave}
-        theme={theme}
-        currency={currency}
-        t={t}
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'danger'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon="alert-circle-outline"
       />
-    </KeyboardSheetModal>
+    </>
   );
 };
 

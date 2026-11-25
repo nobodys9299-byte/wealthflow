@@ -241,45 +241,45 @@ export const AccountModal = ({ visible, onClose, initialData = null }) => {
   };
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={initialData ? `${t('edit', 'Edit')} ${t('accounts', 'Account')}` : t('add_account', 'Add Account')}
-      icon="wallet-outline"
-      iconColor={color}
-      overlayChildren={
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'danger'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon="alert-circle-outline"
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={initialData ? `${t('edit', 'Edit')} ${t('accounts', 'Account')}` : t('add_account', 'Add Account')}
+        icon="wallet-outline"
+        iconColor={color}
+      >
+        <AccountFormBody
+          name={name}
+          setName={setName}
+          type={type}
+          setType={setType}
+          initialBalance={initialBalance}
+          setInitialBalance={setInitialBalance}
+          color={color}
+          setColor={setColor}
+          selectedEmoji={selectedEmoji}
+          setSelectedEmoji={setSelectedEmoji}
+          initialData={initialData}
+          handleSave={handleSave}
+          theme={theme}
+          currency={currency}
+          t={t}
         />
-      }
-    >
-      <AccountFormBody
-        name={name}
-        setName={setName}
-        type={type}
-        setType={setType}
-        initialBalance={initialBalance}
-        setInitialBalance={setInitialBalance}
-        color={color}
-        setColor={setColor}
-        selectedEmoji={selectedEmoji}
-        setSelectedEmoji={setSelectedEmoji}
-        initialData={initialData}
-        handleSave={handleSave}
-        theme={theme}
-        currency={currency}
-        t={t}
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'danger'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon="alert-circle-outline"
       />
-    </KeyboardSheetModal>
+    </>
   );
 };
 

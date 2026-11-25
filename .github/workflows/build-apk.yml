@@ -71,8 +71,21 @@ jobs:
             | grep -E "Alias name:|Certificate fingerprints:|SHA1:|SHA256:"
           node .github/scripts/configure-android-signing.js
 
+      - name: ⚡ Enable Metro & NDK Compiler Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.cache
+            ~/.ccache
+            ~/.expo
+          key: rn-build-cache-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            rn-build-cache-${{ runner.os }}-
+
       - name: 🛠️ Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - name: 🔨 Build Signed Android APK (Release)
         working-directory: android
@@ -80,13 +93,23 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          CCACHE_MAXSIZE: 800M
         run: |
+          if ! command -v ccache >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq ccache || true
+          fi
+          if ! command -v ccache >/dev/null 2>&1; then
+            unset CMAKE_C_COMPILER_LAUNCHER CMAKE_CXX_COMPILER_LAUNCHER
+          fi
           chmod +x gradlew
           ./gradlew assembleRelease \
             --no-daemon \
             --parallel \
             --build-cache \
             --max-workers=4 \
+            -Dkotlin.incremental=true \
             -PreactNativeArchitectures=arm64-v8a \
             -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 

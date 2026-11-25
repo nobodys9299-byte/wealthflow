@@ -38,6 +38,7 @@
       "color": "#3B82F6"
     },
     "plugins": [
+      "./plugins/withScreenLockDetector",
       [
         "expo-image-picker",
         {

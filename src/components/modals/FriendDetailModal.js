@@ -13,6 +13,7 @@ import { useFinance, DEFAULT_FRIEND_CATEGORIES } from '../../context/FinanceCont
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { ReceiptImageShareModal } from './ReceiptImageShareModal';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { FriendAvatarPickerModal } from './FriendAvatarPickerModal';
 import { KeyboardSheetModal, useSheetScroll } from '../common/KeyboardSheetModal';
 
 const POPULAR_EMOJIS = [
@@ -441,9 +442,7 @@ const DetailManageCategoriesBody = ({
   editColor,
   editFriendCategory,
   friendCategories,
-  inlineDeletingCatId,
-  setInlineDeletingCatId,
-  deleteFriendCategory,
+  setDeletingCat,
 }) => {
   const { scrollToInput } = useSheetScroll();
 
@@ -542,60 +541,39 @@ const DetailManageCategoriesBody = ({
                 <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }} numberOfLines={1}>{c.name}</Text>
               </View>
 
-              {inlineDeletingCatId === c.id ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 11, color: theme.danger, fontWeight: '700' }}>Delete?</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      deleteFriendCategory(c.id);
-                      setInlineDeletingCatId(null);
-                    }}
-                    style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.danger, borderRadius: 6 }}
-                  >
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>Yes</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setInlineDeletingCatId(null)}
-                    style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.cardHover, borderRadius: 6 }}
-                  >
-                    <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '700' }}>No</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditingCat(c);
-                      setEditName(c.name);
-                      setEditEmoji(c.emoji || '🍽️');
-                      setEditColor(c.color || '#3B82F6');
-                    }}
-                    style={{
-                      width: 30,
-                      height: 30,
-                      borderRadius: 8,
-                      backgroundColor: `${theme.primary}20`,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name="pencil-outline" size={14} color={theme.primaryLight} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setInlineDeletingCatId(c.id)}
-                    style={{
-                      width: 30,
-                      height: 30,
-                      borderRadius: 8,
-                      backgroundColor: `${theme.danger}20`,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={14} color={theme.danger} />
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setEditingCat(c);
+                    setEditName(c.name);
+                    setEditEmoji(c.emoji || '🍽️');
+                    setEditColor(c.color || '#3B82F6');
+                  }}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    backgroundColor: `${theme.primary}20`,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="pencil-outline" size={14} color={theme.primaryLight} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setDeletingCat(c)}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    backgroundColor: `${theme.danger}20`,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={14} color={theme.danger} />
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
@@ -631,6 +609,7 @@ export const FriendDetailModal = ({
   const [showImageShare, setShowImageShare] = useState(false);
   const [selectedTxForImage, setSelectedTxForImage] = useState(null);
   const [showManageCatsModal, setShowManageCatsModal] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // Custom Friend Category Creator state (Friends tab only)
   const [showAddCatModal, setShowAddCatModal] = useState(false);
@@ -640,12 +619,11 @@ export const FriendDetailModal = ({
   const [deletingCat, setDeletingCat] = useState(null);
   const [modalAlert, setModalAlert] = useState(null);
 
-  // Friend Category Editing & Inline Delete state
+  // Friend Category Editing state
   const [editingCat, setEditingCat] = useState(null);
   const [editName, setEditName] = useState('');
   const [editEmoji, setEditEmoji] = useState('🍽️');
   const [editColor, setEditColor] = useState('#3B82F6');
-  const [inlineDeletingCatId, setInlineDeletingCatId] = useState(null);
 
   const isOwed = (friend?.balance || 0) >= 0;
   const absBalance = Math.abs(friend?.balance || 0);
@@ -713,7 +691,12 @@ export const FriendDetailModal = ({
   };
 
   const friendAvatarLeft = (
-    <View style={[styles.avatar, { backgroundColor: `${theme.primary}25`, marginRight: 10 }]}>
+    <TouchableOpacity
+      onPress={() => setShowAvatarPicker(true)}
+      activeOpacity={0.75}
+      accessibilityLabel={`Change photo for ${friend.name}`}
+      style={[styles.avatar, { backgroundColor: `${theme.primary}25`, marginRight: 10, position: 'relative' }]}
+    >
       {friend.photoUri ? (
         <Image source={{ uri: friend.photoUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
       ) : friend.avatarEmoji ? (
@@ -723,7 +706,24 @@ export const FriendDetailModal = ({
           {friend.name.charAt(0).toUpperCase()}
         </Text>
       )}
-    </View>
+      <View
+        style={{
+          position: 'absolute',
+          right: -2,
+          bottom: -2,
+          width: 18,
+          height: 18,
+          borderRadius: 9,
+          backgroundColor: theme.primary,
+          borderWidth: 1.5,
+          borderColor: theme.card,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name="camera" size={10} color="#FFF" />
+      </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -735,39 +735,6 @@ export const FriendDetailModal = ({
         subtitle={isOwed ? t('owes_you', 'Owes you money') : t('you_owe', 'You owe this contact')}
         headerLeft={friendAvatarLeft}
         maxHeightRatio={0.92}
-        overlayChildren={
-          <>
-            <ConfirmDeleteModal
-              useModal={false}
-              visible={!!deletingCat}
-              onClose={() => setDeletingCat(null)}
-              onConfirm={() => {
-                if (deletingCat) {
-                  deleteFriendCategory(deletingCat.id);
-                  setDeletingCat(null);
-                }
-              }}
-              title="Delete Category?"
-              message={`Are you sure you want to delete category "${deletingCat?.name}"?`}
-              type="danger"
-              confirmText="Delete"
-              confirmIcon="trash-outline"
-              showCancel={true}
-            />
-            <ConfirmDeleteModal
-              useModal={false}
-              visible={!!modalAlert && !showAddCatModal}
-              onClose={() => setModalAlert(null)}
-              onConfirm={() => setModalAlert(null)}
-              title={modalAlert?.title || 'Notice'}
-              message={modalAlert?.message || ''}
-              type={modalAlert?.type || 'info'}
-              showCancel={false}
-              confirmText="OK"
-              confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
-            />
-          </>
-        }
       >
         <FriendDetailBody
           theme={theme}
@@ -803,20 +770,6 @@ export const FriendDetailModal = ({
         icon="pricetag"
         iconColor={theme.primaryLight}
         maxHeightRatio={0.85}
-        overlayChildren={
-          <ConfirmDeleteModal
-            useModal={false}
-            visible={!!modalAlert && showAddCatModal}
-            onClose={() => setModalAlert(null)}
-            onConfirm={() => setModalAlert(null)}
-            title={modalAlert?.title || 'Notice'}
-            message={modalAlert?.message || ''}
-            type={modalAlert?.type || 'info'}
-            showCancel={false}
-            confirmText="OK"
-            confirmIcon="information-circle-outline"
-          />
-        }
       >
         <DetailAddCategoryBody
           theme={theme}
@@ -837,7 +790,6 @@ export const FriendDetailModal = ({
         onClose={() => {
           setShowManageCatsModal(false);
           setEditingCat(null);
-          setInlineDeletingCatId(null);
         }}
         title="Manage Friend Categories"
         subtitle="Edit names, emojis, colors or delete"
@@ -856,9 +808,7 @@ export const FriendDetailModal = ({
           editColor={editColor}
           editFriendCategory={editFriendCategory}
           friendCategories={friendCategories}
-          inlineDeletingCatId={inlineDeletingCatId}
-          setInlineDeletingCatId={setInlineDeletingCatId}
-          deleteFriendCategory={deleteFriendCategory}
+          setDeletingCat={setDeletingCat}
         />
       </KeyboardSheetModal>
 
@@ -876,6 +826,43 @@ export const FriendDetailModal = ({
         onClose={() => setSelectedTxForImage(null)}
         type="transaction"
         data={selectedTxForImage}
+      />
+
+      {/* Change Friend Photo / Avatar Modal */}
+      <FriendAvatarPickerModal
+        visible={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        friend={friend}
+      />
+
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!deletingCat}
+        onClose={() => setDeletingCat(null)}
+        onConfirm={() => {
+          if (deletingCat) {
+            deleteFriendCategory(deletingCat.id);
+            setDeletingCat(null);
+          }
+        }}
+        title="Delete Category?"
+        message={`Are you sure you want to delete category "${deletingCat?.name}"?`}
+        type="danger"
+        confirmText="Delete"
+        confirmIcon="trash-outline"
+        showCancel={true}
+      />
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'info'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
       />
     </>
   );

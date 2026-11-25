@@ -8,6 +8,20 @@ import { formatCurrency, formatDateDisplay } from './formatters';
 export const encodeUpiParam = (val) =>
   encodeURIComponent(String(val || '').trim()).replace(/%20/g, '+');
 
+export const UPI_HTTPS_BRIDGE_BASE = 'https://nobodys9299-byte.github.io/wealthflow/pay.html';
+
+export const buildUpiPaymentLinks = ({ upiId, payeeName, amount = 0, note = '' }) => {
+  const numAmount = Number(amount) || 0;
+  const query =
+    numAmount > 0
+      ? `pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&am=${numAmount.toFixed(2)}&tn=${encodeUpiParam(note)}`
+      : `pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&tn=${encodeUpiParam(note)}`;
+  return {
+    upiUrl: `upi://pay?${query}`,
+    httpsBridgeUrl: `${UPI_HTTPS_BRIDGE_BASE}?${query}`,
+  };
+};
+
 export async function loadPhotoAsBase64DataUri(uri) {
   if (!uri || typeof uri !== 'string') return null;
   if (uri.startsWith('data:image/')) return uri;
@@ -270,12 +284,13 @@ export const generateLendingStatementPDF = async (
       : `Loan to ${friendName}: ${rawNote}`
   ).slice(0, 80);
 
-  // Exact UPI deep-link format:
-  // upi://pay?pa=...&cu=INR&pn=...&am=...&tn=...
-  const dynamicUpiUrl =
-    targetAmount > 0
-      ? `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&am=${targetAmount.toFixed(2)}&tn=${encodeUpiParam(cleanNote)}`
-      : `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&tn=${encodeUpiParam(cleanNote)}`;
+  // Exact UPI deep-link format for QR scanner + HTTPS bridge URL so Google Drive PDF Viewer launches UPI reliably
+  const { upiUrl: dynamicUpiUrl, httpsBridgeUrl } = buildUpiPaymentLinks({
+    upiId,
+    payeeName,
+    amount: targetAmount,
+    note: cleanNote,
+  });
 
   const resolvedPhotoUri =
     friend?.photoUri ||
@@ -299,7 +314,6 @@ export const generateLendingStatementPDF = async (
     qrSvg = '';
   }
 
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(dynamicUpiUrl)}&margin=2`;
   const friendEmoji = friend?.avatarEmoji || '👤';
 
   const rows = txs.map((t) => {
@@ -335,7 +349,7 @@ export const generateLendingStatementPDF = async (
           table { width: 100%; border-collapse: collapse; margin-top: 15px; }
           th { background: #f1f5f9; text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; }
           td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-          .pay-box { margin-top: 22px; padding: 16px 18px; background: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid; }
+          .pay-box { margin-top: 22px; padding: 16px 18px; background: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; page-break-inside: avoid; }
           .pay-btn { display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; }
           .footer { margin-top: 28px; text-align: center; font-size: 11px; color: #94a3b8; }
         </style>
@@ -376,24 +390,28 @@ export const generateLendingStatementPDF = async (
         </table>
 
         <div class="pay-box">
-          <div style="flex:1;padding-right:18px;">
-            <div style="font-size:11px;font-weight:800;color:#0284C7;text-transform:uppercase;letter-spacing:0.5px;">⚡ Instant UPI Payment Details</div>
-            <div style="font-size:16px;font-weight:800;color:#0F172A;margin-top:3px;">Amount: ${escapeHtml(currencySymbol)}${targetAmount.toFixed(2)}</div>
-            <div style="font-size:12px;color:#475569;margin-top:4px;"><strong>UPI ID:</strong> <span style="font-family:monospace;color:#0F172A;">${escapeHtml(upiId)}</span></div>
-            <div style="font-size:12px;color:#475569;margin-top:2px;"><strong>Payee:</strong> ${escapeHtml(payeeName)}</div>
-            <div style="margin-top:12px;margin-bottom:8px;">
-              <a href="${dynamicUpiUrl}" class="pay-btn">⚡ PAY NOW (${escapeHtml(currencySymbol)}${targetAmount.toFixed(2)}) &rarr;</a>
-            </div>
-            <div style="font-size:10px;color:#64748B;margin-top:6px;">Tap the blue 'PAY NOW' button to launch your UPI app with amount &amp; details pre-filled, or scan the QR code.</div>
-          </div>
-          <div style="text-align:center;">
-            <a href="${dynamicUpiUrl}" style="text-decoration:none;display:inline-block;">
-              <div style="width:110px;height:110px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid #CBD5E1;padding:4px;background:#FFFFFF;overflow:hidden;">
-                ${qrSvg || `<img src="${qrCodeUrl}" width="110" height="110" onerror="this.style.display='none'" alt="UPI QR" />`}
-              </div>
-              <div style="font-size:9px;font-weight:800;color:#0284C7;margin-top:4px;">SCAN &amp; PAY</div>
-            </a>
-          </div>
+          <table style="width:100%;border-collapse:collapse;margin:0;">
+            <tr>
+              <td style="border:none;padding:0 16px 0 0;vertical-align:middle;">
+                <div style="font-size:11px;font-weight:800;color:#0284C7;text-transform:uppercase;letter-spacing:0.5px;">⚡ Instant UPI Payment Details</div>
+                <div style="font-size:16px;font-weight:800;color:#0F172A;margin-top:3px;">Amount: ${escapeHtml(currencySymbol)}${targetAmount.toFixed(2)}</div>
+                <div style="font-size:12px;color:#475569;margin-top:4px;"><strong>UPI ID:</strong> <span style="font-family:monospace;color:#0F172A;">${escapeHtml(upiId)}</span></div>
+                <div style="font-size:12px;color:#475569;margin-top:2px;"><strong>Payee:</strong> ${escapeHtml(payeeName)}</div>
+                <div style="margin-top:12px;margin-bottom:8px;">
+                  <a href="${httpsBridgeUrl}" class="pay-btn">⚡ PAY NOW (${escapeHtml(currencySymbol)}${targetAmount.toFixed(2)}) &rarr;</a>
+                </div>
+                <div style="font-size:10px;color:#64748B;margin-top:6px;">Tap the blue 'PAY NOW' button to launch your UPI app with amount &amp; details pre-filled, or scan the QR code.</div>
+              </td>
+              <td style="border:none;padding:0;width:124px;text-align:center;vertical-align:middle;">
+                <a href="${httpsBridgeUrl}" style="text-decoration:none;display:inline-block;">
+                  <div style="width:110px;height:110px;display:inline-block;border-radius:8px;border:1px solid #CBD5E1;padding:4px;background:#FFFFFF;overflow:hidden;">
+                    ${qrSvg}
+                  </div>
+                  <div style="font-size:9px;font-weight:800;color:#0284C7;margin-top:4px;">SCAN &amp; PAY</div>
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
 
         <div class="footer">

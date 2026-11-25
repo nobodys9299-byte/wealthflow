@@ -1103,6 +1103,21 @@ export const FinanceProvider = ({ children }) => {
     persistLending(updated);
   };
 
+  const updateFriendAvatar = async (friendName, { photoUri = null, avatarEmoji = '👤' }) => {
+    const target = String(friendName || '').trim().toLowerCase();
+    if (!target) return;
+    const updated = lendingRecords.map((r) =>
+      r?.friendName && r.friendName.trim().toLowerCase() === target
+        ? {
+            ...r,
+            photoUri: photoUri || null,
+            avatarEmoji: photoUri ? null : (avatarEmoji || '👤'),
+          }
+        : r
+    );
+    await persistLending(updated);
+  };
+
   const settleFriendDebt = (friendName) => {
     setConfirmDialog({
       visible: true,
@@ -1590,6 +1605,7 @@ export const FinanceProvider = ({ children }) => {
         lendingSummary,
         addLendingRecord,
         editLendingRecord,
+        updateFriendAvatar,
         settleFriendDebt,
         deleteFriendAccount,
         deleteLendingRecord: requestDeleteLendingRecord,

@@ -184,6 +184,7 @@ export const KeyboardSheetModal = ({
             styles.card,
             UI_TOKENS.shadow.sheet,
             {
+              zIndex: 1,
               backgroundColor: theme.card,
               borderColor: theme.border,
               maxHeight: maxCardHeight,
@@ -262,7 +263,7 @@ export const KeyboardSheetModal = ({
                   contentContainerStyle,
                 ]}
               >
-                <View ref={scrollContentRef} collapsable={false}>
+                <View ref={scrollContentRef} collapsable={false} style={{ width: '100%' }}>
                   {children}
                 </View>
               </ScrollView>
@@ -272,7 +273,14 @@ export const KeyboardSheetModal = ({
           </SheetScrollContext.Provider>
         </Animated.View>
 
-        {overlayChildren}
+        {overlayChildren ? (
+          <View
+            style={[StyleSheet.absoluteFillObject, { zIndex: 9999, elevation: 50 }]}
+            pointerEvents="box-none"
+          >
+            {overlayChildren}
+          </View>
+        ) : null}
       </View>
     </Modal>
   );

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFinance, DEFAULT_HOME_SECTIONS } from '../context/FinanceContext';
 import { SummaryCards } from '../components/SummaryCards';
 import { AccountCard } from '../components/AccountCard';
+import { DraggableAccountList } from '../components/DraggableAccountList';
 import { TransactionItem } from '../components/TransactionItem';
 import { KeyboardSheetModal } from '../components/common/KeyboardSheetModal';
 import { formatCurrency } from '../utils/formatters';
@@ -54,25 +55,12 @@ export const DashboardScreen = ({
   const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
   const [filterAccountId, setFilterAccountId] = useState('all');
 
-  // Account Long-Press Reorder Mode & Customize Home Sections state
+  // Account Long-Press Drag Reorder Mode & Customize Home Sections state
   const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
+  const [isDraggingAccount, setIsDraggingAccount] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [tempSections, setTempSections] = useState(homeSections);
-
-  const handleMoveAccount = (index, delta) => {
-    const newIndex = index + delta;
-    if (newIndex < 0 || newIndex >= accounts.length) return;
-    try {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    } catch (_e) {}
-    const updated = [...accounts];
-    const [moved] = updated.splice(index, 1);
-    updated.splice(newIndex, 0, moved);
-    if (reorderAccounts) {
-      reorderAccounts(updated);
-    }
-  };
 
   const selectedAccountObj = accounts.find((a) => a.id === filterAccountId);
 
@@ -158,6 +146,7 @@ export const DashboardScreen = ({
         style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!isDraggingAccount}
       >
       {/* Top App Header with 3-Bar Hamburger Menu and Search */}
       <View style={styles.topBar}>
@@ -366,13 +355,13 @@ export const DashboardScreen = ({
         if (section.id === 'accounts') {
           return (
             <View key="accounts">
-              {/* Accounts Section (Long-press account card to arrange forward/backward) */}
+              {/* Accounts Section (Long-press and drag any account card to reorder) */}
               <View style={styles.sectionHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Accounts')}</Text>
-                  {isReorderingAccounts && (
+                  {(isDraggingAccount || isReorderingAccounts) && (
                     <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight }}>
-                      Arrange Order
+                      {isDraggingAccount ? 'Drop to place' : 'Drag to reorder'}
                     </Text>
                   )}
                 </View>
@@ -395,24 +384,27 @@ export const DashboardScreen = ({
                 )}
               </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.accountsRow}>
-                {accounts.map((acc, accIdx) => (
+              <DraggableAccountList
+                accounts={accounts}
+                axis="x"
+                onReorder={(ordered) => reorderAccounts && reorderAccounts(ordered)}
+                onDragStateChange={setIsDraggingAccount}
+                onHoldWithoutDrag={() => setIsReorderingAccounts((prev) => !prev)}
+                contentContainerStyle={styles.accountsRow}
+                renderItem={(acc, _idx, drag) => (
                   <AccountCard
-                    key={acc.id}
                     account={acc}
                     compact
                     reorderMode={isReorderingAccounts}
-                    positionIndex={accIdx}
-                    canMoveBackward={accIdx > 0}
-                    canMoveForward={accIdx < accounts.length - 1}
-                    onMoveBackward={() => handleMoveAccount(accIdx, -1)}
-                    onMoveForward={() => handleMoveAccount(accIdx, 1)}
-                    onLongPress={() => setIsReorderingAccounts((prev) => !prev)}
+                    isDragging={drag.isDragging}
+                    dragHandleHandlers={drag.dragHandleHandlers}
+                    onLongPress={drag.beginDrag}
+                    onPressOut={drag.finishIdleHold}
                     onPress={() => setFilterAccountId(filterAccountId === acc.id ? 'all' : acc.id)}
                     isSelected={filterAccountId === acc.id}
                   />
-                ))}
-              </ScrollView>
+                )}
+              />
             </View>
           );
         }

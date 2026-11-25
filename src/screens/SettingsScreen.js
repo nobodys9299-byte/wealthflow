@@ -734,7 +734,7 @@ Status: Healthy. No fatal crash exceptions recorded.
                 <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Require Passcode to Open', 'Require Passcode to Open')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
                   {securitySettings.enabled
-                    ? 'Locks automatically when you lock phone or background'
+                    ? 'Protected with PIN & biometric vault security'
                     : t('No lock required', 'No lock required')}
                 </Text>
               </View>
@@ -797,7 +797,7 @@ Status: Healthy. No fatal crash exceptions recorded.
             </View>
           )}
 
-          {/* Auto-Lock on Phone Lock / Background */}
+          {/* Smart Auto-Lock Protection */}
           {securitySettings.enabled && (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
@@ -805,9 +805,9 @@ Status: Healthy. No fatal crash exceptions recorded.
                   <Ionicons name="lock-closed-outline" size={18} color="#8B5CF6" />
                 </View>
                 <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>Auto-Lock on Phone Lock / Background</Text>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>Smart Security Lock</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Locks immediately when you lock your phone or leave app (stays unlocked while on screen)
+                    Keeps your personal finances private whenever you step away
                   </Text>
                 </View>
               </View>
@@ -1227,20 +1227,6 @@ Status: Healthy. No fatal crash exceptions recorded.
         title="Set Passcode"
         icon="key-outline"
         iconColor={theme.primary}
-        overlayChildren={
-          <ConfirmDeleteModal
-            useModal={false}
-            visible={!!pinAlert}
-            onClose={() => setPinAlert(null)}
-            onConfirm={() => setPinAlert(null)}
-            title={pinAlert?.title || 'Notice'}
-            message={pinAlert?.message || ''}
-            type={pinAlert?.type || 'danger'}
-            showCancel={false}
-            confirmText="OK"
-            confirmIcon="alert-circle-outline"
-          />
-        }
       >
         <SettingsPinBody
           theme={theme}
@@ -1252,6 +1238,18 @@ Status: Healthy. No fatal crash exceptions recorded.
           handleSavePin={handleSavePin}
         />
       </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!pinAlert}
+        onClose={() => setPinAlert(null)}
+        onConfirm={() => setPinAlert(null)}
+        title={pinAlert?.title || 'Notice'}
+        message={pinAlert?.message || ''}
+        type={pinAlert?.type || 'danger'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon="alert-circle-outline"
+      />
 
       {/* CSV Export / Import Modal */}
       <KeyboardSheetModal

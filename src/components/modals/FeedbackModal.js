@@ -175,41 +175,41 @@ export const FeedbackModal = ({ visible, onClose }) => {
   };
 
   return (
-    <KeyboardSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={t('share_feedback', 'Share Your Feedback')}
-      subtitle={t('feedback_sub', 'Your thoughts shape the next update')}
-      icon="chatbox-ellipses"
-      iconColor="#38BDF8"
-      maxHeightRatio={0.92}
-      overlayChildren={
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'success'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
+    <>
+      <KeyboardSheetModal
+        visible={visible}
+        onClose={onClose}
+        title={t('share_feedback', 'Share Your Feedback')}
+        subtitle={t('feedback_sub', 'Your thoughts shape the next update')}
+        icon="chatbox-ellipses"
+        iconColor="#38BDF8"
+        maxHeightRatio={0.92}
+      >
+        <FeedbackBody
+          copied={copied}
+          handleCopyEmail={handleCopyEmail}
+          selectedTopic={selectedTopic}
+          setSelectedTopic={setSelectedTopic}
+          feedbackText={feedbackText}
+          setFeedbackText={setFeedbackText}
+          handleSendEmail={handleSendEmail}
+          theme={theme}
+          t={t}
         />
-      }
-    >
-      <FeedbackBody
-        copied={copied}
-        handleCopyEmail={handleCopyEmail}
-        selectedTopic={selectedTopic}
-        setSelectedTopic={setSelectedTopic}
-        feedbackText={feedbackText}
-        setFeedbackText={setFeedbackText}
-        handleSendEmail={handleSendEmail}
-        theme={theme}
-        t={t}
+      </KeyboardSheetModal>
+      <ConfirmDeleteModal
+        useModal={true}
+        visible={!!modalAlert}
+        onClose={() => setModalAlert(null)}
+        onConfirm={() => setModalAlert(null)}
+        title={modalAlert?.title || 'Notice'}
+        message={modalAlert?.message || ''}
+        type={modalAlert?.type || 'success'}
+        showCancel={false}
+        confirmText="OK"
+        confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
       />
-    </KeyboardSheetModal>
+    </>
   );
 };
 
