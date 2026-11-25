@@ -87,14 +87,19 @@ jobs:
             --parallel \
             --build-cache \
             --max-workers=4 \
-            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -PreactNativeArchitectures=arm64-v8a \
             -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
       - name: 🔍 Verify APK Signing Certificate
         run: |
-          set -o pipefail
-          keytool -printcert -jarfile android/app/build/outputs/apk/release/app-release.apk \
-            | grep -E "SHA1:|SHA256:"
+          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK_PATH"
+          APKSIGNER=$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -name "apksigner" 2>/dev/null | sort -V | tail -n 1 || true)
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$APK_PATH"
+          else
+            keytool -printcert -jarfile "$APK_PATH"
+          fi
 
       - name: 🧹 Clean Up Keystore File
         if: always()
