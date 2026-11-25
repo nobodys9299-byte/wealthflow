@@ -71,6 +71,18 @@ function MainApp() {
     lastActiveRef.current = Date.now();
   }, []);
 
+  const handleUnlockApp = useCallback(() => {
+    lastActiveRef.current = Date.now();
+    backgroundAtRef.current = null;
+    hasUnlockedOnceRef.current = true;
+    if (Platform.OS === 'android') {
+      try {
+        NativeModules?.ScreenLockDetector?.clearScreenOffFlag?.();
+      } catch (_e) {}
+    }
+    setIsAppUnlocked(true);
+  }, [setIsAppUnlocked]);
+
   // Modals state
   const [txModalVisible, setTxModalVisible] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
@@ -332,18 +344,6 @@ function MainApp() {
       </SafeAreaView>
     );
   }
-
-  const handleUnlockApp = useCallback(() => {
-    lastActiveRef.current = Date.now();
-    backgroundAtRef.current = null;
-    hasUnlockedOnceRef.current = true;
-    if (Platform.OS === 'android') {
-      try {
-        NativeModules?.ScreenLockDetector?.clearScreenOffFlag?.();
-      } catch (_e) {}
-    }
-    setIsAppUnlocked(true);
-  }, [setIsAppUnlocked]);
 
   const isVaultLocked = securitySettings.enabled && !isAppUnlocked;
 
