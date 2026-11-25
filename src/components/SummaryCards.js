@@ -12,14 +12,13 @@ export const SummaryCards = () => {
 
   return (
     <View style={styles.container}>
-      {/* Net Worth Primary Hero Card (iPhone Frosted Glass Styling) */}
+      {/* Net Worth Primary Hero Card */}
       <View
         style={[
           styles.netWorthCard,
           {
             backgroundColor: cardBg,
             borderColor: cardBorder,
-            borderTopColor: 'rgba(255, 255, 255, 0.35)',
             borderWidth: 1.5,
           },
         ]}

@@ -28,8 +28,6 @@ export const FriendReminderModal = ({
     currency,
     userUpiSettings,
     updateUpiSettings,
-    lendingRecords,
-    lendingSummary,
     t,
   } = useFinance();
 
@@ -39,19 +37,6 @@ export const FriendReminderModal = ({
   const [showEditUpi, setShowEditUpi] = useState(false);
   const [reminderUpiId, setReminderUpiId] = useState(userUpiSettings?.upiId || 'wealthflow@okaxis');
   const [reminderPayee, setReminderPayee] = useState(userUpiSettings?.payeeName || 'WealthFlow User');
-
-  const resolvedPhotoUri =
-    friend?.photoUri ||
-    friend?.transactions?.find((t) => t.photoUri)?.photoUri ||
-    lendingRecords?.find(
-      (r) =>
-        r.friendName?.trim().toLowerCase() === friend?.name?.trim().toLowerCase() &&
-        r.photoUri
-    )?.photoUri ||
-    lendingSummary?.friends?.find(
-      (f) => f.name?.trim().toLowerCase() === friend?.name?.trim().toLowerCase()
-    )?.photoUri ||
-    null;
 
   useEffect(() => {
     if (userUpiSettings?.upiId) {
@@ -248,14 +233,10 @@ export const FriendReminderModal = ({
             <View style={[styles.requestHeroCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <View style={[styles.friendAvatarSmall, { backgroundColor: `${theme.primary}25`, overflow: 'hidden' }]}>
-                  {resolvedPhotoUri ? (
-                    <Image source={{ uri: resolvedPhotoUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
-                  ) : friend.avatarEmoji ? (
-                    <Text style={{ fontSize: 18 }}>{friend.avatarEmoji}</Text>
+                  {friend.photoUri ? (
+                    <Image source={{ uri: friend.photoUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
                   ) : (
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: theme.primaryLight }}>
-                      {friend.name ? friend.name.charAt(0).toUpperCase() : '👤'}
-                    </Text>
+                    <Text style={{ fontSize: 18 }}>{friend.avatarEmoji || '👤'}</Text>
                   )}
                 </View>
                 <View style={{ flex: 1, marginRight: 8 }}>

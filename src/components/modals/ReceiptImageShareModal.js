@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system';
 import QRCode from 'qrcode';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
@@ -93,17 +92,13 @@ export const ReceiptImageShareModal = ({
 
       // Convert friend photo to base64 if present so it renders reliably in Android WebView Print
       let friendPhotoBase64 = null;
-      const photoUriToUse =
-        data?.photoUri ||
-        data?.transactions?.find((t) => t.photoUri)?.photoUri ||
-        null;
-      if (type === 'friend' && photoUriToUse) {
+      if (type === 'friend' && data.photoUri) {
         try {
-          const rawBase64 = await FileSystem.readAsStringAsync(photoUriToUse, {
+          const rawBase64 = await FileSystem.readAsStringAsync(data.photoUri, {
             encoding: FileSystem.EncodingType?.Base64 || 'base64',
           });
           if (rawBase64) {
-            const isPng = photoUriToUse.toLowerCase().endsWith('.png');
+            const isPng = data.photoUri.toLowerCase().endsWith('.png');
             friendPhotoBase64 = `data:${isPng ? 'image/png' : 'image/jpeg'};base64,${rawBase64}`;
           }
         } catch (photoErr) {
@@ -111,15 +106,10 @@ export const ReceiptImageShareModal = ({
         }
       }
 
-      // Generate dynamic UPI payment URL adhering to format:
-      // upi://pay?pa=...&cu=INR&pn=...&am=...&tn=...
-      const noteTitle = txTitle || (type === 'friend' ? `Statement for ${data.name || 'Friend'}` : 'WealthFlow Payment');
-      const dynamicUpiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&cu=INR&pn=${encodeURIComponent(payeeName)}&am=${targetAmount.toFixed(2)}&tn=${encodeURIComponent(noteTitle)}`;
-
       // Generate vector SVG QR code offline (pure JS in memory, no remote HTTP request)
       let qrSvg = '';
       try {
-        qrSvg = await QRCode.toString(dynamicUpiUrl, {
+        qrSvg = await QRCode.toString(upiLink, {
           type: 'svg',
           width: 115,
           margin: 1,
@@ -316,14 +306,14 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
                 <div style="margin-top: 12px; margin-bottom: 8px;">
-                  <a href="${dynamicUpiUrl}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
+                  <a href="${pdfPayLink}" target="_blank" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
                     ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)}) &rarr;
                   </a>
                 </div>
-                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' to open Google Pay / PhonePe directly, or scan the QR code to pay instantly.</div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' to open the secure UPI payment page, or scan the QR code directly with Google Pay, PhonePe, or Paytm.</div>
               </div>
               <div style="text-align: center;">
-                <a href="${dynamicUpiUrl}" style="text-decoration: none; display: inline-block;">
+                <a href="${pdfPayLink}" target="_blank" style="text-decoration: none; display: inline-block;">
                   <div style="width: 115px; height: 115px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF; overflow: hidden;">
                     ${qrSvg || `<img src="${qrCodeUrl}" width="115" height="115" onerror="this.style.display='none'" alt="UPI QR" />`}
                   </div>

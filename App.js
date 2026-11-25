@@ -66,21 +66,41 @@ function MainApp() {
   const [donationModalVisible, setDonationModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
-  // Inactivity / active session tracker
+  // Auto-lock inactivity tracker (1 minute = 60,000 ms)
   const lastActiveRef = useRef(Date.now());
+  const backgroundTimeRef = useRef(null);
 
-  // Auto-lock on phone lock / background
-  // When phone is locked or app minimized, locks immediately if security enabled.
-  // When on-screen / active, the app never locks automatically so user is never interrupted.
+  // Periodic inactivity check (every 5 seconds)
+  useEffect(() => {
+    const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
+    if (!isAutoLockEnabled || !isAppUnlocked) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      if (now - lastActiveRef.current >= 60000) {
+        setIsAppUnlocked(false);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked]);
+
+  // AppState change listener: locks if app backgrounded for >= 1 minute or idle
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
-      const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
       if (nextAppState === 'background' || nextAppState === 'inactive') {
-        if (isAutoLockEnabled && isAppUnlocked) {
+        backgroundTimeRef.current = Date.now();
+      } else if (nextAppState === 'active') {
+        const now = Date.now();
+        const backgroundElapsed = backgroundTimeRef.current ? now - backgroundTimeRef.current : 0;
+        const idleElapsed = now - lastActiveRef.current;
+        const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
+
+        if (isAutoLockEnabled && isAppUnlocked && (backgroundElapsed >= 60000 || idleElapsed >= 60000)) {
           setIsAppUnlocked(false);
         }
-      } else if (nextAppState === 'active') {
-        lastActiveRef.current = Date.now();
+        lastActiveRef.current = now;
+        backgroundTimeRef.current = null;
       }
     };
 
@@ -317,9 +337,7 @@ function MainApp() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.bg }]}
       onStartShouldSetResponderCapture={() => {
-        if (lastActiveRef && 'current' in lastActiveRef) {
-          lastActiveRef.current = Date.now();
-        }
+        lastActiveRef.current = Date.now();
         return false;
       }}
     >

@@ -16,23 +16,19 @@ export const CURRENCIES = [
 export const THEMES = {
   dark: {
     id: 'dark',
-    name: 'Midnight Slate (Glass)',
+    name: 'Midnight Slate',
     isDark: true,
-    bg: '#0B1120',         // Ultra-deep Slate 950
-    card: '#1E293B',       // Frosted Glass Slate 800
-    cardAlt: '#283548',    // Elevated Glass Plate
-    cardHover: '#334155',
+    bg: '#0F172A',         // Slate 900
+    card: '#1E293B',       // Slate 800
+    cardAlt: '#334155',    // Slate 700
+    cardHover: '#283548',
     text: '#F8FAFC',       // Slate 50
     textMuted: '#94A3B8',  // Slate 400
-    border: 'rgba(255, 255, 255, 0.12)',     // iPhone Specular Glass Edge
-    glassCard: 'rgba(30, 41, 59, 0.82)',
-    glassCardAlt: 'rgba(40, 53, 72, 0.75)',
-    glassBorder: 'rgba(255, 255, 255, 0.15)',
-    glassHighlight: 'rgba(255, 255, 255, 0.06)',
-    inputBg: '#0F172A',    // Slate 900
+    border: '#334155',     // Slate 700
+    inputBg: '#0B1120',    // Slate 950
     primary: '#6366F1',    // Indigo 500
     primaryLight: '#818CF8',
-    primaryBg: 'rgba(99, 102, 241, 0.22)',
+    primaryBg: '#312E81',
     success: '#10B981',    // Emerald 500
     successBg: 'rgba(16, 185, 129, 0.15)',
     danger: '#F43F5E',     // Rose 500
@@ -41,28 +37,24 @@ export const THEMES = {
     warningBg: 'rgba(245, 158, 11, 0.15)',
     info: '#0EA5E9',       // Sky 500
     heroBg: '#1E1B4B',     // Deep Midnight Indigo
-    heroBorder: 'rgba(129, 140, 248, 0.45)',
-    modalOverlay: 'rgba(0, 0, 0, 0.82)',
+    heroBorder: '#6366F1',
+    modalOverlay: 'rgba(0, 0, 0, 0.75)',
   },
   light: {
     id: 'light',
-    name: 'Pure Daylight (Glass)',
+    name: 'Pure Daylight',
     isDark: false,
     bg: '#F8FAFC',         // Slate 50
-    card: '#FFFFFF',       // Translucent White
+    card: '#FFFFFF',       // White
     cardAlt: '#F1F5F9',    // Slate 100
     cardHover: '#E2E8F0',
     text: '#0F172A',       // Slate 900
     textMuted: '#64748B',  // Slate 500
-    border: 'rgba(0, 0, 0, 0.08)',     // Crisp light glass edge
-    glassCard: 'rgba(255, 255, 255, 0.88)',
-    glassCardAlt: 'rgba(241, 245, 249, 0.82)',
-    glassBorder: 'rgba(255, 255, 255, 0.75)',
-    glassHighlight: 'rgba(255, 255, 255, 0.40)',
+    border: '#E2E8F0',     // Slate 200
     inputBg: '#F1F5F9',    // Slate 100
     primary: '#4F46E5',    // Indigo 600
     primaryLight: '#6366F1',
-    primaryBg: 'rgba(79, 70, 229, 0.12)',
+    primaryBg: '#EEF2FF',
     success: '#059669',    // Emerald 600
     successBg: '#D1FAE5',
     danger: '#E11D48',     // Rose 600
@@ -71,8 +63,8 @@ export const THEMES = {
     warningBg: '#FEF3C7',
     info: '#0284C7',       // Sky 600
     heroBg: '#4338CA',     // Indigo 700
-    heroBorder: 'rgba(79, 70, 229, 0.5)',
-    modalOverlay: 'rgba(15, 23, 42, 0.55)',
+    heroBorder: '#4F46E5',
+    modalOverlay: 'rgba(15, 23, 42, 0.5)',
   },
   cyberpunk: {
     id: 'cyberpunk',

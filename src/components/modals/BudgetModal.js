@@ -49,7 +49,7 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
@@ -59,95 +59,89 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
             onPress={onClose}
           />
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
-            <View style={styles.dragPillWrap}>
-              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-            </View>
+          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
+          <View style={styles.dragPillWrap}>
+            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
+          </View>
 
-            <View style={styles.header}>
-              <Text style={[styles.title, { color: theme.text }]}>
-                {initialData ? `${t('edit', 'Edit')} ${t('budget_goals', 'Budget')}` : t('create_budget', 'Set Category Budget')}
-              </Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: theme.text }]}>
+              {initialData ? `${t('edit', 'Edit')} ${t('budget_goals', 'Budget')}` : t('create_budget', 'Set Category Budget')}
+            </Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color={theme.textMuted} />
+            </TouchableOpacity>
+          </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled={true}
-              contentContainerStyle={{ paddingBottom: 16 }}
-            >
-              {/* Category selection */}
-              <View style={styles.group}>
-                <Text style={[styles.label, { color: theme.textMuted }]}>{t('category', 'Select Category')}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
-                  {availableCategories.map((cat) => {
-                    const isSelected = categoryId === cat.id;
-                    return (
-                      <TouchableOpacity
-                        key={cat.id}
-                        onPress={() => setCategoryId(cat.id)}
-                        style={[
-                          styles.catChip,
-                          {
-                            backgroundColor: isSelected ? `${cat.color || theme.primary}25` : theme.inputBg,
-                            borderColor: isSelected ? (cat.color || theme.primary) : theme.border,
-                          },
-                        ]}
-                      >
-                        {cat.emoji ? (
-                          <Text style={{ fontSize: 16 }}>{cat.emoji}</Text>
-                        ) : (
-                          <Ionicons name={cat.icon || 'pricetag-outline'} size={16} color={isSelected ? (cat.color || theme.primary) : theme.textMuted} />
-                        )}
-                        <Text
-                          style={[
-                            styles.catChipText,
-                            { color: isSelected ? (cat.color || theme.primaryLight) : theme.text },
-                          ]}
-                        >
-                          {cat.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              {/* Monthly Limit */}
-              <View style={[styles.group, { marginTop: 14 }]}>
-                <Text style={[styles.label, { color: theme.textMuted }]}>Monthly Spending Limit ({currency.symbol})</Text>
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    {
-                      backgroundColor: theme.inputBg,
-                      color: theme.text,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                  keyboardType="decimal-pad"
-                  placeholder="e.g. 500"
-                  placeholderTextColor={theme.textMuted}
-                  value={limit}
-                  onChangeText={setLimit}
-                />
-              </View>
-
-              <TouchableOpacity
-                onPress={handleSave}
-                style={[styles.saveBtn, { backgroundColor: theme.primary, marginTop: 18 }]}
-              >
-                <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-                <Text style={styles.saveBtnText}>{t('save', 'Save Budget')}</Text>
-              </TouchableOpacity>
+          {/* Category selection */}
+          <View style={styles.group}>
+            <Text style={[styles.label, { color: theme.textMuted }]}>{t('category', 'Select Category')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+              {availableCategories.map((cat) => {
+                const isSelected = categoryId === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setCategoryId(cat.id)}
+                    style={[
+                      styles.catChip,
+                      {
+                        backgroundColor: isSelected ? `${cat.color || theme.primary}25` : theme.inputBg,
+                        borderColor: isSelected ? (cat.color || theme.primary) : theme.border,
+                      },
+                    ]}
+                  >
+                    {cat.emoji ? (
+                      <Text style={{ fontSize: 16 }}>{cat.emoji}</Text>
+                    ) : (
+                      <Ionicons name={cat.icon || 'pricetag-outline'} size={16} color={isSelected ? (cat.color || theme.primary) : theme.textMuted} />
+                    )}
+                    <Text
+                      style={[
+                        styles.catChipText,
+                        { color: isSelected ? (cat.color || theme.primaryLight) : theme.text },
+                      ]}
+                    >
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
+
+          {/* Monthly Limit */}
+          <View style={styles.group}>
+            <Text style={[styles.label, { color: theme.textMuted }]}>Monthly Spending Limit ({currency.symbol})</Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: theme.inputBg,
+                  color: theme.text,
+                  borderColor: theme.border,
+                },
+              ]}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 500"
+              placeholderTextColor={theme.textMuted}
+              value={limit}
+              onChangeText={setLimit}
+              autoFocus
+            />
+          </View>
+
+          <TouchableOpacity
+            onPress={handleSave}
+            style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+          >
+            <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+            <Text style={styles.saveBtnText}>{t('save', 'Save Budget')}</Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      </View>
+    </KeyboardAvoidingView>
+  </Modal>
   );
 };
 
@@ -161,9 +155,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     borderWidth: 1,
     padding: 20,
-    paddingBottom: 24,
-    maxHeight: '90%',
-    gap: 12,
+    paddingBottom: 32,
+    gap: 16,
   },
   dragPillWrap: {
     alignItems: 'center',

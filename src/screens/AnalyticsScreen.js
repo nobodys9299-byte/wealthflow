@@ -961,14 +961,12 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
         }}
       >
         <View style={[styles.detailModalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => {
-              setSelectedDetail(null);
-              setDetailSearch('');
-            }}
-          />
+          <TouchableWithoutFeedback onPress={() => {
+            setSelectedDetail(null);
+            setDetailSearch('');
+          }}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
           <View
             style={[
               styles.detailModalCard,
