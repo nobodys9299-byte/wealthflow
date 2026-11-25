@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -43,6 +43,7 @@ export const AccountsScreen = ({
     t,
   } = useFinance();
 
+  const outerScrollRef = useRef(null);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedAccountForImage, setSelectedAccountForImage] = useState(null);
   const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
@@ -72,6 +73,7 @@ export const AccountsScreen = ({
 
   return (
     <ScrollView
+      ref={outerScrollRef}
       style={[styles.container, { backgroundColor: theme.bg }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
@@ -201,6 +203,7 @@ export const AccountsScreen = ({
       <DraggableAccountList
         accounts={accounts}
         axis="y"
+        parentScrollRef={outerScrollRef}
         onReorder={(ordered) => reorderAccounts && reorderAccounts(ordered)}
         onDragStateChange={setIsDraggingAccount}
         onHoldWithoutDrag={() => setIsReorderingAccounts((prev) => !prev)}
@@ -213,8 +216,6 @@ export const AccountsScreen = ({
               reorderMode={isReorderingAccounts}
               isDragging={drag.isDragging}
               dragHandleHandlers={drag.dragHandleHandlers}
-              onLongPress={drag.beginDrag}
-              onPressOut={drag.finishIdleHold}
             />
             {/* Statement Share Action Bar */}
             <TouchableOpacity

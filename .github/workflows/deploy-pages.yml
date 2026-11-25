@@ -3,7 +3,6 @@ name: Deploy UPI Payment Redirect Page
 on:
   push:
     branches:
-      - main
       - master
     paths:
       - 'docs/**'

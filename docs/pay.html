@@ -194,9 +194,13 @@
 
       var upiUrl = 'upi://pay?' + query;
       var intentUrl = 'intent://pay?' + query + '#Intent;scheme=upi;end';
+      var isAndroid = /android/i.test(navigator.userAgent || '');
 
-      document.getElementById('payBtn').setAttribute('href', upiUrl);
-      document.getElementById('intentBtn').setAttribute('href', intentUrl);
+      var primaryBtn = document.getElementById('payBtn');
+      var altBtn = document.getElementById('intentBtn');
+      primaryBtn.setAttribute('href', isAndroid ? intentUrl : upiUrl);
+      altBtn.setAttribute('href', isAndroid ? upiUrl : intentUrl);
+      altBtn.textContent = isAndroid ? 'Direct upi:// Link' : 'Try Android Intent';
 
       document.getElementById('copyBtn').addEventListener('click', function () {
         var btn = this;
@@ -208,11 +212,13 @@
         }
       });
 
-      setTimeout(function () {
+      try {
+        window.location.replace(isAndroid ? intentUrl : upiUrl);
+      } catch (e) {
         try {
           window.location.href = upiUrl;
-        } catch (e) {}
-      }, 150);
+        } catch (e2) {}
+      }
     })();
   </script>
 </body>

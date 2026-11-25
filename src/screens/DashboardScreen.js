@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -56,6 +56,7 @@ export const DashboardScreen = ({
   const [filterAccountId, setFilterAccountId] = useState('all');
 
   // Account Long-Press Drag Reorder Mode & Customize Home Sections state
+  const outerScrollRef = useRef(null);
   const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
   const [isDraggingAccount, setIsDraggingAccount] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -143,6 +144,7 @@ export const DashboardScreen = ({
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView
+        ref={outerScrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -387,9 +389,14 @@ export const DashboardScreen = ({
               <DraggableAccountList
                 accounts={accounts}
                 axis="x"
+                parentScrollRef={outerScrollRef}
                 onReorder={(ordered) => reorderAccounts && reorderAccounts(ordered)}
                 onDragStateChange={setIsDraggingAccount}
                 onHoldWithoutDrag={() => setIsReorderingAccounts((prev) => !prev)}
+                onCardPress={(acc) =>
+                  !isReorderingAccounts &&
+                  setFilterAccountId(filterAccountId === acc.id ? 'all' : acc.id)
+                }
                 contentContainerStyle={styles.accountsRow}
                 renderItem={(acc, _idx, drag) => (
                   <AccountCard
@@ -398,9 +405,6 @@ export const DashboardScreen = ({
                     reorderMode={isReorderingAccounts}
                     isDragging={drag.isDragging}
                     dragHandleHandlers={drag.dragHandleHandlers}
-                    onLongPress={drag.beginDrag}
-                    onPressOut={drag.finishIdleHold}
-                    onPress={() => setFilterAccountId(filterAccountId === acc.id ? 'all' : acc.id)}
                     isSelected={filterAccountId === acc.id}
                   />
                 )}

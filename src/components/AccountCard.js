@@ -11,9 +11,6 @@ const AccountCardComponent = ({
   onEdit,
   onDelete,
   compact = false,
-  onPress,
-  onLongPress,
-  onPressOut,
   isSelected = false,
   reorderMode = false,
   isDragging = false,
@@ -23,15 +20,9 @@ const AccountCardComponent = ({
   const isNegative = account.currentBalance < 0;
 
   if (compact) {
-    const CardWrapper = onPress || onLongPress ? TouchableOpacity : View;
     const isHighlighted = isDragging || reorderMode || isSelected;
     return (
-      <CardWrapper
-        onPress={reorderMode ? undefined : onPress}
-        onLongPress={onLongPress}
-        onPressOut={onPressOut}
-        delayLongPress={220}
-        activeOpacity={reorderMode || isDragging ? 0.96 : 0.8}
+      <View
         style={[
           styles.compactCard,
           UI_TOKENS.shadow.card,
@@ -89,23 +80,17 @@ const AccountCardComponent = ({
             </View>
           )}
         </View>
-      </CardWrapper>
+      </View>
     );
   }
 
-  const FullWrapper = onLongPress ? TouchableOpacity : View;
-
   return (
-    <FullWrapper
-      onLongPress={onLongPress}
-      onPressOut={onPressOut}
-      delayLongPress={220}
-      activeOpacity={0.95}
+    <View
       style={[
         styles.fullCard,
         UI_TOKENS.shadow.card,
         {
-          backgroundColor: isDragging ? `${theme.card}` : theme.card,
+          backgroundColor: theme.card,
           borderColor: isDragging || reorderMode ? theme.primary : theme.border,
           borderWidth: isDragging || reorderMode ? 1.5 : 1,
         },
@@ -202,7 +187,7 @@ const AccountCardComponent = ({
           </Text>
         </View>
       </View>
-    </FullWrapper>
+    </View>
   );
 };
 
