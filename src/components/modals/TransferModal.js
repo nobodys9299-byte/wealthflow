@@ -1,17 +1,153 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
+import { KeyboardSheetModal, useSheetScroll } from '../common/KeyboardSheetModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+
+const TransferFormBody = ({
+  accounts,
+  fromAccountId,
+  setFromAccountId,
+  toAccountId,
+  setToAccountId,
+  amount,
+  setAmount,
+  note,
+  setNote,
+  handleTransfer,
+  theme,
+  currency,
+  t,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={styles.body}>
+      {/* From Account */}
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: theme.textMuted }]}>{t('From Account', 'From Account')}</Text>
+        <View style={styles.chipRow}>
+          {accounts.map((acc) => (
+            <TouchableOpacity
+              key={`from_${acc.id}`}
+              onPress={() => setFromAccountId(acc.id)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: fromAccountId === acc.id ? theme.primary : theme.inputBg,
+                  borderColor: fromAccountId === acc.id ? theme.primaryLight : theme.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: fromAccountId === acc.id ? '#FFF' : theme.text },
+                ]}
+              >
+                {acc.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Transfer Icon Divider */}
+      <View style={styles.iconCenter}>
+        <View style={[styles.circleIcon, { backgroundColor: theme.cardAlt }]}>
+          <Ionicons name="arrow-down" size={18} color={theme.primaryLight} />
+        </View>
+      </View>
+
+      {/* To Account */}
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: theme.textMuted }]}>{t('To Account', 'To Account')}</Text>
+        <View style={styles.chipRow}>
+          {accounts.map((acc) => (
+            <TouchableOpacity
+              key={`to_${acc.id}`}
+              onPress={() => setToAccountId(acc.id)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: toAccountId === acc.id ? theme.primary : theme.inputBg,
+                  borderColor: toAccountId === acc.id ? theme.primaryLight : theme.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: toAccountId === acc.id ? '#FFF' : theme.text },
+                ]}
+              >
+                {acc.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Amount */}
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: theme.textMuted }]}>Amount ({currency.symbol})</Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: theme.inputBg,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          keyboardType="decimal-pad"
+          placeholder="0.00"
+          placeholderTextColor={theme.textMuted}
+          value={amount}
+          onChangeText={setAmount}
+          onFocus={scrollToInput}
+          returnKeyType="next"
+        />
+      </View>
+
+      {/* Note */}
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: theme.textMuted }]}>Note (Optional)</Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: theme.inputBg,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          placeholder="e.g. Credit Card payoff, savings deposit"
+          placeholderTextColor={theme.textMuted}
+          value={note}
+          onChangeText={setNote}
+          onFocus={scrollToInput}
+          returnKeyType="done"
+        />
+      </View>
+
+      <TouchableOpacity
+        onPress={handleTransfer}
+        style={[styles.submitBtn, { backgroundColor: theme.primary }]}
+      >
+        <Ionicons name="swap-horizontal" size={20} color="#FFF" />
+        <Text style={styles.submitBtnText}>{t('transfer', 'Complete Transfer')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 export const TransferModal = ({ visible, onClose }) => {
   const { theme, currency, accounts, transferMoney, t } = useFinance();
@@ -20,15 +156,36 @@ export const TransferModal = ({ visible, onClose }) => {
   const [toAccountId, setToAccountId] = useState(accounts[1]?.id || accounts[0]?.id || '');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [modalAlert, setModalAlert] = useState(null);
+
+  useEffect(() => {
+    if (visible) {
+      if (!accounts.some((a) => a.id === fromAccountId)) {
+        setFromAccountId(accounts[0]?.id || '');
+      }
+      if (!accounts.some((a) => a.id === toAccountId)) {
+        setToAccountId(accounts[1]?.id || accounts[0]?.id || '');
+      }
+      setModalAlert(null);
+    }
+  }, [visible, accounts]);
 
   const handleTransfer = () => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert('Please enter a valid transfer amount');
+      setModalAlert({
+        title: t('invalid_amount', 'Invalid Amount'),
+        message: 'Please enter a valid transfer amount.',
+        type: 'danger',
+      });
       return;
     }
-    if (fromAccountId === toAccountId) {
-      alert('Source and destination accounts must be different');
+    if (!fromAccountId || !toAccountId || fromAccountId === toAccountId) {
+      setModalAlert({
+        title: t('invalid_accounts', 'Select Different Accounts'),
+        message: 'Source and destination accounts must be different.',
+        type: 'danger',
+      });
       return;
     }
 
@@ -45,181 +202,51 @@ export const TransferModal = ({ visible, onClose }) => {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
-      >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
+    <KeyboardSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={t('transfer', 'Transfer Between Accounts')}
+      icon="swap-horizontal"
+      iconColor={theme.primary}
+      overlayChildren={
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'danger'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon="alert-circle-outline"
         />
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
-          <View style={styles.dragPillWrap}>
-            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-          </View>
-
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>{t('transfer', 'Transfer Between Accounts')}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* From Account */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>{t('From Account', 'From Account')}</Text>
-            <View style={styles.chipRow}>
-              {accounts.map((acc) => (
-                <TouchableOpacity
-                  key={`from_${acc.id}`}
-                  onPress={() => setFromAccountId(acc.id)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: fromAccountId === acc.id ? theme.primary : theme.inputBg,
-                      borderColor: fromAccountId === acc.id ? theme.primaryLight : theme.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: fromAccountId === acc.id ? '#FFF' : theme.text },
-                    ]}
-                  >
-                    {acc.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Transfer Icon Divider */}
-          <View style={styles.iconCenter}>
-            <View style={[styles.circleIcon, { backgroundColor: theme.cardAlt }]}>
-              <Ionicons name="arrow-down" size={18} color={theme.primaryLight} />
-            </View>
-          </View>
-
-          {/* To Account */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>{t('To Account', 'To Account')}</Text>
-            <View style={styles.chipRow}>
-              {accounts.map((acc) => (
-                <TouchableOpacity
-                  key={`to_${acc.id}`}
-                  onPress={() => setToAccountId(acc.id)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: toAccountId === acc.id ? theme.primary : theme.inputBg,
-                      borderColor: toAccountId === acc.id ? theme.primaryLight : theme.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: toAccountId === acc.id ? '#FFF' : theme.text },
-                    ]}
-                  >
-                    {acc.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Amount */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Amount ({currency.symbol})</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={theme.textMuted}
-              value={amount}
-              onChangeText={setAmount}
-            />
-          </View>
-
-          {/* Note */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Note (Optional)</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="e.g. Credit Card payoff, savings deposit"
-              placeholderTextColor={theme.textMuted}
-              value={note}
-              onChangeText={setNote}
-            />
-          </View>
-
-          <TouchableOpacity
-            onPress={handleTransfer}
-            style={[styles.submitBtn, { backgroundColor: theme.primary }]}
-          >
-            <Ionicons name="swap-horizontal" size={20} color="#FFF" />
-            <Text style={styles.submitBtnText}>{t('transfer', 'Complete Transfer')}</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      }
+    >
+      <TransferFormBody
+        accounts={accounts}
+        fromAccountId={fromAccountId}
+        setFromAccountId={setFromAccountId}
+        toAccountId={toAccountId}
+        setToAccountId={setToAccountId}
+        amount={amount}
+        setAmount={setAmount}
+        note={note}
+        setNote={setNote}
+        handleTransfer={handleTransfer}
+        theme={theme}
+        currency={currency}
+        t={t}
+      />
+    </KeyboardSheetModal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  card: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    padding: 20,
-    paddingBottom: 32,
+  body: {
     gap: 14,
-  },
-  dragPillWrap: {
-    alignItems: 'center',
-    paddingTop: 0,
-    paddingBottom: 2,
-  },
-  dragPill: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  closeBtn: {
-    padding: 4,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   group: {
     gap: 6,

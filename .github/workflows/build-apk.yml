@@ -6,6 +6,10 @@ on:
       - master
   workflow_dispatch:
 
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build Signed Android APK
@@ -47,10 +51,10 @@ jobs:
           cache: 'npm'
 
       - name: 📦 Install npm dependencies
-        run: npm ci || npm install --legacy-peer-deps
+        run: npm ci --prefer-offline --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: 📱 Generate Native Android Project (Expo Prebuild)
-        run: npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android --clean --no-install
 
       - name: 🔑 Decode & Verify Expo Release Keystore
         env:
@@ -68,7 +72,7 @@ jobs:
           node .github/scripts/configure-android-signing.js
 
       - name: 🛠️ Setup Gradle Cache
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: 🔨 Build Signed Android APK (Release)
         working-directory: android
@@ -78,7 +82,13 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --parallel \
+            --build-cache \
+            --max-workers=4 \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
       - name: 🔍 Verify APK Signing Certificate
         run: |

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { safeStorage as AsyncStorage } from '../utils/safeStorage';
 import { THEMES, CURRENCIES } from '../constants/theme';
@@ -119,6 +119,26 @@ export const FinanceProvider = ({ children }) => {
   });
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [crashReportsEnabled, setCrashReportsEnabled] = useState(true);
+
+  // Guard ref preventing false auto-lock while in-app system dialogs (Gallery, Share, Print, Google Sign-In) are open
+  const systemPickerDepthRef = useRef(0);
+  const lastSystemEndRef = useRef(0);
+
+  const isSystemInteractionActive = useCallback(() => {
+    if (systemPickerDepthRef.current > 0) return true;
+    // Brief grace window right after Android activity result returns
+    return Date.now() - lastSystemEndRef.current < 1500;
+  }, []);
+
+  const runWithSystemPicker = useCallback(async (fn) => {
+    systemPickerDepthRef.current += 1;
+    try {
+      return await fn();
+    } finally {
+      systemPickerDepthRef.current = Math.max(0, systemPickerDepthRef.current - 1);
+      lastSystemEndRef.current = Date.now();
+    }
+  }, []);
 
   // Confirmation & Universal Custom Alert modal state (Photo 2 styled)
   const [confirmDialog, setConfirmDialog] = useState({
@@ -539,7 +559,7 @@ export const FinanceProvider = ({ children }) => {
 
   const loginWithGoogle = async () => {
     try {
-      const authRes = await googleDriveService.signIn();
+      const authRes = await runWithSystemPicker(() => googleDriveService.signIn());
       if (!authRes.success) {
         return { success: false, error: authRes.error };
       }
@@ -940,6 +960,13 @@ export const FinanceProvider = ({ children }) => {
     });
   };
 
+  const reorderAccounts = async (orderedAccounts) => {
+    if (!Array.isArray(orderedAccounts) || orderedAccounts.length === 0) return;
+    // Strip computed balance fields so AsyncStorage stores clean raw account definitions
+    const clean = orderedAccounts.map(({ currentBalance, totalIncome, totalExpense, txCount, ...raw }) => raw);
+    await persistAccounts(clean);
+  };
+
   // Budget management with confirmation
   const setCategoryBudget = (categoryId, monthlyLimit) => {
     const limit = parseFloat(monthlyLimit) || 0;
@@ -1023,7 +1050,11 @@ export const FinanceProvider = ({ children }) => {
       item.id === recId ? { ...item, lastLoggedDate: todayStr } : item
     );
     persistRecurring(updatedRec);
-    alert(`Payment recorded for "${r.title}". It has been deducted from your account and net worth.`);
+    showCustomAlert(
+      'Payment Recorded',
+      `Payment recorded for "${r.title}". It has been updated in your account and net worth.`,
+      { type: 'success' }
+    );
   };
 
   const requestDeleteRecurring = (id) => {
@@ -1170,10 +1201,11 @@ export const FinanceProvider = ({ children }) => {
 
     const map = {};
     lendingRecords.forEach((r) => {
-      const name = r.friendName;
-      if (!map[name]) {
-        map[name] = {
-          name,
+      const displayName = (r.friendName || 'Friend').trim();
+      const key = displayName.toLowerCase();
+      if (!map[key]) {
+        map[key] = {
+          name: displayName,
           balance: 0,
           totalLent: 0,
           totalBorrowed: 0,
@@ -1183,27 +1215,29 @@ export const FinanceProvider = ({ children }) => {
           avatarEmoji: r.avatarEmoji || null,
         };
       }
-      map[name].transactions.push(r);
-      if (r.photoUri && !map[name].photoUri) {
-        map[name].photoUri = r.photoUri;
+      map[key].transactions.push(r);
+      if (r.photoUri && !map[key].photoUri) {
+        map[key].photoUri = r.photoUri;
       }
-      if (r.avatarEmoji && !map[name].avatarEmoji) {
-        map[name].avatarEmoji = r.avatarEmoji;
+      if (r.avatarEmoji && r.avatarEmoji !== '👤' && (!map[key].avatarEmoji || map[key].avatarEmoji === '👤')) {
+        map[key].avatarEmoji = r.avatarEmoji;
+      } else if (r.avatarEmoji && !map[key].avatarEmoji) {
+        map[key].avatarEmoji = r.avatarEmoji;
       }
       const amt = parseFloat(r.amount) || 0;
       if (r.type === 'lent') {
-        map[name].totalLent += amt;
+        map[key].totalLent += amt;
         if (r.status === 'pending') {
-          map[name].balance += amt; // they owe me (+)
+          map[key].balance += amt; // they owe me (+)
         }
       } else {
-        map[name].totalBorrowed += amt;
+        map[key].totalBorrowed += amt;
         if (r.status === 'pending') {
-          map[name].balance -= amt; // I owe them (-)
+          map[key].balance -= amt; // I owe them (-)
         }
       }
       if (r.status === 'pending') {
-        map[name].pendingCount++;
+        map[key].pendingCount++;
       }
     });
 
@@ -1327,7 +1361,7 @@ export const FinanceProvider = ({ children }) => {
   const exportAsJSON = () => {
     return JSON.stringify(
       {
-        version: '3.0',
+        version: '3.1',
         exportedAt: new Date().toISOString(),
         currency,
         themeId,
@@ -1336,6 +1370,11 @@ export const FinanceProvider = ({ children }) => {
         recurring,
         lendingRecords,
         transactions,
+        categories,
+        friendCategories,
+        homeSections,
+        userUpiSettings,
+        notificationSettings,
       },
       null,
       2
@@ -1429,6 +1468,24 @@ export const FinanceProvider = ({ children }) => {
       if (data.themeId) {
         await changeTheme(data.themeId);
       }
+      if (data.categories && typeof data.categories === 'object') {
+        await persistCategories(data.categories);
+      }
+      if (Array.isArray(data.friendCategories) && data.friendCategories.length > 0) {
+        setFriendCategories(data.friendCategories);
+        try {
+          await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(data.friendCategories));
+        } catch (e) {}
+      }
+      if (Array.isArray(data.homeSections) && data.homeSections.length > 0) {
+        await updateHomeSections(data.homeSections);
+      }
+      if (data.userUpiSettings && typeof data.userUpiSettings === 'object') {
+        await updateUpiSettings(data.userUpiSettings);
+      }
+      if (data.notificationSettings && typeof data.notificationSettings === 'object') {
+        await updateNotificationSettings(data.notificationSettings);
+      }
       return { success: true, count, accountsCount };
     } catch (e) {
       return { success: false, error: e.message };
@@ -1518,6 +1575,7 @@ export const FinanceProvider = ({ children }) => {
         addAccount,
         editAccount,
         deleteAccount: requestDeleteAccount,
+        reorderAccounts,
         transferMoney,
         budgets,
         budgetStatusList,
@@ -1571,6 +1629,8 @@ export const FinanceProvider = ({ children }) => {
         updateSecurity,
         isAppUnlocked,
         setIsAppUnlocked,
+        runWithSystemPicker,
+        isSystemInteractionActive,
         // Google Cloud Backup & Sync
         googleUser,
         loginWithGoogle,
@@ -1579,8 +1639,10 @@ export const FinanceProvider = ({ children }) => {
         restoreFromGoogleCloud: (email, snapshot) => restoreFromGoogleCloud(email, snapshot),
         removeCloudBackup: (email) => removeCloudBackup(email),
         updateGoogleAutoBackupSettings,
-        saveToDeviceStorage: (data, fileName, mimeType) => CloudBackupService.saveToDeviceInternalStorage(data, fileName, mimeType),
-        pickAndRestoreFromDriveFile: () => CloudBackupService.pickAndRestoreFromDriveFile(),
+        saveToDeviceStorage: (data, fileName, mimeType) =>
+          runWithSystemPicker(() => CloudBackupService.saveToDeviceInternalStorage(data, fileName, mimeType)),
+        pickAndRestoreFromDriveFile: () =>
+          runWithSystemPicker(() => CloudBackupService.pickAndRestoreFromDriveFile()),
         // Diagnostics & Crash Reports
         crashReportsEnabled,
         updateCrashReportsSetting,

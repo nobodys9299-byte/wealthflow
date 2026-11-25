@@ -1,21 +1,270 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Linking,
   Platform,
-  TouchableWithoutFeedback,
   Image,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency } from '../../utils/formatters';
+import { encodeUpiParam } from '../../utils/pdfGenerator';
+import { KeyboardSheetModal, useSheetScroll } from '../common/KeyboardSheetModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+
+const FriendReminderBody = ({
+  theme,
+  currency,
+  friend,
+  resolvedPhotoUri,
+  resolvedAvatarEmoji,
+  reminderChannel,
+  setReminderChannel,
+  absBalance,
+  requestAmountType,
+  setRequestAmountType,
+  customAmount,
+  setCustomAmount,
+  showEditUpi,
+  setShowEditUpi,
+  reminderUpiId,
+  setReminderUpiId,
+  reminderPayee,
+  setReminderPayee,
+  upiLink,
+  handleSendWhatsApp,
+  handleSendSMS,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={{ paddingTop: 4, paddingBottom: 16 }}>
+      {/* Top Channel Switcher Tabs */}
+      <View style={[styles.channelSegmentedWrap, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+        <TouchableOpacity
+          onPress={() => setReminderChannel('whatsapp')}
+          style={[
+            styles.channelTab,
+            reminderChannel === 'whatsapp' && { backgroundColor: '#25D366' },
+          ]}
+        >
+          <Ionicons
+            name="logo-whatsapp"
+            size={15}
+            color={reminderChannel === 'whatsapp' ? '#FFF' : theme.textMuted}
+          />
+          <Text
+            style={[
+              styles.channelTabText,
+              { color: reminderChannel === 'whatsapp' ? '#FFF' : theme.textMuted },
+            ]}
+          >
+            WhatsApp
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setReminderChannel('sms')}
+          style={[
+            styles.channelTab,
+            reminderChannel === 'sms' && { backgroundColor: '#3B82F6' },
+          ]}
+        >
+          <Ionicons
+            name="chatbubble-ellipses-outline"
+            size={15}
+            color={reminderChannel === 'sms' ? '#FFF' : theme.textMuted}
+          />
+          <Text
+            style={[
+              styles.channelTabText,
+              { color: reminderChannel === 'sms' ? '#FFF' : theme.textMuted },
+            ]}
+          >
+            Direct SMS
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Friend Balance Hero Banner */}
+      <View style={[styles.requestHeroCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={[styles.friendAvatarSmall, { backgroundColor: `${theme.primary}25`, overflow: 'hidden' }]}>
+            {resolvedPhotoUri ? (
+              <Image source={{ uri: resolvedPhotoUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
+            ) : (
+              <Text style={{ fontSize: 18 }}>{resolvedAvatarEmoji || '👤'}</Text>
+            )}
+          </View>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={[styles.requestFriendName, { color: theme.text }]} numberOfLines={1}>
+              {friend.name}
+            </Text>
+            <Text style={[styles.requestFriendStatus, { color: theme.textMuted }]} numberOfLines={1}>
+              Pending Owed Balance
+            </Text>
+          </View>
+          <View style={[styles.amountDueBadge, { backgroundColor: `${theme.primary}20` }]}>
+            <Text style={[styles.amountDueText, { color: theme.primaryLight }]}>
+              {formatCurrency(absBalance, currency.symbol)}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Amount Selection Options */}
+      <View style={styles.amountOptions}>
+        <TouchableOpacity
+          onPress={() => setRequestAmountType('full')}
+          style={[
+            styles.amountOption,
+            {
+              backgroundColor: requestAmountType === 'full' ? theme.primary : theme.cardAlt,
+              borderColor: requestAmountType === 'full' ? theme.primaryLight : theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'full' ? '#FFF' : theme.textMuted }]}>
+            Full Due Balance
+          </Text>
+          <Text style={[styles.amountOptionVal, { color: requestAmountType === 'full' ? '#FFF' : theme.text }]}>
+            {formatCurrency(absBalance, currency.symbol)}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setRequestAmountType('custom')}
+          style={[
+            styles.amountOption,
+            {
+              backgroundColor: requestAmountType === 'custom' ? `${theme.primary}20` : theme.cardAlt,
+              borderColor: requestAmountType === 'custom' ? theme.primary : theme.border,
+              borderWidth: requestAmountType === 'custom' ? 2 : 1,
+            },
+          ]}
+        >
+          <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'custom' ? theme.primaryLight : theme.textMuted }]}>
+            Custom Amount
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: requestAmountType === 'custom' ? theme.primaryLight : theme.textMuted, marginRight: 2 }}>
+              {currency.symbol}
+            </Text>
+            <TextInput
+              style={{
+                fontSize: 16,
+                fontWeight: '800',
+                color: theme.text,
+                flex: 1,
+                padding: 0,
+              }}
+              placeholder="Enter Amount"
+              placeholderTextColor={theme.textMuted}
+              keyboardType="numeric"
+              value={customAmount}
+              onChangeText={(txt) => {
+                setCustomAmount(txt);
+                setRequestAmountType('custom');
+              }}
+              onFocus={(e) => {
+                setRequestAmountType('custom');
+                scrollToInput(e);
+              }}
+            />
+            {requestAmountType === 'custom' && customAmount.length > 0 && (
+              <TouchableOpacity onPress={() => setCustomAmount('')}>
+                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* UPI Configuration & Live Link Preview */}
+      <View style={[styles.upiCardContainer, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+        <View style={styles.upiCardHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="card-outline" size={15} color={theme.primaryLight} />
+            <Text style={[styles.upiCardTitle, { color: theme.text }]}>UPI Payment Details & Link</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowEditUpi(!showEditUpi)}
+            style={[styles.editUpiBtn, { backgroundColor: `${theme.primary}20` }]}
+          >
+            <Ionicons name={showEditUpi ? 'checkmark' : 'pencil'} size={12} color={theme.primaryLight} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight, marginLeft: 4 }}>
+              {showEditUpi ? 'Done' : 'Change UPI'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {showEditUpi ? (
+          <View style={{ marginTop: 8 }}>
+            <Text style={[styles.miniLabel, { color: theme.textMuted }]}>Your UPI ID (VPA):</Text>
+            <TextInput
+              style={[styles.upiInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+              placeholder="e.g. yourname@okaxis, yourname@paytm"
+              placeholderTextColor={theme.textMuted}
+              value={reminderUpiId}
+              onChangeText={setReminderUpiId}
+              onFocus={scrollToInput}
+            />
+            <Text style={[styles.miniLabel, { color: theme.textMuted, marginTop: 6 }]}>Payee Name:</Text>
+            <TextInput
+              style={[styles.upiInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+              placeholder="e.g. Rahul Sharma"
+              placeholderTextColor={theme.textMuted}
+              value={reminderPayee}
+              onChangeText={setReminderPayee}
+              onFocus={scrollToInput}
+            />
+          </View>
+        ) : (
+          <View style={{ marginTop: 6 }}>
+            <View style={styles.upiValueRow}>
+              <Text style={[styles.upiIdBold, { color: theme.primaryLight }]} numberOfLines={1}>
+                {reminderUpiId || 'wealthflow@okaxis'}
+              </Text>
+              <Text style={[styles.upiPayeeText, { color: theme.textMuted }]} numberOfLines={1}>
+                ({reminderPayee || 'WealthFlow User'})
+              </Text>
+            </View>
+            <View style={styles.upiLinkPreviewBadge}>
+              <Ionicons name="link-outline" size={12} color="#10B981" />
+              <Text style={styles.upiLinkPreviewText} numberOfLines={1} ellipsizeMode="middle">
+                {upiLink}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Primary Action Button */}
+      <TouchableOpacity
+        onPress={reminderChannel === 'whatsapp' ? handleSendWhatsApp : handleSendSMS}
+        style={[
+          styles.sendPrimaryBtn,
+          { backgroundColor: reminderChannel === 'whatsapp' ? '#25D366' : '#3B82F6' },
+        ]}
+        activeOpacity={0.85}
+      >
+        <Ionicons
+          name={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
+          size={20}
+          color="#FFF"
+        />
+        <Text style={styles.sendPrimaryBtnText} numberOfLines={1} adjustsFontSizeToFit>
+          {reminderChannel === 'whatsapp' ? 'Send WhatsApp Reminder' : 'Send SMS Reminder'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 export const FriendReminderModal = ({
   visible,
@@ -28,6 +277,8 @@ export const FriendReminderModal = ({
     currency,
     userUpiSettings,
     updateUpiSettings,
+    lendingSummary,
+    lendingRecords,
     t,
   } = useFinance();
 
@@ -37,6 +288,7 @@ export const FriendReminderModal = ({
   const [showEditUpi, setShowEditUpi] = useState(false);
   const [reminderUpiId, setReminderUpiId] = useState(userUpiSettings?.upiId || 'wealthflow@okaxis');
   const [reminderPayee, setReminderPayee] = useState(userUpiSettings?.payeeName || 'WealthFlow User');
+  const [modalAlert, setModalAlert] = useState(null);
 
   useEffect(() => {
     if (userUpiSettings?.upiId) {
@@ -49,8 +301,28 @@ export const FriendReminderModal = ({
 
   if (!visible || !friend) return null;
 
-  const isOwed = (friend?.balance || 0) >= 0;
   const absBalance = Math.abs(friend?.balance || 0);
+  const normalizedName = (friend?.name || '').trim().toLowerCase();
+  const resolvedPhotoUri =
+    friend?.photoUri ||
+    friend?.transactions?.find((tx) => tx?.photoUri)?.photoUri ||
+    (normalizedName
+      ? lendingSummary?.friends?.find(
+          (f) => f?.name && f.name.trim().toLowerCase() === normalizedName && f.photoUri
+        )?.photoUri ||
+        lendingRecords?.find(
+          (r) => r?.friendName && r.friendName.trim().toLowerCase() === normalizedName && r.photoUri
+        )?.photoUri
+      : null) ||
+    null;
+  const resolvedAvatarEmoji =
+    friend?.avatarEmoji ||
+    (normalizedName
+      ? lendingSummary?.friends?.find(
+          (f) => f?.name && f.name.trim().toLowerCase() === normalizedName && f.avatarEmoji
+        )?.avatarEmoji
+      : null) ||
+    '👤';
 
   const getAmountToRequest = () => {
     if (requestAmountType === 'custom') {
@@ -61,13 +333,29 @@ export const FriendReminderModal = ({
   };
 
   const currentRequestAmount = getAmountToRequest();
+  const effectiveAmount = currentRequestAmount > 0 ? currentRequestAmount : absBalance;
   const upiIdToSend = (reminderUpiId.trim() || userUpiSettings?.upiId || 'wealthflow@okaxis').trim();
   const payeeToSend = (reminderPayee.trim() || userUpiSettings?.payeeName || 'WealthFlow User').trim();
-  const upiLink = `upi://pay?pa=${encodeURIComponent(upiIdToSend)}&pn=${encodeURIComponent(payeeToSend)}&am=${currentRequestAmount > 0 ? currentRequestAmount : absBalance}&cu=INR`;
+  const latestNote = friend?.transactions?.find((tx) => tx?.note && tx.note.trim())?.note?.trim();
+  const rawNote = latestNote || 'Pending balance settlement';
+  const cleanNote = (
+    rawNote.toLowerCase().startsWith('loan')
+      ? rawNote
+      : `Loan to ${friend.name}: ${rawNote}`
+  ).slice(0, 80);
+
+  const upiLink =
+    effectiveAmount > 0
+      ? `upi://pay?pa=${encodeUpiParam(upiIdToSend)}&cu=INR&pn=${encodeUpiParam(payeeToSend)}&am=${effectiveAmount.toFixed(2)}&tn=${encodeUpiParam(cleanNote)}`
+      : `upi://pay?pa=${encodeUpiParam(upiIdToSend)}&cu=INR&pn=${encodeUpiParam(payeeToSend)}&tn=${encodeUpiParam(cleanNote)}`;
 
   const handleSendWhatsApp = async () => {
     if (currentRequestAmount <= 0) {
-      alert('Please enter a valid request amount');
+      setModalAlert({
+        title: t('invalid_amount', 'Invalid Amount'),
+        message: 'Please enter a valid request amount.',
+        type: 'danger',
+      });
       return;
     }
 
@@ -75,27 +363,43 @@ export const FriendReminderModal = ({
       updateUpiSettings({ upiId: upiIdToSend, payeeName: payeeToSend });
     }
 
-    const message = `Hi ${friend.name}! 👋\n\nFriendly reminder regarding our pending balance:\n💵 *Amount Due: ${currency.symbol}${currentRequestAmount}*\n\n💳 *Pay via UPI ID:* ${upiIdToSend}\n📱 *Direct Payment Link:* ${upiLink}\n\nThank you!`;
+    const message = `Hi ${friend.name}! 👋\n\nFriendly reminder regarding our pending balance:\n💵 *Amount Due: ${currency.symbol}${currentRequestAmount.toFixed(2)}*\n\n💳 *Pay via UPI ID:* ${upiIdToSend}\n📱 *Direct Payment Link:* ${upiLink}\n\nThank you!`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     try {
       const supported = await Linking.canOpenURL(whatsappUrl);
       if (supported || Platform.OS === 'web') {
         await Linking.openURL(whatsappUrl);
+        onClose();
       } else {
-        alert('Could not open WhatsApp directly. You can copy the message.');
+        setModalAlert({
+          title: 'WhatsApp Unavailable',
+          message: 'Could not open WhatsApp directly. Please check if WhatsApp is installed.',
+          type: 'info',
+        });
       }
     } catch (e) {
       console.warn(e);
-      window.open && window.open(whatsappUrl, '_blank');
+      if (typeof window !== 'undefined' && window.open) {
+        window.open(whatsappUrl, '_blank');
+        onClose();
+      } else {
+        setModalAlert({
+          title: 'WhatsApp Error',
+          message: 'Could not launch WhatsApp: ' + (e.message || 'Unknown error'),
+          type: 'danger',
+        });
+      }
     }
-
-    onClose();
   };
 
   const handleSendSMS = async () => {
     if (currentRequestAmount <= 0) {
-      alert('Please enter a valid request amount');
+      setModalAlert({
+        title: t('invalid_amount', 'Invalid Amount'),
+        message: 'Please enter a valid request amount.',
+        type: 'danger',
+      });
       return;
     }
 
@@ -103,7 +407,7 @@ export const FriendReminderModal = ({
       updateUpiSettings({ upiId: upiIdToSend, payeeName: payeeToSend });
     }
 
-    const message = `Hi ${friend.name}, Friendly reminder regarding our pending balance: ${currency.symbol}${currentRequestAmount}. Pay via UPI: ${upiIdToSend} (Direct Link: ${upiLink}). Thank you!`;
+    const message = `Hi ${friend.name}, Friendly reminder regarding our pending balance: ${currency.symbol}${currentRequestAmount.toFixed(2)}. Pay via UPI: ${upiIdToSend} (Direct Link: ${upiLink}). Thank you!`;
     const smsUrl = Platform.OS === 'ios'
       ? `sms:&body=${encodeURIComponent(message)}`
       : `sms:?body=${encodeURIComponent(message)}`;
@@ -112,295 +416,83 @@ export const FriendReminderModal = ({
       const supported = await Linking.canOpenURL(smsUrl);
       if (supported || Platform.OS === 'web') {
         await Linking.openURL(smsUrl);
+        onClose();
       } else {
-        alert('Could not launch SMS app.');
+        setModalAlert({
+          title: 'SMS Unavailable',
+          message: 'Could not launch SMS app on this device.',
+          type: 'info',
+        });
       }
     } catch (e) {
       console.warn(e);
-      alert('Could not launch SMS app: ' + e.message);
+      setModalAlert({
+        title: 'SMS Error',
+        message: 'Could not launch SMS app: ' + (e.message || 'Unknown error'),
+        type: 'danger',
+      });
     }
-
-    onClose();
   };
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
+  const headerLeftControl = onBackToDetails ? (
+    <TouchableOpacity
+      onPress={() => onBackToDetails(friend)}
+      style={[styles.backBtn, { backgroundColor: theme.cardAlt, marginRight: 6 }]}
+      accessibilityLabel="Back to contact details"
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={onClose}
-          />
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Top Drag Pill */}
-          <View style={styles.dragPillWrap}>
-            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-          </View>
+      <Ionicons name="arrow-back" size={18} color={theme.text} />
+    </TouchableOpacity>
+  ) : null;
 
-          {/* Modal Header */}
-          <View style={styles.header}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
-              {onBackToDetails ? (
-                <TouchableOpacity
-                  onPress={() => onBackToDetails(friend)}
-                  style={[styles.backBtn, { backgroundColor: theme.cardAlt }]}
-                  accessibilityLabel="Back to contact details"
-                >
-                  <Ionicons name="arrow-back" size={18} color={theme.text} />
-                </TouchableOpacity>
-              ) : (
-                <View style={[styles.channelIconBadge, { backgroundColor: reminderChannel === 'whatsapp' ? '#25D36625' : '#3B82F625' }]}>
-                  <Ionicons
-                    name={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
-                    size={18}
-                    color={reminderChannel === 'whatsapp' ? '#25D366' : '#3B82F6'}
-                  />
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-                  {t('payment_reminder', 'Payment Reminder')}
-                </Text>
-                <Text style={[styles.subtitle, { color: theme.textMuted }]} numberOfLines={1}>
-                  Direct UPI link for {friend.name}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close">
-              <Ionicons name="close" size={22} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-            {/* Top Channel Switcher Tabs */}
-            <View style={[styles.channelSegmentedWrap, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <TouchableOpacity
-                onPress={() => setReminderChannel('whatsapp')}
-                style={[
-                  styles.channelTab,
-                  reminderChannel === 'whatsapp' && { backgroundColor: '#25D366' },
-                ]}
-              >
-                <Ionicons
-                  name="logo-whatsapp"
-                  size={15}
-                  color={reminderChannel === 'whatsapp' ? '#FFF' : theme.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.channelTabText,
-                    { color: reminderChannel === 'whatsapp' ? '#FFF' : theme.textMuted },
-                  ]}
-                >
-                  WhatsApp
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setReminderChannel('sms')}
-                style={[
-                  styles.channelTab,
-                  reminderChannel === 'sms' && { backgroundColor: '#3B82F6' },
-                ]}
-              >
-                <Ionicons
-                  name="chatbubble-ellipses-outline"
-                  size={15}
-                  color={reminderChannel === 'sms' ? '#FFF' : theme.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.channelTabText,
-                    { color: reminderChannel === 'sms' ? '#FFF' : theme.textMuted },
-                  ]}
-                >
-                  Direct SMS
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Friend Balance Hero Banner */}
-            <View style={[styles.requestHeroCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={[styles.friendAvatarSmall, { backgroundColor: `${theme.primary}25`, overflow: 'hidden' }]}>
-                  {friend.photoUri ? (
-                    <Image source={{ uri: friend.photoUri }} style={{ width: 38, height: 38, borderRadius: 19 }} />
-                  ) : (
-                    <Text style={{ fontSize: 18 }}>{friend.avatarEmoji || '👤'}</Text>
-                  )}
-                </View>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={[styles.requestFriendName, { color: theme.text }]} numberOfLines={1}>
-                    {friend.name}
-                  </Text>
-                  <Text style={[styles.requestFriendStatus, { color: theme.textMuted }]} numberOfLines={1}>
-                    Pending Owed Balance
-                  </Text>
-                </View>
-                <View style={[styles.amountDueBadge, { backgroundColor: `${theme.primary}20` }]}>
-                  <Text style={[styles.amountDueText, { color: theme.primaryLight }]}>
-                    {formatCurrency(absBalance, currency.symbol)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Amount Selection Options */}
-            <View style={styles.amountOptions}>
-              <TouchableOpacity
-                onPress={() => setRequestAmountType('full')}
-                style={[
-                  styles.amountOption,
-                  {
-                    backgroundColor: requestAmountType === 'full' ? theme.primary : theme.cardAlt,
-                    borderColor: requestAmountType === 'full' ? theme.primaryLight : theme.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'full' ? '#FFF' : theme.textMuted }]}>
-                  Full Due Balance
-                </Text>
-                <Text style={[styles.amountOptionVal, { color: requestAmountType === 'full' ? '#FFF' : theme.text }]}>
-                  {formatCurrency(absBalance, currency.symbol)}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={() => setRequestAmountType('custom')}
-                style={[
-                  styles.amountOption,
-                  {
-                    backgroundColor: requestAmountType === 'custom' ? `${theme.primary}20` : theme.cardAlt,
-                    borderColor: requestAmountType === 'custom' ? theme.primary : theme.border,
-                    borderWidth: requestAmountType === 'custom' ? 2 : 1,
-                  },
-                ]}
-              >
-                <Text style={[styles.amountOptionLabel, { color: requestAmountType === 'custom' ? theme.primaryLight : theme.textMuted }]}>
-                  Custom Amount
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: requestAmountType === 'custom' ? theme.primaryLight : theme.textMuted, marginRight: 2 }}>
-                    {currency.symbol}
-                  </Text>
-                  <TextInput
-                    style={{
-                      fontSize: 16,
-                      fontWeight: '800',
-                      color: theme.text,
-                      flex: 1,
-                      padding: 0,
-                    }}
-                    placeholder="Enter Amount"
-                    placeholderTextColor={theme.textMuted}
-                    keyboardType="numeric"
-                    value={customAmount}
-                    onChangeText={(txt) => {
-                      setCustomAmount(txt);
-                      setRequestAmountType('custom');
-                    }}
-                    onFocus={() => setRequestAmountType('custom')}
-                  />
-                  {requestAmountType === 'custom' && customAmount.length > 0 && (
-                    <TouchableOpacity onPress={() => setCustomAmount('')}>
-                      <Ionicons name="close-circle" size={16} color={theme.textMuted} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {/* UPI Configuration & Live Link Preview */}
-            <View style={[styles.upiCardContainer, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <View style={styles.upiCardHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="card-outline" size={15} color={theme.primaryLight} />
-                  <Text style={[styles.upiCardTitle, { color: theme.text }]}>UPI Payment Details & Link</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setShowEditUpi(!showEditUpi)}
-                  style={[styles.editUpiBtn, { backgroundColor: `${theme.primary}20` }]}
-                >
-                  <Ionicons name={showEditUpi ? 'checkmark' : 'pencil'} size={12} color={theme.primaryLight} />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight, marginLeft: 4 }}>
-                    {showEditUpi ? 'Done' : 'Change UPI'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {showEditUpi ? (
-                <View style={{ marginTop: 8 }}>
-                  <Text style={[styles.miniLabel, { color: theme.textMuted }]}>Your UPI ID (VPA):</Text>
-                  <TextInput
-                    style={[styles.upiInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-                    placeholder="e.g. yourname@okaxis, yourname@paytm"
-                    placeholderTextColor={theme.textMuted}
-                    value={reminderUpiId}
-                    onChangeText={setReminderUpiId}
-                  />
-                  <Text style={[styles.miniLabel, { color: theme.textMuted, marginTop: 6 }]}>Payee Name:</Text>
-                  <TextInput
-                    style={[styles.upiInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-                    placeholder="e.g. Rahul Sharma"
-                    placeholderTextColor={theme.textMuted}
-                    value={reminderPayee}
-                    onChangeText={setReminderPayee}
-                  />
-                </View>
-              ) : (
-                <View style={{ marginTop: 6 }}>
-                  <View style={styles.upiValueRow}>
-                    <Text style={[styles.upiIdBold, { color: theme.primaryLight }]} numberOfLines={1}>
-                      {reminderUpiId || 'wealthflow@okaxis'}
-                    </Text>
-                    <Text style={[styles.upiPayeeText, { color: theme.textMuted }]} numberOfLines={1}>
-                      ({reminderPayee || 'WealthFlow User'})
-                    </Text>
-                  </View>
-                  <View style={styles.upiLinkPreviewBadge}>
-                    <Ionicons name="link-outline" size={12} color="#10B981" />
-                    <Text style={styles.upiLinkPreviewText} numberOfLines={1} ellipsizeMode="middle">
-                      {upiLink}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {/* Primary Action Button */}
-            <TouchableOpacity
-              onPress={reminderChannel === 'whatsapp' ? handleSendWhatsApp : handleSendSMS}
-              style={[
-                styles.sendPrimaryBtn,
-                { backgroundColor: reminderChannel === 'whatsapp' ? '#25D366' : '#3B82F6' },
-              ]}
-              activeOpacity={0.85}
-            >
-              <Ionicons
-                name={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
-                size={20}
-                color="#FFF"
-              />
-              <Text style={styles.sendPrimaryBtnText} numberOfLines={1} adjustsFontSizeToFit>
-                {reminderChannel === 'whatsapp' ? 'Send WhatsApp Reminder' : 'Send SMS Reminder'}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </View>
-      </KeyboardAvoidingView>
-    </Modal>
+  return (
+    <KeyboardSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={t('payment_reminder', 'Payment Reminder')}
+      subtitle={`Direct UPI link for ${friend.name}`}
+      icon={reminderChannel === 'whatsapp' ? 'logo-whatsapp' : 'chatbubble-ellipses-outline'}
+      iconColor={reminderChannel === 'whatsapp' ? '#25D366' : '#3B82F6'}
+      headerLeft={headerLeftControl}
+      maxHeightRatio={0.92}
+      overlayChildren={
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'info'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon={modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
+        />
+      }
+    >
+      <FriendReminderBody
+        theme={theme}
+        currency={currency}
+        friend={friend}
+        resolvedPhotoUri={resolvedPhotoUri}
+        resolvedAvatarEmoji={resolvedAvatarEmoji}
+        reminderChannel={reminderChannel}
+        setReminderChannel={setReminderChannel}
+        absBalance={absBalance}
+        requestAmountType={requestAmountType}
+        setRequestAmountType={setRequestAmountType}
+        customAmount={customAmount}
+        setCustomAmount={setCustomAmount}
+        showEditUpi={showEditUpi}
+        setShowEditUpi={setShowEditUpi}
+        reminderUpiId={reminderUpiId}
+        setReminderUpiId={setReminderUpiId}
+        reminderPayee={reminderPayee}
+        setReminderPayee={setReminderPayee}
+        upiLink={upiLink}
+        handleSendWhatsApp={handleSendWhatsApp}
+        handleSendSMS={handleSendSMS}
+      />
+    </KeyboardSheetModal>
   );
 };
 

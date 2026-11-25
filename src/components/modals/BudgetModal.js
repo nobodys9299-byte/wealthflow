@@ -1,19 +1,111 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
 import { EXPENSE_CATEGORIES } from '../../constants/categories';
+import { KeyboardSheetModal, useSheetScroll } from '../common/KeyboardSheetModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+
+const BudgetFormBody = ({
+  availableCategories,
+  categoryId,
+  setCategoryId,
+  limit,
+  setLimit,
+  handleSave,
+  theme,
+  currency,
+  t,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={styles.body}>
+      {/* Category selection */}
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          {t('category', 'Select Category')}
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+          {availableCategories.map((cat) => {
+            const isSelected = categoryId === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                onPress={() => setCategoryId(cat.id)}
+                style={[
+                  styles.catChip,
+                  {
+                    backgroundColor: isSelected ? `${cat.color || theme.primary}25` : theme.inputBg,
+                    borderColor: isSelected ? (cat.color || theme.primary) : theme.border,
+                  },
+                ]}
+              >
+                {cat.emoji ? (
+                  <Text style={{ fontSize: 16 }}>{cat.emoji}</Text>
+                ) : (
+                  <Ionicons
+                    name={cat.icon || 'pricetag-outline'}
+                    size={16}
+                    color={isSelected ? (cat.color || theme.primary) : theme.textMuted}
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.catChipText,
+                    { color: isSelected ? (cat.color || theme.primaryLight) : theme.text },
+                  ]}
+                >
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Monthly Limit */}
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          Monthly Spending Limit ({currency.symbol})
+        </Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: theme.inputBg,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 500"
+          placeholderTextColor={theme.textMuted}
+          value={limit}
+          onChangeText={setLimit}
+          onFocus={scrollToInput}
+          returnKeyType="done"
+          onSubmitEditing={handleSave}
+        />
+      </View>
+
+      <TouchableOpacity
+        onPress={handleSave}
+        style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+      >
+        <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+        <Text style={styles.saveBtnText}>{t('save', 'Save Budget')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 export const BudgetModal = ({ visible, onClose, initialData = null }) => {
   const { theme, currency, setCategoryBudget, categories, t } = useFinance();
@@ -24,6 +116,7 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
 
   const [categoryId, setCategoryId] = useState('food');
   const [limit, setLimit] = useState('');
+  const [modalAlert, setModalAlert] = useState(null);
 
   useEffect(() => {
     if (initialData) {
@@ -33,12 +126,17 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
       setCategoryId(availableCategories[0]?.id || 'food');
       setLimit('');
     }
+    setModalAlert(null);
   }, [initialData, visible, categories]);
 
   const handleSave = () => {
     const num = parseFloat(limit);
     if (isNaN(num) || num <= 0) {
-      alert('Please enter a valid monthly budget limit');
+      setModalAlert({
+        title: t('invalid_amount', 'Invalid Limit'),
+        message: 'Please enter a valid monthly budget limit.',
+        type: 'danger',
+      });
       return;
     }
 
@@ -47,139 +145,50 @@ export const BudgetModal = ({ visible, onClose, initialData = null }) => {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={onClose}
-          />
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
-          <View style={styles.dragPillWrap}>
-            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-          </View>
-
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>
-              {initialData ? `${t('edit', 'Edit')} ${t('budget_goals', 'Budget')}` : t('create_budget', 'Set Category Budget')}
-            </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Category selection */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>{t('category', 'Select Category')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
-              {availableCategories.map((cat) => {
-                const isSelected = categoryId === cat.id;
-                return (
-                  <TouchableOpacity
-                    key={cat.id}
-                    onPress={() => setCategoryId(cat.id)}
-                    style={[
-                      styles.catChip,
-                      {
-                        backgroundColor: isSelected ? `${cat.color || theme.primary}25` : theme.inputBg,
-                        borderColor: isSelected ? (cat.color || theme.primary) : theme.border,
-                      },
-                    ]}
-                  >
-                    {cat.emoji ? (
-                      <Text style={{ fontSize: 16 }}>{cat.emoji}</Text>
-                    ) : (
-                      <Ionicons name={cat.icon || 'pricetag-outline'} size={16} color={isSelected ? (cat.color || theme.primary) : theme.textMuted} />
-                    )}
-                    <Text
-                      style={[
-                        styles.catChipText,
-                        { color: isSelected ? (cat.color || theme.primaryLight) : theme.text },
-                      ]}
-                    >
-                      {cat.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Monthly Limit */}
-          <View style={styles.group}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>Monthly Spending Limit ({currency.symbol})</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 500"
-              placeholderTextColor={theme.textMuted}
-              value={limit}
-              onChangeText={setLimit}
-              autoFocus
-            />
-          </View>
-
-          <TouchableOpacity
-            onPress={handleSave}
-            style={[styles.saveBtn, { backgroundColor: theme.primary }]}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.saveBtnText}>{t('save', 'Save Budget')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
-  </Modal>
+    <KeyboardSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={
+        initialData
+          ? `${t('edit', 'Edit')} ${t('budget_goals', 'Budget')}`
+          : t('create_budget', 'Set Category Budget')
+      }
+      icon="shield-checkmark-outline"
+      iconColor={theme.primary}
+      overlayChildren={
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'danger'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon="alert-circle-outline"
+        />
+      }
+    >
+      <BudgetFormBody
+        availableCategories={availableCategories}
+        categoryId={categoryId}
+        setCategoryId={setCategoryId}
+        limit={limit}
+        setLimit={setLimit}
+        handleSave={handleSave}
+        theme={theme}
+        currency={currency}
+        t={t}
+      />
+    </KeyboardSheetModal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  card: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    padding: 20,
-    paddingBottom: 32,
+  body: {
     gap: 16,
-  },
-  dragPillWrap: {
-    alignItems: 'center',
-    paddingTop: 0,
-    paddingBottom: 4,
-  },
-  dragPill: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  closeBtn: {
-    padding: 4,
+    paddingTop: 4,
   },
   group: {
     gap: 8,

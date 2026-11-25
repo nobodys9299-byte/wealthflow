@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useFinance } from '../../context/FinanceContext';
 
-export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
+export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = true }) => {
   const { theme, t } = useFinance();
   const [pin, setPin] = useState('');
   const [hasBiometrics, setHasBiometrics] = useState(false);
@@ -19,8 +19,12 @@ export const LockScreen = ({ onUnlock, correctPin = '1234' }) => {
   const targetLength = correctPin.length === 6 ? 6 : 4;
 
   useEffect(() => {
-    checkBiometrics();
-  }, []);
+    if (biometricsEnabled) {
+      checkBiometrics();
+    } else {
+      setHasBiometrics(false);
+    }
+  }, [biometricsEnabled]);
 
   const checkBiometrics = async () => {
     try {

@@ -6,6 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   BackHandler,
+  LayoutAnimation,
+  UIManager,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -14,6 +17,10 @@ import { formatCurrency } from '../utils/formatters';
 import { generateAccountStatementPDF } from '../utils/pdfGenerator';
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export const AccountsScreen = ({
   onOpenAddAccount,
@@ -30,11 +37,28 @@ export const AccountsScreen = ({
     transactions,
     netWorth,
     deleteAccount,
+    reorderAccounts,
+    runWithSystemPicker,
     t,
   } = useFinance();
 
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedAccountForImage, setSelectedAccountForImage] = useState(null);
+  const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
+
+  const handleMoveAccount = (index, delta) => {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= accounts.length) return;
+    try {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    } catch (_e) {}
+    const updated = [...accounts];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    if (reorderAccounts) {
+      reorderAccounts(updated);
+    }
+  };
 
   // Handle hardware and UI back button so pressing back navigates to home instead of quitting
   useEffect(() => {
@@ -55,7 +79,7 @@ export const AccountsScreen = ({
   }, [onBack, onNavigateTab]);
 
   const handleShareStatement = async (acc) => {
-    await generateAccountStatementPDF(acc, transactions, currency.symbol);
+    await generateAccountStatementPDF(acc, transactions, currency.symbol, { runWithSystemPicker });
   };
 
   return (
@@ -149,17 +173,54 @@ export const AccountsScreen = ({
       {/* List of Accounts */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Active Accounts', 'Active Accounts')}</Text>
-        <Text style={[styles.countText, { color: theme.textMuted }]}>
-          {accounts.length} {t('Total', 'Total')}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {accounts.length > 1 && (
+            <TouchableOpacity
+              onPress={() => setIsReorderingAccounts((prev) => !prev)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 10,
+                backgroundColor: isReorderingAccounts ? theme.success : `${theme.primary}18`,
+              }}
+            >
+              <Ionicons
+                name={isReorderingAccounts ? 'checkmark' : 'swap-vertical'}
+                size={13}
+                color={isReorderingAccounts ? '#FFF' : theme.primaryLight}
+              />
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '700',
+                  color: isReorderingAccounts ? '#FFF' : theme.primaryLight,
+                }}
+              >
+                {isReorderingAccounts ? 'Done' : 'Arrange'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <Text style={[styles.countText, { color: theme.textMuted }]}>
+            {accounts.length} {t('Total', 'Total')}
+          </Text>
+        </View>
       </View>
 
-      {accounts.map((acc) => (
+      {accounts.map((acc, accIdx) => (
         <View key={acc.id} style={{ marginBottom: 14 }}>
           <AccountCard
             account={acc}
             onEdit={onEditAccount}
             onDelete={accounts.length > 1 ? deleteAccount : null}
+            reorderMode={isReorderingAccounts}
+            canMoveBackward={accIdx > 0}
+            canMoveForward={accIdx < accounts.length - 1}
+            onMoveBackward={() => handleMoveAccount(accIdx, -1)}
+            onMoveForward={() => handleMoveAccount(accIdx, 1)}
+            onLongPress={() => setIsReorderingAccounts((prev) => !prev)}
           />
           {/* Statement Share Action Bar */}
           <TouchableOpacity

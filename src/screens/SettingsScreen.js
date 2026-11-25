@@ -6,12 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Modal,
   TextInput,
   Platform,
   BackHandler,
   Linking,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -23,7 +21,166 @@ import { useFinance } from '../context/FinanceContext';
 import { CURRENCIES, THEMES } from '../constants/theme';
 import { formatDateDisplay, formatDateTimeDisplay } from '../utils/formatters';
 import { FeedbackModal } from '../components/modals/FeedbackModal';
+import { ConfirmDeleteModal } from '../components/modals/ConfirmDeleteModal';
+import { KeyboardSheetModal, useSheetScroll } from '../components/common/KeyboardSheetModal';
 import { NotificationService } from '../services/NotificationService';
+
+const SettingsPinBody = ({
+  theme,
+  chosenLength,
+  setChosenLength,
+  newPin,
+  setNewPin,
+  setPinModalVisible,
+  handleSavePin,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+      <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+        Choose 4 or 6 digits for your lock screen PIN
+      </Text>
+
+      {/* Length selector */}
+      <View style={[styles.lengthSelector, { backgroundColor: theme.cardAlt }]}>
+        <TouchableOpacity
+          onPress={() => {
+            setChosenLength(4);
+            setNewPin('');
+          }}
+          style={[
+            styles.lenBtn,
+            chosenLength === 4 && { backgroundColor: theme.primary },
+          ]}
+        >
+          <Text style={[styles.lenBtnText, { color: chosenLength === 4 ? '#FFF' : theme.textMuted }]}>
+            4 Digits
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            setChosenLength(6);
+            setNewPin('');
+          }}
+          style={[
+            styles.lenBtn,
+            chosenLength === 6 && { backgroundColor: theme.primary },
+          ]}
+        >
+          <Text style={[styles.lenBtnText, { color: chosenLength === 6 ? '#FFF' : theme.textMuted }]}>
+            6 Digits
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <TextInput
+        style={[
+          styles.pinInput,
+          {
+            backgroundColor: theme.inputBg,
+            color: theme.text,
+            borderColor: theme.border,
+          },
+        ]}
+        keyboardType="number-pad"
+        secureTextEntry
+        placeholder={'•'.repeat(chosenLength)}
+        placeholderTextColor={theme.textMuted}
+        maxLength={chosenLength}
+        value={newPin}
+        onChangeText={setNewPin}
+        onFocus={scrollToInput}
+        returnKeyType="done"
+        onSubmitEditing={handleSavePin}
+      />
+
+      <View style={styles.modalButtons}>
+        <TouchableOpacity
+          onPress={() => setPinModalVisible(false)}
+          style={[styles.modalBtn, { backgroundColor: theme.cardAlt }]}
+        >
+          <Text style={[styles.modalBtnText, { color: theme.text }]}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleSavePin}
+          style={[styles.modalBtn, { backgroundColor: theme.primary }]}
+        >
+          <Text style={styles.modalBtnText}>Save PIN</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const SettingsUpiBody = ({
+  theme,
+  upiIdInput,
+  setUpiIdInput,
+  payeeNameInput,
+  setPayeeNameInput,
+  handleSaveUpiSettings,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+      <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+        Enter your UPI ID and name. WealthFlow will include this payment link and QR code in friendly payment requests and friend PDFs.
+      </Text>
+
+      <View style={{ gap: 12, marginVertical: 14 }}>
+        <View>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
+            YOUR UPI ID (VPA)
+          </Text>
+          <TextInput
+            style={[
+              styles.textInputStyle,
+              { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+            ]}
+            placeholder="e.g. yourname@oksbi or phone@paytm"
+            placeholderTextColor={theme.textMuted}
+            value={upiIdInput}
+            onChangeText={setUpiIdInput}
+            onFocus={scrollToInput}
+            autoCapitalize="none"
+            returnKeyType="next"
+          />
+        </View>
+
+        <View>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
+            PAYEE NAME
+          </Text>
+          <TextInput
+            style={[
+              styles.textInputStyle,
+              { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+            ]}
+            placeholder="e.g. Alex Johnson"
+            placeholderTextColor={theme.textMuted}
+            value={payeeNameInput}
+            onChangeText={setPayeeNameInput}
+            onFocus={scrollToInput}
+            returnKeyType="done"
+          />
+        </View>
+      </View>
+
+      <View style={styles.modalButtons}>
+        <TouchableOpacity
+          onPress={handleSaveUpiSettings}
+          style={[styles.modalBtn, { backgroundColor: theme.primary }]}
+        >
+          <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+          <Text style={styles.modalBtnText}>Save UPI Settings</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
 export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore }) => {
   const {
@@ -50,6 +207,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     removeCloudBackup,
     updateGoogleAutoBackupSettings,
     showCustomAlert,
+    runWithSystemPicker,
     crashReportsEnabled,
     updateCrashReportsSetting,
     notificationSettings = { enabled: true, hour: 20, minute: 0 },
@@ -116,6 +274,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
   }, [
     currencyModalVisible,
     feedbackModalVisible,
+    notifTimeModalVisible,
     csvModalVisible,
     upiModalVisible,
     pinModalVisible,
@@ -135,6 +294,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [chosenLength, setChosenLength] = useState(securitySettings.pin?.length || 4);
   const [newPin, setNewPin] = useState('');
+  const [pinAlert, setPinAlert] = useState(null);
 
   const handleSaveCSVToInternalStorage = async () => {
     try {
@@ -150,16 +310,23 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       if (Platform.OS === 'android') {
         try {
           if (FileSystem.StorageAccessFramework?.requestDirectoryPermissionsAsync) {
-            const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-            if (permissions.granted) {
+            const permissions = await runWithSystemPicker(() =>
+              FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync()
+            );
+            if (permissions?.granted) {
               const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
                 permissions.directoryUri,
                 fileName,
                 'text/csv'
               );
-              await FileSystem.writeAsStringAsync(fileUri, csv, {
-                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-              });
+              const writeSaf = FileSystem.StorageAccessFramework?.writeAsStringAsync
+                ? FileSystem.StorageAccessFramework.writeAsStringAsync(fileUri, csv, {
+                    encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+                  })
+                : FileSystem.writeAsStringAsync(fileUri, csv, {
+                    encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+                  });
+              await writeSaf;
               showCustomAlert(
                 'CSV File Saved!',
                 `Successfully saved "${fileName}" to your selected folder in internal storage.`,
@@ -181,11 +348,13 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
           await FileSystem.writeAsStringAsync(localPath, csv, {
             encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
           });
-          await Sharing.shareAsync(localPath, {
-            mimeType: 'text/csv',
-            dialogTitle: 'Save CSV to Internal Storage',
-            UTI: 'public.comma-separated-values-text',
-          });
+          await runWithSystemPicker(() =>
+            Sharing.shareAsync(localPath, {
+              mimeType: 'text/csv',
+              dialogTitle: 'Save CSV to Internal Storage',
+              UTI: 'public.comma-separated-values-text',
+            })
+          );
           return;
         } catch (shareErr) {
           showCustomAlert('Save Failed', 'Could not save CSV file: ' + shareErr.message, { type: 'danger' });
@@ -203,6 +372,7 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL?.(url);
         return;
       }
 
@@ -212,11 +382,13 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
       });
 
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: 'Save CSV File',
-          UTI: 'public.comma-separated-values-text',
-        });
+        await runWithSystemPicker(() =>
+          Sharing.shareAsync(fileUri, {
+            mimeType: 'text/csv',
+            dialogTitle: 'Save CSV File',
+            UTI: 'public.comma-separated-values-text',
+          })
+        );
       }
     } catch (err) {
       console.warn('Save CSV failed:', err);
@@ -226,12 +398,14 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
 
   const handlePickAndImportCSVFile = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'text/comma-separated-values', 'text/plain', '*/*'],
-        copyToCacheDirectory: true,
-      });
+      const result = await runWithSystemPicker(() =>
+        DocumentPicker.getDocumentAsync({
+          type: ['text/csv', 'text/comma-separated-values', 'text/plain', '*/*'],
+          copyToCacheDirectory: true,
+        })
+      );
 
-      if (result.canceled) return;
+      if (!result || result.canceled) return;
 
       const file = result.assets ? result.assets[0] : result;
       if (!file || !file.uri) {
@@ -433,14 +607,23 @@ Status: Healthy. No fatal crash exceptions recorded.
   };
 
   const handleSavePin = () => {
-    if (newPin.length !== chosenLength || isNaN(Number(newPin))) {
-      alert(`PIN must be exactly ${chosenLength} numeric digits`);
+    if (newPin.length !== chosenLength || !/^\d+$/.test(newPin)) {
+      setPinAlert({
+        title: 'Invalid Passcode',
+        message: `PIN must be exactly ${chosenLength} numeric digits.`,
+        type: 'danger',
+      });
       return;
     }
     updateSecurity({ pin: newPin, pinLength: chosenLength });
     setPinModalVisible(false);
+    setPinAlert(null);
     setNewPin('');
-    alert(`Security PIN set to ${chosenLength} digits successfully!`);
+    showCustomAlert(
+      'Passcode Updated',
+      `Security PIN set to ${chosenLength} digits successfully!`,
+      { type: 'success' }
+    );
   };
 
   return (
@@ -547,10 +730,12 @@ Status: Healthy. No fatal crash exceptions recorded.
               <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}25` }]}>
                 <Ionicons name="shield-checkmark" size={18} color={theme.primaryLight} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Require Passcode to Open', 'Require Passcode to Open')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {securitySettings.enabled ? 'Auto-locks after 1 minute of inactivity' : t('No lock required', 'No lock required')}
+                  {securitySettings.enabled
+                    ? 'Locks automatically when you lock phone or background'
+                    : t('No lock required', 'No lock required')}
                 </Text>
               </View>
             </View>
@@ -612,17 +797,17 @@ Status: Healthy. No fatal crash exceptions recorded.
             </View>
           )}
 
-          {/* Lock App After 1 Min Feature */}
+          {/* Auto-Lock on Phone Lock / Background */}
           {securitySettings.enabled && (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconWrap, { backgroundColor: '#8B5CF620' }]}>
-                  <Ionicons name="timer-outline" size={18} color="#8B5CF6" />
+                  <Ionicons name="lock-closed-outline" size={18} color="#8B5CF6" />
                 </View>
                 <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>Lock App After 1 Min</Text>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>Auto-Lock on Phone Lock / Background</Text>
                   <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Automatically locks after 1 min of inactivity or background
+                    Locks immediately when you lock your phone or leave app (stays unlocked while on screen)
                   </Text>
                 </View>
               </View>
@@ -1036,552 +1221,400 @@ Status: Healthy. No fatal crash exceptions recorded.
       </View>
 
       {/* PIN Setup Modal (4 or 6 digits) */}
-      <Modal visible={pinModalVisible} transparent animationType="fade" onRequestClose={() => setPinModalVisible(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setPinModalVisible(false)}
+      <KeyboardSheetModal
+        visible={pinModalVisible}
+        onClose={() => setPinModalVisible(false)}
+        title="Set Passcode"
+        icon="key-outline"
+        iconColor={theme.primary}
+        overlayChildren={
+          <ConfirmDeleteModal
+            useModal={false}
+            visible={!!pinAlert}
+            onClose={() => setPinAlert(null)}
+            onConfirm={() => setPinAlert(null)}
+            title={pinAlert?.title || 'Notice'}
+            message={pinAlert?.message || ''}
+            type={pinAlert?.type || 'danger'}
+            showCancel={false}
+            confirmText="OK"
+            confirmIcon="alert-circle-outline"
           />
-          <View
-            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onStartShouldSetResponder={() => true}
-          >
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Set Passcode</Text>
-            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Choose 4 or 6 digits for your lock screen PIN
-            </Text>
-
-            {/* Length selector */}
-            <View style={[styles.lengthSelector, { backgroundColor: theme.cardAlt }]}>
-              <TouchableOpacity
-                onPress={() => {
-                  setChosenLength(4);
-                  setNewPin('');
-                }}
-                style={[
-                  styles.lenBtn,
-                  chosenLength === 4 && { backgroundColor: theme.primary },
-                ]}
-              >
-                <Text style={[styles.lenBtnText, { color: chosenLength === 4 ? '#FFF' : theme.textMuted }]}>
-                  4 Digits
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setChosenLength(6);
-                  setNewPin('');
-                }}
-                style={[
-                  styles.lenBtn,
-                  chosenLength === 6 && { backgroundColor: theme.primary },
-                ]}
-              >
-                <Text style={[styles.lenBtnText, { color: chosenLength === 6 ? '#FFF' : theme.textMuted }]}>
-                  6 Digits
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={[
-                styles.pinInput,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              keyboardType="number-pad"
-              secureTextEntry
-              placeholder={'•'.repeat(chosenLength)}
-              placeholderTextColor={theme.textMuted}
-              maxLength={chosenLength}
-              value={newPin}
-              onChangeText={setNewPin}
-              autoFocus
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                onPress={() => setPinModalVisible(false)}
-                style={[styles.modalBtn, { backgroundColor: theme.cardAlt }]}
-              >
-                <Text style={[styles.modalBtnText, { color: theme.text }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSavePin}
-                style={[styles.modalBtn, { backgroundColor: theme.primary }]}
-              >
-                <Text style={styles.modalBtnText}>Save PIN</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        }
+      >
+        <SettingsPinBody
+          theme={theme}
+          chosenLength={chosenLength}
+          setChosenLength={setChosenLength}
+          newPin={newPin}
+          setNewPin={setNewPin}
+          setPinModalVisible={setPinModalVisible}
+          handleSavePin={handleSavePin}
+        />
+      </KeyboardSheetModal>
 
       {/* CSV Export / Import Modal */}
-      <Modal visible={csvModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCsvModalVisible(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setCsvModalVisible(false)}
-          />
+      <KeyboardSheetModal
+        visible={csvModalVisible}
+        onClose={() => setCsvModalVisible(false)}
+        title="CSV File Backup & Restore"
+        icon="document-text-outline"
+        iconColor="#10B981"
+      >
+        <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+          <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+            Export and import your entire financial database as a CSV spreadsheet file to easily back up or transfer between apps.
+          </Text>
 
-          <View
-            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onStartShouldSetResponder={() => true}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>CSV File Backup & Restore</Text>
-              <TouchableOpacity onPress={() => setCsvModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Export and import your entire financial database as a CSV spreadsheet file to easily back up or transfer between apps.
-            </Text>
-
-            {/* Action 1: Save CSV directly to Internal Storage (Downloads) */}
-            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <View style={styles.fileActionHeader}>
-                <View style={[styles.fileIconBadge, { backgroundColor: '#10B98120' }]}>
-                  <Ionicons name="save-outline" size={20} color="#10B981" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Save to Internal Storage (Downloads)</Text>
-                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                    Save directly to phone storage — safe across app uninstalls
-                  </Text>
-                </View>
+          {/* Action 1: Save CSV directly to Internal Storage (Downloads) */}
+          <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+            <View style={styles.fileActionHeader}>
+              <View style={[styles.fileIconBadge, { backgroundColor: '#10B98120' }]}>
+                <Ionicons name="save-outline" size={20} color="#10B981" />
               </View>
-
-              <TouchableOpacity
-                onPress={handleSaveCSVToInternalStorage}
-                style={[styles.fileActionBtn, { backgroundColor: '#10B981' }]}
-              >
-                <Ionicons name="download-outline" size={18} color="#FFF" />
-                <Text style={styles.fileActionBtnText}>Save CSV to Internal Storage</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Action 2: Import CSV File */}
-            <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <View style={styles.fileActionHeader}>
-                <View style={[styles.fileIconBadge, { backgroundColor: '#38BDF820' }]}>
-                  <Ionicons name="folder-open-outline" size={20} color="#38BDF8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.fileActionTitle, { color: theme.text }]}>Import CSV File</Text>
-                  <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                    Select and restore a .csv backup file from your device storage
-                  </Text>
-                </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.fileActionTitle, { color: theme.text }]}>Save to Internal Storage (Downloads)</Text>
+                <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
+                  Save directly to phone storage — safe across app uninstalls
+                </Text>
               </View>
-
-              <TouchableOpacity
-                onPress={handlePickAndImportCSVFile}
-                style={[styles.fileActionBtn, { backgroundColor: '#0284C7' }]}
-              >
-                <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
-                <Text style={styles.fileActionBtnText}>Choose & Import .CSV File</Text>
-              </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              onPress={handleSaveCSVToInternalStorage}
+              style={[styles.fileActionBtn, { backgroundColor: '#10B981' }]}
+            >
+              <Ionicons name="download-outline" size={18} color="#FFF" />
+              <Text style={styles.fileActionBtnText}>Save CSV to Internal Storage</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Action 2: Import CSV File */}
+          <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+            <View style={styles.fileActionHeader}>
+              <View style={[styles.fileIconBadge, { backgroundColor: '#38BDF820' }]}>
+                <Ionicons name="folder-open-outline" size={20} color="#38BDF8" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.fileActionTitle, { color: theme.text }]}>Import CSV File</Text>
+                <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
+                  Select and restore a .csv backup file from your device storage
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={handlePickAndImportCSVFile}
+              style={[styles.fileActionBtn, { backgroundColor: '#0284C7' }]}
+            >
+              <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
+              <Text style={styles.fileActionBtnText}>Choose & Import .CSV File</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </KeyboardSheetModal>
 
       {/* Currency Modal */}
-      <Modal visible={currencyModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCurrencyModalVisible(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setCurrencyModalVisible(false)}
-          />
-          <View
-            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onStartShouldSetResponder={() => true}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Currency</Text>
-              <TouchableOpacity onPress={() => setCurrencyModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
+      <KeyboardSheetModal
+        visible={currencyModalVisible}
+        onClose={() => setCurrencyModalVisible(false)}
+        title="Select Currency"
+        icon="cash-outline"
+        iconColor={theme.primary}
+        maxHeightRatio={0.8}
+      >
+        <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+          {CURRENCIES.map((c) => {
+            const isSelected = currency.code === c.code;
+            return (
+              <TouchableOpacity
+                key={c.code}
+                onPress={() => {
+                  setCurrency(c);
+                  setCurrencyModalVisible(false);
+                }}
+                style={[
+                  styles.currencyRow,
+                  {
+                    backgroundColor: isSelected ? theme.primaryBg : 'transparent',
+                    borderBottomColor: theme.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.currencySym, { color: theme.primaryLight }]}>
+                  {c.symbol}
+                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.currencyCode, { color: theme.text }]}>
+                    {c.code} - {c.name}
+                  </Text>
+                </View>
+                {isSelected && (
+                  <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
+                )}
               </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ maxHeight: 350 }}>
-              {CURRENCIES.map((c) => {
-                const isSelected = currency.code === c.code;
-                return (
-                  <TouchableOpacity
-                    key={c.code}
-                    onPress={() => {
-                      setCurrency(c);
-                      setCurrencyModalVisible(false);
-                    }}
-                    style={[
-                      styles.currencyRow,
-                      {
-                        backgroundColor: isSelected ? theme.primaryBg : 'transparent',
-                        borderBottomColor: theme.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.currencySym, { color: theme.primaryLight }]}>
-                      {c.symbol}
-                    </Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.currencyCode, { color: theme.text }]}>
-                        {c.code} - {c.name}
-                      </Text>
-                    </View>
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
+            );
+          })}
         </View>
-      </Modal>
+      </KeyboardSheetModal>
 
       {/* UPI Settings Modal */}
-      <Modal visible={upiModalVisible} animationType="slide" transparent={true} onRequestClose={() => setUpiModalVisible(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setUpiModalVisible(false)}
-          />
-          <View
-            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onStartShouldSetResponder={() => true}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Configure UPI & Payment ID</Text>
-              <TouchableOpacity onPress={() => setUpiModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Enter your UPI ID and name. WealthFlow will include this payment link and QR code in friendly payment requests.
-            </Text>
-
-            <View style={{ gap: 12, marginVertical: 14 }}>
-              <View>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
-                  YOUR UPI ID (VPA)
-                </Text>
-                <TextInput
-                  style={[
-                    styles.textInputStyle,
-                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
-                  ]}
-                  placeholder="e.g. yourname@oksbi or phone@paytm"
-                  placeholderTextColor={theme.textMuted}
-                  value={upiIdInput}
-                  onChangeText={setUpiIdInput}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted, marginBottom: 4 }}>
-                  PAYEE NAME
-                </Text>
-                <TextInput
-                  style={[
-                    styles.textInputStyle,
-                    { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
-                  ]}
-                  placeholder="e.g. Alex Johnson"
-                  placeholderTextColor={theme.textMuted}
-                  value={payeeNameInput}
-                  onChangeText={setPayeeNameInput}
-                />
-              </View>
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                onPress={handleSaveUpiSettings}
-                style={[styles.modalBtn, { backgroundColor: theme.primary }]}
-              >
-                <Ionicons name="checkmark-circle" size={18} color="#FFF" />
-                <Text style={styles.modalBtnText}>Save UPI Settings</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <KeyboardSheetModal
+        visible={upiModalVisible}
+        onClose={() => setUpiModalVisible(false)}
+        title="Configure UPI & Payment ID"
+        icon="card-outline"
+        iconColor={theme.primary}
+      >
+        <SettingsUpiBody
+          theme={theme}
+          upiIdInput={upiIdInput}
+          setUpiIdInput={setUpiIdInput}
+          payeeNameInput={payeeNameInput}
+          setPayeeNameInput={setPayeeNameInput}
+          handleSaveUpiSettings={handleSaveUpiSettings}
+        />
+      </KeyboardSheetModal>
 
       {/* Custom Notification Time Setter Modal */}
-      <Modal
+      <KeyboardSheetModal
         visible={notifTimeModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setNotifTimeModalVisible(false)}
+        onClose={() => setNotifTimeModalVisible(false)}
+        title="Daily Reminder Time"
+        icon="time"
+        iconColor={theme.primaryLight}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          {/* Backdrop: click outside to close */}
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setNotifTimeModalVisible(false)}
-          />
+        <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+          <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
+            Customize the exact hour and minute you want WealthFlow to send your daily expense logging reminder.
+          </Text>
 
-          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border, padding: 20 }]}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.iconWrap, { backgroundColor: `${theme.primary}20` }]}>
-                  <Ionicons name="time" size={18} color={theme.primaryLight} />
-                </View>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>Daily Reminder Time</Text>
-              </View>
-              <TouchableOpacity onPress={() => setNotifTimeModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-              Customize the exact hour and minute you want WealthFlow to send your daily expense logging reminder.
-            </Text>
-
-            {/* Custom Digital Time Setter Box */}
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.cardAlt,
-              borderRadius: 18,
-              paddingVertical: 14,
-              paddingHorizontal: 12,
-              marginVertical: 10,
-              borderWidth: 1,
-              borderColor: theme.border,
-              gap: 12,
-            }}>
-              {/* Hour Control */}
-              <View style={{ alignItems: 'center' }}>
-                <TouchableOpacity
-                  onPress={() => setSelectedNotifHour((prev) => (prev >= 12 ? 1 : prev + 1))}
-                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginBottom: 4 }}
-                >
-                  <Ionicons name="chevron-up" size={18} color={theme.primaryLight} />
-                </TouchableOpacity>
-                <View style={{
-                  backgroundColor: theme.inputBg,
-                  borderRadius: 12,
-                  paddingVertical: 6,
-                  paddingHorizontal: 14,
-                  minWidth: 54,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                }}>
-                  <Text style={{ fontSize: 26, fontWeight: '900', color: theme.text }}>
-                    {String(selectedNotifHour).padStart(2, '0')}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setSelectedNotifHour((prev) => (prev <= 1 ? 12 : prev - 1))}
-                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginTop: 4 }}
-                >
-                  <Ionicons name="chevron-down" size={18} color={theme.primaryLight} />
-                </TouchableOpacity>
-                <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginTop: 2 }}>HOUR</Text>
-              </View>
-
-              {/* Colon Separator */}
-              <Text style={{ fontSize: 26, fontWeight: '900', color: theme.textMuted, marginBottom: 14 }}>:</Text>
-
-              {/* Minute Control */}
-              <View style={{ alignItems: 'center' }}>
-                <TouchableOpacity
-                  onPress={() => setSelectedNotifMinute((prev) => (prev >= 55 ? 0 : prev + 5))}
-                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginBottom: 4 }}
-                >
-                  <Ionicons name="chevron-up" size={18} color={theme.primaryLight} />
-                </TouchableOpacity>
-                <View style={{
-                  backgroundColor: theme.inputBg,
-                  borderRadius: 12,
-                  paddingVertical: 6,
-                  paddingHorizontal: 14,
-                  minWidth: 54,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                }}>
-                  <Text style={{ fontSize: 26, fontWeight: '900', color: theme.text }}>
-                    {String(selectedNotifMinute).padStart(2, '0')}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setSelectedNotifMinute((prev) => (prev <= 0 ? 55 : prev - 5))}
-                  style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginTop: 4 }}
-                >
-                  <Ionicons name="chevron-down" size={18} color={theme.primaryLight} />
-                </TouchableOpacity>
-                <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginTop: 2 }}>MINUTE</Text>
-              </View>
-
-              {/* AM / PM Toggle */}
-              <View style={{ flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-                <TouchableOpacity
-                  onPress={() => setSelectedNotifAmPm('AM')}
-                  style={{
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    backgroundColor: selectedNotifAmPm === 'AM' ? theme.primary : theme.inputBg,
-                    borderWidth: 1,
-                    borderColor: selectedNotifAmPm === 'AM' ? theme.primary : theme.border,
-                  }}
-                >
-                  <Text style={{
-                    fontSize: 12,
-                    fontWeight: '800',
-                    color: selectedNotifAmPm === 'AM' ? '#FFFFFF' : theme.textMuted,
-                  }}>
-                    AM
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setSelectedNotifAmPm('PM')}
-                  style={{
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    backgroundColor: selectedNotifAmPm === 'PM' ? theme.primary : theme.inputBg,
-                    borderWidth: 1,
-                    borderColor: selectedNotifAmPm === 'PM' ? theme.primary : theme.border,
-                  }}
-                >
-                  <Text style={{
-                    fontSize: 12,
-                    fontWeight: '800',
-                    color: selectedNotifAmPm === 'PM' ? '#FFFFFF' : theme.textMuted,
-                  }}>
-                    PM
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Quick Preset Pills */}
-            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase' }}>
-              Quick Presets
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {[
-                { label: '8:00 PM', h: 8, m: 0, ap: 'PM' },
-                { label: '9:00 PM', h: 9, m: 0, ap: 'PM' },
-                { label: '10:00 PM', h: 10, m: 0, ap: 'PM' },
-                { label: '9:00 AM', h: 9, m: 0, ap: 'AM' },
-                { label: '1:00 PM', h: 1, m: 0, ap: 'PM' },
-                { label: '7:30 PM', h: 7, m: 30, ap: 'PM' },
-              ].map((pst, idx) => {
-                const isSelected = selectedNotifHour === pst.h && selectedNotifMinute === pst.m && selectedNotifAmPm === pst.ap;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => {
-                      setSelectedNotifHour(pst.h);
-                      setSelectedNotifMinute(pst.m);
-                      setSelectedNotifAmPm(pst.ap);
-                    }}
-                    style={{
-                      paddingVertical: 5,
-                      paddingHorizontal: 9,
-                      borderRadius: 8,
-                      backgroundColor: isSelected ? `${theme.primary}25` : theme.cardAlt,
-                      borderWidth: 1,
-                      borderColor: isSelected ? theme.primary : theme.border,
-                    }}
-                  >
-                    <Text style={{
-                      fontSize: 11,
-                      fontWeight: isSelected ? '800' : '600',
-                      color: isSelected ? theme.primaryLight : theme.text,
-                    }}>
-                      {pst.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Live Scheduled Banner */}
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: `${theme.primary}15`,
-              padding: 9,
-              borderRadius: 10,
-              gap: 8,
-              marginBottom: 14,
-            }}>
-              <Ionicons name="notifications" size={16} color={theme.primaryLight} />
-              <Text style={{ fontSize: 12, color: theme.text, flex: 1, fontWeight: '600' }}>
-                Reminder fires daily at <Text style={{ fontWeight: '800', color: theme.primaryLight }}>{String(selectedNotifHour).padStart(2, '0')}:{String(selectedNotifMinute).padStart(2, '0')} {selectedNotifAmPm}</Text>
-              </Text>
-            </View>
-
-            {/* Modal Action Buttons */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+          {/* Custom Digital Time Setter Box */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.cardAlt,
+            borderRadius: 18,
+            paddingVertical: 14,
+            paddingHorizontal: 12,
+            marginVertical: 10,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 12,
+          }}>
+            {/* Hour Control */}
+            <View style={{ alignItems: 'center' }}>
               <TouchableOpacity
-                onPress={() => setNotifTimeModalVisible(false)}
+                onPress={() => setSelectedNotifHour((prev) => (prev >= 12 ? 1 : prev + 1))}
+                style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginBottom: 4 }}
+              >
+                <Ionicons name="chevron-up" size={18} color={theme.primaryLight} />
+              </TouchableOpacity>
+              <View style={{
+                backgroundColor: theme.inputBg,
+                borderRadius: 12,
+                paddingVertical: 6,
+                paddingHorizontal: 14,
+                minWidth: 54,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}>
+                <Text style={{ fontSize: 26, fontWeight: '900', color: theme.text }}>
+                  {String(selectedNotifHour).padStart(2, '0')}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedNotifHour((prev) => (prev <= 1 ? 12 : prev - 1))}
+                style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginTop: 4 }}
+              >
+                <Ionicons name="chevron-down" size={18} color={theme.primaryLight} />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginTop: 2 }}>HOUR</Text>
+            </View>
+
+            {/* Colon Separator */}
+            <Text style={{ fontSize: 26, fontWeight: '900', color: theme.textMuted, marginBottom: 14 }}>:</Text>
+
+            {/* Minute Control */}
+            <View style={{ alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => setSelectedNotifMinute((prev) => (prev >= 55 ? 0 : prev + 5))}
+                style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginBottom: 4 }}
+              >
+                <Ionicons name="chevron-up" size={18} color={theme.primaryLight} />
+              </TouchableOpacity>
+              <View style={{
+                backgroundColor: theme.inputBg,
+                borderRadius: 12,
+                paddingVertical: 6,
+                paddingHorizontal: 14,
+                minWidth: 54,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}>
+                <Text style={{ fontSize: 26, fontWeight: '900', color: theme.text }}>
+                  {String(selectedNotifMinute).padStart(2, '0')}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedNotifMinute((prev) => (prev <= 0 ? 55 : prev - 5))}
+                style={{ padding: 6, backgroundColor: `${theme.primary}18`, borderRadius: 8, marginTop: 4 }}
+              >
+                <Ionicons name="chevron-down" size={18} color={theme.primaryLight} />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 10, color: theme.textMuted, fontWeight: '700', marginTop: 2 }}>MINUTE</Text>
+            </View>
+
+            {/* AM / PM Toggle */}
+            <View style={{ flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+              <TouchableOpacity
+                onPress={() => setSelectedNotifAmPm('AM')}
                 style={{
-                  flex: 1,
-                  paddingVertical: 11,
-                  borderRadius: 12,
-                  alignItems: 'center',
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  backgroundColor: selectedNotifAmPm === 'AM' ? theme.primary : theme.inputBg,
                   borderWidth: 1,
-                  borderColor: theme.border,
-                  backgroundColor: theme.cardAlt,
+                  borderColor: selectedNotifAmPm === 'AM' ? theme.primary : theme.border,
                 }}
               >
-                <Text style={{ color: theme.textMuted, fontWeight: '700', fontSize: 13 }}>Cancel</Text>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '800',
+                  color: selectedNotifAmPm === 'AM' ? '#FFFFFF' : theme.textMuted,
+                }}>
+                  AM
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={async () => {
-                  let h24 = selectedNotifHour % 12;
-                  if (selectedNotifAmPm === 'PM') h24 += 12;
-                  if (updateNotificationSettings) {
-                    await updateNotificationSettings({
-                      hour: h24,
-                      minute: selectedNotifMinute,
-                    });
-                  }
-                  setNotifTimeModalVisible(false);
-                }}
+                onPress={() => setSelectedNotifAmPm('PM')}
                 style={{
-                  flex: 1.5,
-                  paddingVertical: 11,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  backgroundColor: theme.primary,
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  gap: 6,
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  backgroundColor: selectedNotifAmPm === 'PM' ? theme.primary : theme.inputBg,
+                  borderWidth: 1,
+                  borderColor: selectedNotifAmPm === 'PM' ? theme.primary : theme.border,
                 }}
               >
-                <Ionicons name="checkmark" size={16} color="#FFF" />
-                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>Save Reminder Time</Text>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '800',
+                  color: selectedNotifAmPm === 'PM' ? '#FFFFFF' : theme.textMuted,
+                }}>
+                  PM
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Quick Preset Pills */}
+          <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase' }}>
+            Quick Presets
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {[
+              { label: '8:00 PM', h: 8, m: 0, ap: 'PM' },
+              { label: '9:00 PM', h: 9, m: 0, ap: 'PM' },
+              { label: '10:00 PM', h: 10, m: 0, ap: 'PM' },
+              { label: '9:00 AM', h: 9, m: 0, ap: 'AM' },
+              { label: '1:00 PM', h: 1, m: 0, ap: 'PM' },
+              { label: '7:30 PM', h: 7, m: 30, ap: 'PM' },
+            ].map((pst, idx) => {
+              const isSelected = selectedNotifHour === pst.h && selectedNotifMinute === pst.m && selectedNotifAmPm === pst.ap;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => {
+                    setSelectedNotifHour(pst.h);
+                    setSelectedNotifMinute(pst.m);
+                    setSelectedNotifAmPm(pst.ap);
+                  }}
+                  style={{
+                    paddingVertical: 5,
+                    paddingHorizontal: 9,
+                    borderRadius: 8,
+                    backgroundColor: isSelected ? `${theme.primary}25` : theme.cardAlt,
+                    borderWidth: 1,
+                    borderColor: isSelected ? theme.primary : theme.border,
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: isSelected ? '800' : '600',
+                    color: isSelected ? theme.primaryLight : theme.text,
+                  }}>
+                    {pst.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Live Scheduled Banner */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: `${theme.primary}15`,
+            padding: 9,
+            borderRadius: 10,
+            gap: 8,
+            marginBottom: 14,
+          }}>
+            <Ionicons name="notifications" size={16} color={theme.primaryLight} />
+            <Text style={{ fontSize: 12, color: theme.text, flex: 1, fontWeight: '600' }}>
+              Reminder fires daily at <Text style={{ fontWeight: '800', color: theme.primaryLight }}>{String(selectedNotifHour).padStart(2, '0')}:{String(selectedNotifMinute).padStart(2, '0')} {selectedNotifAmPm}</Text>
+            </Text>
+          </View>
+
+          {/* Modal Action Buttons */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => setNotifTimeModalVisible(false)}
+              style={{
+                flex: 1,
+                paddingVertical: 11,
+                borderRadius: 12,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: theme.border,
+                backgroundColor: theme.cardAlt,
+              }}
+            >
+              <Text style={{ color: theme.textMuted, fontWeight: '700', fontSize: 13 }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={async () => {
+                let h24 = selectedNotifHour % 12;
+                if (selectedNotifAmPm === 'PM') h24 += 12;
+                if (updateNotificationSettings) {
+                  await updateNotificationSettings({
+                    hour: h24,
+                    minute: selectedNotifMinute,
+                  });
+                }
+                setNotifTimeModalVisible(false);
+              }}
+              style={{
+                flex: 1.5,
+                paddingVertical: 11,
+                borderRadius: 12,
+                alignItems: 'center',
+                backgroundColor: theme.primary,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <Ionicons name="checkmark" size={16} color="#FFF" />
+              <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>Save Reminder Time</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </Modal>
+      </KeyboardSheetModal>
 
       {/* Developer Feedback Modal */}
       <FeedbackModal

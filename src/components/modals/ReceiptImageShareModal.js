@@ -1,17 +1,12 @@
 import React, { useRef, useState } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Platform,
   ActivityIndicator,
-  Alert,
   Image,
-  Linking,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
@@ -20,7 +15,9 @@ import * as Print from 'expo-print';
 import QRCode from 'qrcode';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
+import { encodeUpiParam, loadPhotoAsBase64DataUri } from '../../utils/pdfGenerator';
 import { getCategoryById } from '../../constants/categories';
+import { KeyboardSheetModal } from '../common/KeyboardSheetModal';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 export const ReceiptImageShareModal = ({
@@ -29,7 +26,16 @@ export const ReceiptImageShareModal = ({
   data,
   type = 'transaction', // 'transaction' | 'friend' | 'account'
 }) => {
-  const { theme, currency, accounts, categories, userUpiSettings, t } = useFinance();
+  const {
+    theme,
+    currency,
+    accounts,
+    userUpiSettings,
+    lendingSummary,
+    lendingRecords,
+    runWithSystemPicker,
+    t,
+  } = useFinance();
   const cardRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -37,24 +43,66 @@ export const ReceiptImageShareModal = ({
 
   if (!visible || !data) return null;
 
-  const targetAmount = Math.abs(parseFloat(data?.amount !== undefined ? data.amount : (data?.balance !== undefined ? data.balance : 0))) || 0;
-  const upiId = userUpiSettings?.upiId || 'wealthflow@upi';
-  const payeeName = userUpiSettings?.payeeName || 'WealthFlow';
-  const txTitle = data?.title || data?.note || data?.name || 'WealthFlow Payment';
-  const upiLink = targetAmount > 0
-    ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${targetAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
-    : `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&cu=INR`;
-  const pdfPayLink = targetAmount > 0
-    ? `https://upi.pe/${upiId}/${targetAmount.toFixed(2)}?pn=${encodeURIComponent(payeeName)}&cu=INR&tn=${encodeURIComponent(txTitle)}`
-    : `https://upi.pe/${upiId}?pn=${encodeURIComponent(payeeName)}&cu=INR`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}&margin=2`;
-
+  const targetAmount =
+    Math.abs(
+      parseFloat(
+        data?.amount !== undefined
+          ? data.amount
+          : data?.balance !== undefined
+          ? data.balance
+          : 0
+      )
+    ) || 0;
+  const upiId = (userUpiSettings?.upiId || 'wealthflow@upi').trim();
+  const payeeName = (userUpiSettings?.payeeName || 'WealthFlow User').trim();
   const friendTxs = data?.transactions || [];
+  const txTitle = data?.title || data?.note || data?.name || 'WealthFlow Payment';
+
+  const normalizedFriendName = (data?.name || data?.friendName || '').trim().toLowerCase();
+  const resolvedFriendPhotoUri =
+    data?.photoUri ||
+    friendTxs.find((tx) => tx?.photoUri)?.photoUri ||
+    (normalizedFriendName
+      ? lendingSummary?.friends?.find(
+          (f) => f?.name && f.name.trim().toLowerCase() === normalizedFriendName && f.photoUri
+        )?.photoUri ||
+        lendingRecords?.find(
+          (r) => r?.friendName && r.friendName.trim().toLowerCase() === normalizedFriendName && r.photoUri
+        )?.photoUri
+      : null) ||
+    null;
+
+  const resolvedFriendEmoji =
+    data?.avatarEmoji ||
+    (normalizedFriendName
+      ? lendingSummary?.friends?.find(
+          (f) => f?.name && f.name.trim().toLowerCase() === normalizedFriendName && f.avatarEmoji
+        )?.avatarEmoji
+      : null) ||
+    '👤';
+
+  // Exact UPI link format:
+  // upi://pay?pa=91423592991%40ybl&cu=INR&pn=Ashwini+Kumar&am=5713.00&tn=Loan+to+Ariz+talat%3A+...
+  let noteText = txTitle;
+  if (type === 'friend' && data?.name) {
+    const latestNote = friendTxs.find((tx) => tx?.note && tx.note.trim())?.note?.trim();
+    const rawNote = data?.note?.trim() || latestNote || 'Pending balance settlement';
+    noteText = rawNote.toLowerCase().startsWith('loan') ? rawNote : `Loan to ${data.name}: ${rawNote}`;
+  }
+  const cleanNote = noteText.slice(0, 80);
+
+  const dynamicUpiUrl =
+    targetAmount > 0
+      ? `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&am=${targetAmount.toFixed(2)}&tn=${encodeUpiParam(cleanNote)}`
+      : `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&tn=${encodeUpiParam(cleanNote)}`;
+
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(dynamicUpiUrl)}&margin=2`;
+
   const totalLentAmount = friendTxs.length > 0
-    ? friendTxs.filter((t) => t.type === 'lent').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+    ? friendTxs.filter((tx) => tx.type === 'lent').reduce((s, tx) => s + (parseFloat(tx.amount) || 0), 0)
     : (parseFloat(data?.totalLent) || 0);
   const totalBorrowedAmount = friendTxs.length > 0
-    ? friendTxs.filter((t) => t.type === 'borrowed').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+    ? friendTxs.filter((tx) => tx.type === 'borrowed').reduce((s, tx) => s + (parseFloat(tx.amount) || 0), 0)
     : (parseFloat(data?.totalBorrowed) || 0);
 
   const handleShareImage = async () => {
@@ -69,11 +117,13 @@ export const ReceiptImageShareModal = ({
         });
 
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, {
-            mimeType: 'image/png',
-            dialogTitle: 'Share Receipt Image to WhatsApp',
-            UTI: 'public.png',
-          });
+          await runWithSystemPicker(() =>
+            Sharing.shareAsync(uri, {
+              mimeType: 'image/png',
+              dialogTitle: 'Share Receipt Image to WhatsApp',
+              UTI: 'public.png',
+            })
+          );
         } else {
           setModalAlert({ title: 'Sharing Notice', message: 'Sharing is not available on this device', type: 'info' });
         }
@@ -90,26 +140,16 @@ export const ReceiptImageShareModal = ({
     try {
       setIsGeneratingPdf(true);
 
-      // Convert friend photo to base64 if present so it renders reliably in Android WebView Print
+      // Convert friend photo to base64 data URI so Android WebView Print & PDF viewers always render it
       let friendPhotoBase64 = null;
-      if (type === 'friend' && data.photoUri) {
-        try {
-          const rawBase64 = await FileSystem.readAsStringAsync(data.photoUri, {
-            encoding: FileSystem.EncodingType?.Base64 || 'base64',
-          });
-          if (rawBase64) {
-            const isPng = data.photoUri.toLowerCase().endsWith('.png');
-            friendPhotoBase64 = `data:${isPng ? 'image/png' : 'image/jpeg'};base64,${rawBase64}`;
-          }
-        } catch (photoErr) {
-          console.warn('Friend photo base64 conversion failed:', photoErr);
-        }
+      if (type === 'friend' && resolvedFriendPhotoUri) {
+        friendPhotoBase64 = await loadPhotoAsBase64DataUri(resolvedFriendPhotoUri);
       }
 
-      // Generate vector SVG QR code offline (pure JS in memory, no remote HTTP request)
+      // Generate vector SVG QR code offline encoding the exact dynamic UPI link
       let qrSvg = '';
       try {
-        qrSvg = await QRCode.toString(upiLink, {
+        qrSvg = await QRCode.toString(dynamicUpiUrl, {
           type: 'svg',
           width: 115,
           margin: 1,
@@ -270,7 +310,7 @@ export const ReceiptImageShareModal = ({
                   type === 'friend'
                     ? friendPhotoBase64
                       ? `<img src="${friendPhotoBase64}" style="width: 52px; height: 52px; border-radius: 26px; object-fit: cover; border: 2px solid #3B82F6;" />`
-                      : `<div style="width: 52px; height: 52px; border-radius: 26px; background-color: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid #CBD5E1;">${data.avatarEmoji || '👤'}</div>`
+                      : `<div style="width: 52px; height: 52px; border-radius: 26px; background-color: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid #CBD5E1;">${resolvedFriendEmoji}</div>`
                     : ''
                 }
                 <div>
@@ -306,14 +346,14 @@ export const ReceiptImageShareModal = ({
                 <div style="font-size: 12px; color: #475569; margin-top: 4px;"><strong>UPI ID:</strong> <span style="font-family: monospace; color: #0F172A;">${upiId}</span></div>
                 <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Payee:</strong> ${payeeName}</div>
                 <div style="margin-top: 12px; margin-bottom: 8px;">
-                  <a href="${pdfPayLink}" target="_blank" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
+                  <a href="${dynamicUpiUrl}" style="display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; cursor: pointer;">
                     ⚡ PAY NOW (${currency.symbol}${targetAmount.toFixed(2)}) &rarr;
                   </a>
                 </div>
-                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap 'PAY NOW' to open the secure UPI payment page, or scan the QR code directly with Google Pay, PhonePe, or Paytm.</div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 6px;">Tap the blue 'PAY NOW' button to launch your UPI app with amount & details pre-filled, or scan the QR code.</div>
               </div>
               <div style="text-align: center;">
-                <a href="${pdfPayLink}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <a href="${dynamicUpiUrl}" style="text-decoration: none; display: inline-block;">
                   <div style="width: 115px; height: 115px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #CBD5E1; padding: 4px; background: #FFFFFF; overflow: hidden;">
                     ${qrSvg || `<img src="${qrCodeUrl}" width="115" height="115" onerror="this.style.display='none'" alt="UPI QR" />`}
                   </div>
@@ -331,17 +371,30 @@ export const ReceiptImageShareModal = ({
         </html>
       `;
 
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.write(html);
+          w.document.close();
+          w.focus();
+          setTimeout(() => w.print(), 350);
+        }
+        return;
+      }
+
       const printPromise = Print.printToFileAsync({ html });
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('PDF generation timed out. Please try again.')), 10000)
       );
       const { uri } = await Promise.race([printPromise, timeoutPromise]);
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Share ${title} (A4 PDF)`,
-          UTI: 'com.adobe.pdf',
-        });
+        await runWithSystemPicker(() =>
+          Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Share ${title} (A4 PDF)`,
+            UTI: 'com.adobe.pdf',
+          })
+        );
       } else {
         setModalAlert({ title: 'Sharing Notice', message: 'Sharing is not available on this device', type: 'info' });
       }
@@ -354,38 +407,28 @@ export const ReceiptImageShareModal = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
+    <KeyboardSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={t('share_as_image', 'Share as WhatsApp Image')}
+      icon="logo-whatsapp"
+      iconColor="#25D366"
+      contentContainerStyle={styles.scrollContent}
+      overlayChildren={
+        <ConfirmDeleteModal
+          useModal={false}
+          visible={!!modalAlert}
+          onClose={() => setModalAlert(null)}
+          onConfirm={() => setModalAlert(null)}
+          title={modalAlert?.title || 'Notice'}
+          message={modalAlert?.message || ''}
+          type={modalAlert?.type || 'info'}
+          showCancel={false}
+          confirmText="OK"
+          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
         />
-        <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
-          <View style={styles.dragPillWrap}>
-            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-          </View>
-
-          {/* Header */}
-          <View style={styles.dialogHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={[styles.shareIconBadge, { backgroundColor: '#25D36625' }]}>
-                <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-              </View>
-              <Text style={[styles.dialogTitle, { color: theme.text }]}>
-                {t('share_as_image', 'Share as WhatsApp Image')}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-          >
+      }
+    >
             {/* The Actual Rendered Card that gets captured into a PNG image */}
             <View
               ref={cardRef}
@@ -501,10 +544,10 @@ export const ReceiptImageShareModal = ({
                 <View style={styles.receiptBody}>
                   <View style={styles.friendHeaderRow}>
                     <View style={styles.friendAvatarWrap}>
-                      {data.photoUri ? (
-                        <Image source={{ uri: data.photoUri }} style={styles.friendAvatarImg} />
+                      {resolvedFriendPhotoUri ? (
+                        <Image source={{ uri: resolvedFriendPhotoUri }} style={styles.friendAvatarImg} />
                       ) : (
-                        <Text style={styles.friendAvatarEmojiText}>{data.avatarEmoji || '👤'}</Text>
+                        <Text style={styles.friendAvatarEmojiText}>{resolvedFriendEmoji}</Text>
                       )}
                     </View>
                     <View style={styles.friendInfoCol}>
@@ -792,24 +835,7 @@ export const ReceiptImageShareModal = ({
                 )}
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </View>
-
-        {/* Photo 2 Styled Dialog for In-Modal Alerts */}
-        <ConfirmDeleteModal
-          useModal={false}
-          visible={!!modalAlert}
-          onClose={() => setModalAlert(null)}
-          onConfirm={() => setModalAlert(null)}
-          title={modalAlert?.title || 'Notice'}
-          message={modalAlert?.message || ''}
-          type={modalAlert?.type || 'info'}
-          showCancel={false}
-          confirmText="OK"
-          confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : modalAlert?.type === 'danger' ? 'alert-circle-outline' : 'information-circle-outline'}
-        />
-      </View>
-    </Modal>
+    </KeyboardSheetModal>
   );
 };
 

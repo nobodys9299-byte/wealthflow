@@ -5,11 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal,
   TextInput,
   SafeAreaView,
   BackHandler,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -18,8 +16,76 @@ import { CashflowBarChart } from '../components/charts/CashflowBarChart';
 import { TransactionItem } from '../components/TransactionItem';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 import { CalendarDatePickerModal } from '../components/common/CalendarDatePickerModal';
+import { KeyboardSheetModal, useSheetScroll } from '../components/common/KeyboardSheetModal';
 import { formatCurrency, formatDateDisplay } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
+
+const AnalyticsDetailBody = ({
+  theme,
+  selectedDetail,
+  detailSearch,
+  setDetailSearch,
+  filteredDetailTransactions,
+  onEditTransaction,
+  deleteTransaction,
+  setSelectedReceipt,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={{ paddingTop: 4, paddingBottom: 16 }}>
+      {/* Search Bar inside Detail Screen */}
+      <View style={[styles.detailSearchRow, { backgroundColor: theme.cardAlt, borderColor: theme.border, marginHorizontal: 0 }]}>
+        <Ionicons name="search-outline" size={16} color={theme.textMuted} />
+        <TextInput
+          style={[styles.detailSearchInput, { color: theme.text }]}
+          placeholder={`Search ${selectedDetail?.title} transactions...`}
+          placeholderTextColor={theme.textMuted}
+          value={detailSearch}
+          onChangeText={setDetailSearch}
+          onFocus={scrollToInput}
+        />
+        {detailSearch.length > 0 && (
+          <TouchableOpacity onPress={() => setDetailSearch('')}>
+            <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Scrollable List of Transactions */}
+      <View style={{ paddingTop: 6, paddingBottom: 16 }}>
+        {filteredDetailTransactions.length === 0 ? (
+          <View style={[styles.emptyBox, { borderColor: theme.border }]}>
+            <Ionicons name="receipt-outline" size={36} color={theme.textMuted} />
+            <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 8 }}>
+              No transactions found for {selectedDetail?.title}.
+            </Text>
+          </View>
+        ) : (
+          filteredDetailTransactions.map((item) => (
+            <View key={`detail_item_${item.id}`} style={{ marginBottom: 8 }}>
+              <TransactionItem
+                transaction={item}
+                onPress={() => onEditTransaction && onEditTransaction(item)}
+                onEdit={onEditTransaction}
+                onDelete={deleteTransaction}
+              />
+              <TouchableOpacity
+                onPress={() => setSelectedReceipt(item)}
+                style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
+              >
+                <Ionicons name="image-outline" size={13} color="#25D366" />
+                <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
+                  Share Single Receipt Image
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </View>
+    </View>
+  );
+};
 
 const ANALYSIS_VIEWS = [
   {
@@ -948,150 +1014,62 @@ export const AnalyticsScreen = ({ onEditTransaction, onOpenAddTransaction, onNav
       />
 
       {/* ======================================================== */}
-      {/* DEDICATED NEW SCREEN MODAL FOR TAPPED CARD / HEAD        */}
-      {/* Opens in 75% height with Expand to Full Screen option   */}
+      {/* DEDICATED UNIFORM SHEET MODAL FOR TAPPED CARD / HEAD     */}
       {/* ======================================================== */}
-      <Modal
+      <KeyboardSheetModal
         visible={!!selectedDetail && !shareImageModalData}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => {
+        onClose={() => {
           setSelectedDetail(null);
           setDetailSearch('');
         }}
-      >
-        <View style={[styles.detailModalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={() => {
-            setSelectedDetail(null);
-            setDetailSearch('');
-          }}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
-          <View
-            style={[
-              styles.detailModalCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                height: '85%',
-                maxHeight: '92%',
-              },
-            ]}
-          >
-            {/* Top Drag / Grab Bar Pill */}
-            <View style={styles.dragPillWrap}>
-              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-            </View>
-
-            {/* Top Detail Header: Category/Account Info on Left, Controls & Cross Sign on Right */}
-            <View style={[styles.detailHeader, { borderBottomColor: theme.border }]}>
-              {/* Left Side: Title, Emoji, and Subtitle */}
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 18 }}>{selectedDetail?.emoji || '📋'}</Text>
-                  <Text style={[styles.detailTitle, { color: theme.text }]} numberOfLines={1}>
-                    {selectedDetail?.title}
-                  </Text>
-                </View>
-                <Text style={[styles.detailSub, { color: theme.textMuted }]} numberOfLines={1}>
-                  {selectedDetail?.type === 'account'
-                    ? `${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} Balance • ${selectedDetail?.transactions?.length || 0} Records`
-                    : `${selectedDetail?.categoryType === 'income' ? '+' : '-'}${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} • ${selectedDetail?.transactions?.length || 0} Records`}
-                </Text>
-              </View>
-
-              {/* Right Side: Share and Close Cross Button */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShareImageModalData({
-                      type: selectedDetail.type,
-                      data: {
-                        ...selectedDetail.data,
-                        name: selectedDetail.title,
-                        emoji: selectedDetail.emoji,
-                        currentBalance: selectedDetail.amount,
-                        totalAmount: selectedDetail.amount,
-                        type: selectedDetail.categoryType || selectedDetail.data?.type || 'account',
-                        transactions: selectedDetail.transactions || [],
-                      },
-                    });
-                  }}
-                  style={styles.shareAllImageBtn}
-                >
-                  <Ionicons name="share-social-outline" size={14} color="#FFF" />
-                  <Text style={styles.shareAllImageBtnText}>Share</Text>
-                </TouchableOpacity>
-
-                {/* Cross Close Sign Added to Right Side */}
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedDetail(null);
-                    setDetailSearch('');
-                  }}
-                  style={[styles.backIconBtn, { backgroundColor: theme.cardAlt }]}
-                  accessibilityLabel="Close Ledger"
-                >
-                  <Ionicons name="close" size={20} color={theme.text} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Search Bar inside Detail Screen */}
-            <View style={[styles.detailSearchRow, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
-              <Ionicons name="search-outline" size={16} color={theme.textMuted} />
-              <TextInput
-                style={[styles.detailSearchInput, { color: theme.text }]}
-                placeholder={`Search ${selectedDetail?.title} transactions...`}
-                placeholderTextColor={theme.textMuted}
-                value={detailSearch}
-                onChangeText={setDetailSearch}
-              />
-              {detailSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setDetailSearch('')}>
-                  <Ionicons name="close-circle" size={16} color={theme.textMuted} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Scrollable List of Transactions */}
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 30 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {filteredDetailTransactions.length === 0 ? (
-                <View style={[styles.emptyBox, { borderColor: theme.border }]}>
-                  <Ionicons name="receipt-outline" size={36} color={theme.textMuted} />
-                  <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 8 }}>
-                    No transactions found for {selectedDetail?.title}.
-                  </Text>
-                </View>
-              ) : (
-                filteredDetailTransactions.map((item) => (
-                  <View key={`detail_item_${item.id}`} style={{ marginBottom: 8 }}>
-                    <TransactionItem
-                      transaction={item}
-                      onPress={() => onEditTransaction && onEditTransaction(item)}
-                      onEdit={onEditTransaction}
-                      onDelete={deleteTransaction}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setSelectedReceipt(item)}
-                      style={[styles.quickShareBtn, { backgroundColor: theme.cardAlt }]}
-                    >
-                      <Ionicons name="image-outline" size={13} color="#25D366" />
-                      <Text style={[styles.quickShareText, { color: theme.textMuted }]}>
-                        Share Single Receipt Image
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </ScrollView>
+        title={selectedDetail?.title || 'Details'}
+        subtitle={
+          selectedDetail?.type === 'account'
+            ? `${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} Balance • ${selectedDetail?.transactions?.length || 0} Records`
+            : `${selectedDetail?.categoryType === 'income' ? '+' : '-'}${formatCurrency(selectedDetail?.amount || 0, currency.symbol)} • ${selectedDetail?.transactions?.length || 0} Records`
+        }
+        headerLeft={
+          <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: `${theme.primary}20`, alignItems: 'center', justifyContent: 'center', marginRight: 6 }}>
+            <Text style={{ fontSize: 18 }}>{selectedDetail?.emoji || '📋'}</Text>
           </View>
-        </View>
-      </Modal>
+        }
+        headerRightExtra={
+          selectedDetail ? (
+            <TouchableOpacity
+              onPress={() => {
+                setShareImageModalData({
+                  type: selectedDetail.type,
+                  data: {
+                    ...selectedDetail.data,
+                    name: selectedDetail.title,
+                    emoji: selectedDetail.emoji,
+                    currentBalance: selectedDetail.amount,
+                    totalAmount: selectedDetail.amount,
+                    type: selectedDetail.categoryType || selectedDetail.data?.type || 'account',
+                    transactions: selectedDetail.transactions || [],
+                  },
+                });
+              }}
+              style={[styles.shareAllImageBtn, { marginRight: 6 }]}
+            >
+              <Ionicons name="share-social-outline" size={14} color="#FFF" />
+              <Text style={styles.shareAllImageBtnText}>Share</Text>
+            </TouchableOpacity>
+          ) : null
+        }
+        maxHeightRatio={0.92}
+      >
+        <AnalyticsDetailBody
+          theme={theme}
+          selectedDetail={selectedDetail}
+          detailSearch={detailSearch}
+          setDetailSearch={setDetailSearch}
+          filteredDetailTransactions={filteredDetailTransactions}
+          onEditTransaction={onEditTransaction}
+          deleteTransaction={deleteTransaction}
+          setSelectedReceipt={setSelectedReceipt}
+        />
+      </KeyboardSheetModal>
 
       {/* WhatsApp Full Image Statement Modal (Entire Account or Entire Category at once) */}
       <ReceiptImageShareModal

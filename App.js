@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  Animated,
+  Easing,
   SafeAreaView,
   View,
   Text,
@@ -15,6 +17,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { FinanceProvider, useFinance } from './src/context/FinanceContext';
+import { UI_TOKENS } from './src/constants/theme';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { TransactionsScreen } from './src/screens/TransactionsScreen';
@@ -39,6 +42,7 @@ function MainApp() {
     securitySettings,
     isAppUnlocked,
     setIsAppUnlocked,
+    isSystemInteractionActive,
     isLoading,
     confirmDialog,
     closeConfirmDialog,
@@ -47,6 +51,9 @@ function MainApp() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const tabAnimOpacity = useRef(new Animated.Value(1)).current;
+  const tabAnimTranslate = useRef(new Animated.Value(0)).current;
+  const drawerAnimX = useRef(new Animated.Value(-320)).current;
 
   // Modals state
   const [txModalVisible, setTxModalVisible] = useState(false);
@@ -66,47 +73,53 @@ function MainApp() {
   const [donationModalVisible, setDonationModalVisible] = useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
-  // Auto-lock inactivity tracker (1 minute = 60,000 ms)
-  const lastActiveRef = useRef(Date.now());
-  const backgroundTimeRef = useRef(null);
-
-  // Periodic inactivity check (every 5 seconds)
+  // Smooth uniform screen transition when switching tabs
   useEffect(() => {
-    const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
-    if (!isAutoLockEnabled || !isAppUnlocked) return;
+    tabAnimOpacity.setValue(0.88);
+    tabAnimTranslate.setValue(8);
+    Animated.parallel([
+      Animated.timing(tabAnimOpacity, {
+        toValue: 1,
+        duration: UI_TOKENS.animation.tabFadeMs,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(tabAnimTranslate, {
+        toValue: 0,
+        duration: UI_TOKENS.animation.tabFadeMs,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [activeTab, tabAnimOpacity, tabAnimTranslate]);
 
-    const interval = setInterval(() => {
-      const now = Date.now();
-      if (now - lastActiveRef.current >= 60000) {
-        setIsAppUnlocked(false);
-      }
-    }, 5000);
+  // Smooth slide-in animation for navigation drawer
+  useEffect(() => {
+    if (drawerOpen) {
+      drawerAnimX.setValue(-300);
+      Animated.timing(drawerAnimX, {
+        toValue: 0,
+        duration: UI_TOKENS.animation.sheetSlideMs,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [drawerOpen, drawerAnimX]);
 
-    return () => clearInterval(interval);
-  }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked]);
-
-  // AppState change listener: locks if app backgrounded for >= 1 minute or idle
+  // Lock immediately when phone locks or app enters background (never locks while active on screen)
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
-        backgroundTimeRef.current = Date.now();
-      } else if (nextAppState === 'active') {
-        const now = Date.now();
-        const backgroundElapsed = backgroundTimeRef.current ? now - backgroundTimeRef.current : 0;
-        const idleElapsed = now - lastActiveRef.current;
-        const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
-
-        if (isAutoLockEnabled && isAppUnlocked && (backgroundElapsed >= 60000 || idleElapsed >= 60000)) {
+      const isAutoLockEnabled = securitySettings.enabled && securitySettings.autoLock1Min !== false;
+      if (nextAppState === 'background') {
+        if (isAutoLockEnabled && isAppUnlocked && !isSystemInteractionActive()) {
           setIsAppUnlocked(false);
         }
-        lastActiveRef.current = now;
-        backgroundTimeRef.current = null;
       }
     };
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
-  }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked]);
+  }, [securitySettings.enabled, securitySettings.autoLock1Min, isAppUnlocked, isSystemInteractionActive, setIsAppUnlocked]);
 
   // Handle Android Back Button so user returns to Home tab instead of closing app
   useEffect(() => {
@@ -189,6 +202,7 @@ function MainApp() {
         <StatusBar style={theme.isDark ? 'light' : 'dark'} />
         <LockScreen
           correctPin={securitySettings.pin || '1234'}
+          biometricsEnabled={securitySettings.biometrics !== false}
           onUnlock={() => setIsAppUnlocked(true)}
         />
       </SafeAreaView>
@@ -334,17 +348,21 @@ function MainApp() {
   ];
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.bg }]}
-      onStartShouldSetResponderCapture={() => {
-        lastActiveRef.current = Date.now();
-        return false;
-      }}
-    >
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
 
-      {/* Screen Body */}
-      <View style={styles.screenWrapper}>{renderActiveScreen()}</View>
+      {/* Screen Body with uniform animated transitions */}
+      <Animated.View
+        style={[
+          styles.screenWrapper,
+          {
+            opacity: tabAnimOpacity,
+            transform: [{ translateY: tabAnimTranslate }],
+          },
+        ]}
+      >
+        {renderActiveScreen()}
+      </Animated.View>
 
       {/* Modern Floating Bottom Navigation Bar */}
       <View style={[styles.bottomBarContainer, { backgroundColor: theme.bg }]}>
@@ -453,11 +471,21 @@ function MainApp() {
       <Modal
         visible={drawerOpen}
         transparent
+        statusBarTranslucent
         animationType="fade"
         onRequestClose={() => setDrawerOpen(false)}
       >
         <View style={styles.drawerBackdrop}>
-          <View style={[styles.drawerContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Animated.View
+            style={[
+              styles.drawerContent,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                transform: [{ translateX: drawerAnimX }],
+              },
+            ]}
+          >
             {/* Drawer Header */}
             <View style={[styles.drawerHeader, { borderBottomColor: theme.border }]}>
               <View style={[styles.drawerBrandIcon, { backgroundColor: `${theme.primary}25` }]}>
@@ -622,7 +650,7 @@ function MainApp() {
                 WealthFlow v2.2.0 • {t('offline_ready', 'Offline Ready')}
               </Text>
             </View>
-          </View>
+          </Animated.View>
 
           {/* Tap outside the drawer to dismiss */}
           <TouchableOpacity

@@ -19,7 +19,7 @@ import { generateTransactionPDF } from '../utils/pdfGenerator';
 import { ReceiptImageShareModal } from '../components/modals/ReceiptImageShareModal';
 
 export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, onNavigateTab, onBack, onOpenMore }) => {
-  const { theme, currency, transactions, accounts, deleteTransaction, t } = useFinance();
+  const { theme, currency, transactions, accounts, deleteTransaction, runWithSystemPicker, t } = useFinance();
 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -80,7 +80,7 @@ export const TransactionsScreen = ({ onEditTransaction, onOpenAddTransaction, on
   const handleShareReceipt = async (transaction) => {
     const cat = getCategoryById(transaction.categoryId, transaction.type);
     const acc = accounts.find((a) => a.id === transaction.accountId);
-    await generateTransactionPDF(transaction, cat, acc, currency.symbol);
+    await generateTransactionPDF(transaction, cat, acc, currency.symbol, { runWithSystemPicker });
   };
 
   return (

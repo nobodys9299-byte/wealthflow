@@ -52,9 +52,11 @@ export const ConfirmDeleteModal = ({
 
   const modalContent = (
     <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={StyleSheet.absoluteFillObject} />
-      </TouchableWithoutFeedback>
+      <TouchableOpacity
+        style={StyleSheet.absoluteFillObject}
+        activeOpacity={1}
+        onPress={onClose}
+      />
       <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {/* Icon Badge */}
         <View style={[styles.iconBadge, { backgroundColor: badgeBg }]}>
@@ -111,7 +113,7 @@ export const ConfirmDeleteModal = ({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       {modalContent}
     </Modal>
   );

@@ -70,9 +70,15 @@ export const CloudBackupService = {
               defaultFileName,
               actualMime
             );
-            await FileSystem.writeAsStringAsync(createdUri, fileData, {
-              encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-            });
+            if (FileSystem.StorageAccessFramework?.writeAsStringAsync) {
+              await FileSystem.StorageAccessFramework.writeAsStringAsync(createdUri, fileData, {
+                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+              });
+            } else {
+              await FileSystem.writeAsStringAsync(createdUri, fileData, {
+                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+              });
+            }
             return {
               success: true,
               fileName: defaultFileName,

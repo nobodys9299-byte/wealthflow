@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance } from '../../context/FinanceContext';
@@ -17,6 +13,270 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categorie
 import { formatDateDisplay } from '../../utils/formatters';
 import { CalendarDatePickerModal } from '../common/CalendarDatePickerModal';
 import { CategoryManagerModal } from './CategoryManagerModal';
+import { KeyboardSheetModal, useSheetScroll } from '../common/KeyboardSheetModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+
+const TransactionFormBody = ({
+  type,
+  handleTypeChange,
+  amount,
+  setAmount,
+  title,
+  setTitle,
+  categoryId,
+  setCategoryId,
+  categoryList,
+  accountId,
+  setAccountId,
+  accounts,
+  date,
+  note,
+  setNote,
+  initialData,
+  setShowDatePicker,
+  setShowCategoryManager,
+  handleSave,
+  theme,
+  currency,
+  t,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={styles.scrollBody}>
+      {/* Type Selector Tabs */}
+      <View style={[styles.typeTabs, { backgroundColor: theme.cardAlt }]}>
+        <TouchableOpacity
+          onPress={() => handleTypeChange('expense')}
+          style={[
+            styles.typeTab,
+            type === 'expense' && { backgroundColor: theme.danger },
+          ]}
+        >
+          <Ionicons
+            name="arrow-up-circle-outline"
+            size={16}
+            color={type === 'expense' ? '#FFF' : theme.textMuted}
+          />
+          <Text
+            style={[
+              styles.typeTabText,
+              { color: type === 'expense' ? '#FFF' : theme.textMuted },
+            ]}
+          >
+            {t('expense', 'Expense')}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => handleTypeChange('income')}
+          style={[
+            styles.typeTab,
+            type === 'income' && { backgroundColor: theme.success },
+          ]}
+        >
+          <Ionicons
+            name="arrow-down-circle-outline"
+            size={16}
+            color={type === 'income' ? '#FFF' : theme.textMuted}
+          />
+          <Text
+            style={[
+              styles.typeTabText,
+              { color: type === 'income' ? '#FFF' : theme.textMuted },
+            ]}
+          >
+            {t('income', 'Income')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Amount Input */}
+      <View style={styles.amountContainer}>
+        <Text style={[styles.currencyPrefix, { color: theme.primaryLight }]}>
+          {currency.symbol}
+        </Text>
+        <TextInput
+          style={[styles.amountInput, { color: theme.text }]}
+          keyboardType="decimal-pad"
+          placeholder="0.00"
+          placeholderTextColor={theme.textMuted}
+          value={amount}
+          onChangeText={setAmount}
+          onFocus={scrollToInput}
+          returnKeyType="next"
+        />
+      </View>
+
+      {/* Title / Description */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Title / Merchant</Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: theme.inputBg,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          placeholder="e.g. Grocery Store, Coffee, Salary"
+          placeholderTextColor={theme.textMuted}
+          value={title}
+          onChangeText={setTitle}
+          onFocus={scrollToInput}
+          returnKeyType="next"
+        />
+      </View>
+
+      {/* Category Selector with Custom Category Manager */}
+      <View style={styles.inputGroup}>
+        <View style={styles.labelHeaderRow}>
+          <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Category</Text>
+          <TouchableOpacity
+            onPress={() => setShowCategoryManager(true)}
+            style={[styles.manageCatBtn, { backgroundColor: theme.cardAlt }]}
+          >
+            <Ionicons name="options-outline" size={13} color={theme.primaryLight} />
+            <Text style={[styles.manageCatText, { color: theme.primaryLight }]}>
+              Manage / Add Category
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.categoryGrid}>
+          {categoryList.map((cat) => {
+            const isSelected = categoryId === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                onPress={() => setCategoryId(cat.id)}
+                style={[
+                  styles.categoryItem,
+                  {
+                    backgroundColor: isSelected ? `${cat.color}25` : theme.inputBg,
+                    borderColor: isSelected ? cat.color : theme.border,
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 18, marginBottom: 2 }}>{cat.emoji || '🏷️'}</Text>
+                <Text
+                  style={[
+                    styles.categoryLabel,
+                    {
+                      color: isSelected ? cat.color : theme.text,
+                      fontWeight: isSelected ? '700' : '500',
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {cat.name.split(' ')[0]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Account Selector */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Payment Account</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.accountRow}>
+          {accounts.map((acc) => {
+            const isSelected = accountId === acc.id;
+            return (
+              <TouchableOpacity
+                key={acc.id}
+                onPress={() => setAccountId(acc.id)}
+                style={[
+                  styles.accountChip,
+                  {
+                    backgroundColor: isSelected ? theme.primary : theme.inputBg,
+                    borderColor: isSelected ? theme.primaryLight : theme.border,
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 14, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
+                <Text
+                  style={[
+                    styles.accountChipText,
+                    { color: isSelected ? '#FFF' : theme.text },
+                  ]}
+                >
+                  {acc.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Interactive Calendar Date Picker */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Date (DD/MM/YY)</Text>
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          style={[
+            styles.dateTrigger,
+            {
+              backgroundColor: theme.inputBg,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <View style={styles.dateLeft}>
+            <Ionicons name="calendar-outline" size={20} color={theme.primaryLight} />
+            <Text style={[styles.dateText, { color: theme.text }]}>
+              {formatDateDisplay(date)}
+            </Text>
+          </View>
+          <View style={[styles.chooseDatePill, { backgroundColor: `${theme.primary}25` }]}>
+            <Text style={[styles.chooseDatePillText, { color: theme.primaryLight }]}>
+              Choose Date
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={theme.primaryLight} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Note Optional */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Note (Optional)</Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: theme.inputBg,
+              color: theme.text,
+              borderColor: theme.border,
+              minHeight: 50,
+            },
+          ]}
+          placeholder="Add tags or notes..."
+          placeholderTextColor={theme.textMuted}
+          value={note}
+          onChangeText={setNote}
+          onFocus={scrollToInput}
+          multiline
+        />
+      </View>
+
+      <TouchableOpacity
+        onPress={handleSave}
+        style={[
+          styles.saveButton,
+          { backgroundColor: type === 'expense' ? theme.danger : theme.success },
+        ]}
+      >
+        <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+        <Text style={styles.saveButtonText}>
+          {initialData
+            ? `${t('save', 'Save')} (${t('edit', 'Update')})`
+            : `${t('save', 'Save')} ${t('transactions', 'Transaction')}`}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 export const TransactionModal = ({ visible, onClose, initialData = null }) => {
   const { theme, currency, accounts, categories, addTransaction, editTransaction, t } = useFinance();
@@ -32,6 +292,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
   // Modals
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [modalAlert, setModalAlert] = useState(null);
 
   useEffect(() => {
     if (initialData) {
@@ -51,6 +312,7 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
       setDate(new Date().toISOString().split('T')[0]);
       setNote('');
     }
+    setModalAlert(null);
   }, [initialData, visible, accounts]);
 
   const handleTypeChange = (newType) => {
@@ -65,11 +327,19 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
   const handleSave = () => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert('Please enter a valid amount');
+      setModalAlert({
+        title: t('invalid_amount', 'Invalid Amount'),
+        message: 'Please enter a valid amount.',
+        type: 'danger',
+      });
       return;
     }
     if (!title.trim()) {
-      alert('Please enter a title or merchant name');
+      setModalAlert({
+        title: t('missing_title', 'Missing Title'),
+        message: 'Please enter a title or merchant name.',
+        type: 'danger',
+      });
       return;
     }
 
@@ -97,323 +367,75 @@ export const TransactionModal = ({ visible, onClose, initialData = null }) => {
     : (categories?.expense || EXPENSE_CATEGORIES);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}
-      >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-
-        <View style={[styles.contentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Top Drag / Grab Bar Pill for Uniform Presentation */}
-          <View style={styles.dragPillWrap}>
-            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-          </View>
-
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>
-              {initialData ? `${t('edit', 'Edit')} ${t('transactions', 'Transaction')}` : t('add_transaction', 'Record Transaction')}
-            </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
-            {/* Type Selector Tabs */}
-            <View style={[styles.typeTabs, { backgroundColor: theme.cardAlt }]}>
-              <TouchableOpacity
-                onPress={() => handleTypeChange('expense')}
-                style={[
-                  styles.typeTab,
-                  type === 'expense' && { backgroundColor: theme.danger },
-                ]}
-              >
-                <Ionicons
-                  name="arrow-up-circle-outline"
-                  size={16}
-                  color={type === 'expense' ? '#FFF' : theme.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.typeTabText,
-                    { color: type === 'expense' ? '#FFF' : theme.textMuted },
-                  ]}
-                >
-                  {t('expense', 'Expense')}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleTypeChange('income')}
-                style={[
-                  styles.typeTab,
-                  type === 'income' && { backgroundColor: theme.success },
-                ]}
-              >
-                <Ionicons
-                  name="arrow-down-circle-outline"
-                  size={16}
-                  color={type === 'income' ? '#FFF' : theme.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.typeTabText,
-                    { color: type === 'income' ? '#FFF' : theme.textMuted },
-                  ]}
-                >
-                  {t('income', 'Income')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Amount Input */}
-            <View style={styles.amountContainer}>
-              <Text style={[styles.currencyPrefix, { color: theme.primaryLight }]}>
-                {currency.symbol}
-              </Text>
-              <TextInput
-                style={[styles.amountInput, { color: theme.text }]}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-                placeholderTextColor={theme.textMuted}
-                value={amount}
-                onChangeText={setAmount}
-                autoFocus={!initialData}
-              />
-            </View>
-
-            {/* Title / Description */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Title / Merchant</Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.inputBg,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  },
-                ]}
-                placeholder="e.g. Grocery Store, Coffee, Salary"
-                placeholderTextColor={theme.textMuted}
-                value={title}
-                onChangeText={setTitle}
-              />
-            </View>
-
-            {/* Category Selector with Custom Category Manager */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelHeaderRow}>
-                <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Category</Text>
-                <TouchableOpacity
-                  onPress={() => setShowCategoryManager(true)}
-                  style={[styles.manageCatBtn, { backgroundColor: theme.cardAlt }]}
-                >
-                  <Ionicons name="options-outline" size={13} color={theme.primaryLight} />
-                  <Text style={[styles.manageCatText, { color: theme.primaryLight }]}>
-                    Manage / Add Category
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.categoryGrid}>
-                {categoryList.map((cat) => {
-                  const isSelected = categoryId === cat.id;
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      onPress={() => setCategoryId(cat.id)}
-                      style={[
-                        styles.categoryItem,
-                        {
-                          backgroundColor: isSelected ? `${cat.color}25` : theme.inputBg,
-                          borderColor: isSelected ? cat.color : theme.border,
-                        },
-                      ]}
-                    >
-                      <Text style={{ fontSize: 18, marginBottom: 2 }}>{cat.emoji || '🏷️'}</Text>
-                      <Text
-                        style={[
-                          styles.categoryLabel,
-                          {
-                            color: isSelected ? cat.color : theme.text,
-                            fontWeight: isSelected ? '700' : '500',
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {cat.name.split(' ')[0]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Account Selector */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Payment Account</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.accountRow}>
-                {accounts.map((acc) => {
-                  const isSelected = accountId === acc.id;
-                  return (
-                    <TouchableOpacity
-                      key={acc.id}
-                      onPress={() => setAccountId(acc.id)}
-                      style={[
-                        styles.accountChip,
-                        {
-                          backgroundColor: isSelected ? theme.primary : theme.inputBg,
-                          borderColor: isSelected ? theme.primaryLight : theme.border,
-                        },
-                      ]}
-                    >
-                      <Text style={{ fontSize: 14, marginRight: 4 }}>{acc.emoji || '🏦'}</Text>
-                      <Text
-                        style={[
-                          styles.accountChipText,
-                          { color: isSelected ? '#FFF' : theme.text },
-                        ]}
-                      >
-                        {acc.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Interactive Calendar Date Picker */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Date (DD/MM/YY)</Text>
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(true)}
-                style={[
-                  styles.dateTrigger,
-                  {
-                    backgroundColor: theme.inputBg,
-                    borderColor: theme.border,
-                  },
-                ]}
-              >
-                <View style={styles.dateLeft}>
-                  <Ionicons name="calendar-outline" size={20} color={theme.primaryLight} />
-                  <Text style={[styles.dateText, { color: theme.text }]}>
-                    {formatDateDisplay(date)}
-                  </Text>
-                </View>
-                <View style={[styles.chooseDatePill, { backgroundColor: `${theme.primary}25` }]}>
-                  <Text style={[styles.chooseDatePillText, { color: theme.primaryLight }]}>
-                    Choose Date
-                  </Text>
-                  <Ionicons name="chevron-down" size={14} color={theme.primaryLight} />
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {/* Note Optional */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Note (Optional)</Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.inputBg,
-                    color: theme.text,
-                    borderColor: theme.border,
-                    minHeight: 50,
-                  },
-                ]}
-                placeholder="Add tags or notes..."
-                placeholderTextColor={theme.textMuted}
-                value={note}
-                onChangeText={setNote}
-                multiline
-              />
-            </View>
-          </ScrollView>
-
-          {/* Action buttons */}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              onPress={handleSave}
-              style={[
-                styles.saveButton,
-                { backgroundColor: type === 'expense' ? theme.danger : theme.success },
-              ]}
-            >
-              <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-              <Text style={styles.saveButtonText}>
-                {initialData ? `${t('save', 'Save')} (${t('edit', 'Update')})` : `${t('save', 'Save')} ${t('transactions', 'Transaction')}`}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-
-      {/* Interactive Calendar Date Picker Modal */}
-      <CalendarDatePickerModal
-        visible={showDatePicker}
-        selectedDate={date}
-        onSelectDate={(newDate) => setDate(newDate)}
-        onClose={() => setShowDatePicker(false)}
+    <KeyboardSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={
+        initialData
+          ? `${t('edit', 'Edit')} ${t('transactions', 'Transaction')}`
+          : t('add_transaction', 'Record Transaction')
+      }
+      icon={type === 'expense' ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline'}
+      iconColor={type === 'expense' ? theme.danger : theme.success}
+      overlayChildren={
+        <>
+          <ConfirmDeleteModal
+            useModal={false}
+            visible={!!modalAlert}
+            onClose={() => setModalAlert(null)}
+            onConfirm={() => setModalAlert(null)}
+            title={modalAlert?.title || 'Notice'}
+            message={modalAlert?.message || ''}
+            type={modalAlert?.type || 'danger'}
+            showCancel={false}
+            confirmText="OK"
+            confirmIcon="alert-circle-outline"
+          />
+          <CalendarDatePickerModal
+            visible={showDatePicker}
+            selectedDate={date}
+            onSelectDate={(newDate) => setDate(newDate)}
+            onClose={() => setShowDatePicker(false)}
+          />
+          <CategoryManagerModal
+            visible={showCategoryManager}
+            onClose={() => setShowCategoryManager(false)}
+          />
+        </>
+      }
+    >
+      <TransactionFormBody
+        type={type}
+        handleTypeChange={handleTypeChange}
+        amount={amount}
+        setAmount={setAmount}
+        title={title}
+        setTitle={setTitle}
+        categoryId={categoryId}
+        setCategoryId={setCategoryId}
+        categoryList={categoryList}
+        accountId={accountId}
+        setAccountId={setAccountId}
+        accounts={accounts}
+        date={date}
+        note={note}
+        setNote={setNote}
+        initialData={initialData}
+        setShowDatePicker={setShowDatePicker}
+        setShowCategoryManager={setShowCategoryManager}
+        handleSave={handleSave}
+        theme={theme}
+        currency={currency}
+        t={t}
       />
-
-      {/* Custom Category Manager Modal */}
-      <CategoryManagerModal
-        visible={showCategoryManager}
-        onClose={() => setShowCategoryManager(false)}
-      />
-    </Modal>
+    </KeyboardSheetModal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  contentCard: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    maxHeight: '90%',
-    paddingBottom: 24,
-  },
-  dragPillWrap: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 2,
-  },
-  dragPill: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 14,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  closeBtn: {
-    padding: 4,
-  },
   scrollBody: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 12,
     gap: 16,
   },
   typeTabs: {

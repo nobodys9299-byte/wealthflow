@@ -1,3 +1,43 @@
+export const UI_TOKENS = {
+  radius: {
+    card: 20,
+    hero: 24,
+    sheet: 28,
+    dialog: 24,
+    input: 14,
+    button: 14,
+    chip: 12,
+    pill: 999,
+  },
+  spacing: {
+    screenHorizontal: 18,
+    screenTop: 16,
+    screenBottom: 92,
+    cardPadding: 16,
+    sheetPadding: 20,
+  },
+  animation: {
+    sheetSlideMs: 220,
+    tabFadeMs: 160,
+  },
+  shadow: {
+    card: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.14,
+      shadowRadius: 12,
+      elevation: 5,
+    },
+    sheet: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -8 },
+      shadowOpacity: 0.28,
+      shadowRadius: 18,
+      elevation: 20,
+    },
+  },
+};
+
 export const CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
   { code: 'USD', symbol: '$', name: 'US Dollar' },

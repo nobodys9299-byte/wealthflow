@@ -7,17 +7,22 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  Alert,
   Platform,
-  TouchableWithoutFeedback,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFinance, DEFAULT_HOME_SECTIONS } from '../context/FinanceContext';
 import { SummaryCards } from '../components/SummaryCards';
 import { AccountCard } from '../components/AccountCard';
 import { TransactionItem } from '../components/TransactionItem';
+import { KeyboardSheetModal } from '../components/common/KeyboardSheetModal';
 import { formatCurrency } from '../utils/formatters';
 import { getCategoryById } from '../constants/categories';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export const DashboardScreen = ({
   onOpenAddTransaction,
@@ -39,6 +44,7 @@ export const DashboardScreen = ({
     netWorth,
     homeSections = DEFAULT_HOME_SECTIONS,
     updateHomeSections,
+    reorderAccounts,
     logRecurringPaymentNow,
     t,
   } = useFinance();
@@ -48,10 +54,25 @@ export const DashboardScreen = ({
   const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
   const [filterAccountId, setFilterAccountId] = useState('all');
 
-  // More Options Menu & Customize Home Sections state
+  // Account Long-Press Reorder Mode & Customize Home Sections state
+  const [isReorderingAccounts, setIsReorderingAccounts] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [tempSections, setTempSections] = useState(homeSections);
+
+  const handleMoveAccount = (index, delta) => {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= accounts.length) return;
+    try {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    } catch (_e) {}
+    const updated = [...accounts];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    if (reorderAccounts) {
+      reorderAccounts(updated);
+    }
+  };
 
   const selectedAccountObj = accounts.find((a) => a.id === filterAccountId);
 
@@ -345,24 +366,48 @@ export const DashboardScreen = ({
         if (section.id === 'accounts') {
           return (
             <View key="accounts">
-              {/* Accounts Section */}
+              {/* Accounts Section (Long-press account card to arrange forward/backward) */}
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Accounts')}</Text>
-                <TouchableOpacity
-                  onPress={onOpenAddAccount}
-                  style={styles.seeAllBtn}
-                >
-                  <Ionicons name="add-circle-outline" size={16} color={theme.primaryLight} />
-                  <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>{t('Add', 'Add')}</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('Accounts')}</Text>
+                  {isReorderingAccounts && (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primaryLight }}>
+                      Arrange Order
+                    </Text>
+                  )}
+                </View>
+                {isReorderingAccounts ? (
+                  <TouchableOpacity
+                    onPress={() => setIsReorderingAccounts(false)}
+                    style={[styles.doneReorderBtn, { backgroundColor: theme.success }]}
+                  >
+                    <Ionicons name="checkmark" size={14} color="#FFF" />
+                    <Text style={styles.doneReorderText}>Done</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={onOpenAddAccount}
+                    style={styles.seeAllBtn}
+                  >
+                    <Ionicons name="add-circle-outline" size={16} color={theme.primaryLight} />
+                    <Text style={[styles.seeAllText, { color: theme.primaryLight }]}>{t('Add', 'Add')}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.accountsRow}>
-                {accounts.map((acc) => (
+                {accounts.map((acc, accIdx) => (
                   <AccountCard
                     key={acc.id}
                     account={acc}
                     compact
+                    reorderMode={isReorderingAccounts}
+                    positionIndex={accIdx}
+                    canMoveBackward={accIdx > 0}
+                    canMoveForward={accIdx < accounts.length - 1}
+                    onMoveBackward={() => handleMoveAccount(accIdx, -1)}
+                    onMoveForward={() => handleMoveAccount(accIdx, 1)}
+                    onLongPress={() => setIsReorderingAccounts((prev) => !prev)}
                     onPress={() => setFilterAccountId(filterAccountId === acc.id ? 'all' : acc.id)}
                     isSelected={filterAccountId === acc.id}
                   />
@@ -638,135 +683,114 @@ export const DashboardScreen = ({
       </Modal>
 
       {/* Customize Home Sections Bottom Sheet Modal */}
-      <Modal visible={showCustomizeModal} transparent animationType="slide" onRequestClose={() => setShowCustomizeModal(false)}>
-        <View style={[styles.customizeOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <TouchableWithoutFeedback onPress={() => setShowCustomizeModal(false)}>
-            <View style={StyleSheet.absoluteFillObject} />
-          </TouchableWithoutFeedback>
-          <View style={[styles.customizeCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {/* Grab Pill */}
-            <View style={styles.dragPillWrap}>
-              <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-            </View>
+      <KeyboardSheetModal
+        visible={showCustomizeModal}
+        onClose={() => setShowCustomizeModal(false)}
+        title="Customize Home Dashboard"
+        subtitle="Show, hide, or rearrange sections on the home screen"
+        icon="options-outline"
+      >
+        <View style={{ paddingBottom: 8 }}>
+          {tempSections.map((sec, idx) => {
+            const isFirst = idx === 0;
+            const isLast = idx === tempSections.length - 1;
+            const isEnabled = sec.enabled !== false;
 
-            <View style={styles.customizeHeader}>
-              <View>
-                <Text style={[styles.customizeTitle, { color: theme.text }]}>Customize Home Dashboard</Text>
-                <Text style={[styles.customizeSub, { color: theme.textMuted }]}>
-                  Show, hide, or rearrange sections on the home screen
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowCustomizeModal(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={22} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
+            const getIcon = () => {
+              if (sec.id === 'accounts') return 'wallet-outline';
+              if (sec.id === 'recurring') return 'repeat-outline';
+              return 'list-outline';
+            };
 
-            <ScrollView style={styles.customizeList} showsVerticalScrollIndicator={false}>
-              {tempSections.map((sec, idx) => {
-                const isFirst = idx === 0;
-                const isLast = idx === tempSections.length - 1;
-                const isEnabled = sec.enabled !== false;
+            return (
+              <View
+                key={sec.id}
+                style={[
+                  styles.sectionRow,
+                  {
+                    backgroundColor: theme.cardAlt,
+                    borderColor: theme.border,
+                    opacity: isEnabled ? 1 : 0.6,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => handleToggleSection(sec.id)}
+                  style={[
+                    styles.toggleBtn,
+                    {
+                      backgroundColor: isEnabled ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <Ionicons name={isEnabled ? 'checkmark' : 'eye-off-outline'} size={14} color="#FFF" />
+                </TouchableOpacity>
 
-                const getIcon = () => {
-                  if (sec.id === 'accounts') return 'wallet-outline';
-                  if (sec.id === 'recurring') return 'repeat-outline';
-                  return 'list-outline';
-                };
+                <View style={styles.sectionInfo}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name={getIcon()} size={16} color={theme.primaryLight} />
+                    <Text style={[styles.sectionRowName, { color: theme.text }]}>
+                      {sec.label}
+                    </Text>
+                  </View>
+                  <Text style={[styles.sectionRowStatus, { color: theme.textMuted }]}>
+                    {isEnabled ? 'Visible on Home' : 'Hidden'}
+                  </Text>
+                </View>
 
-                return (
-                  <View
-                    key={sec.id}
+                <View style={styles.reorderBtns}>
+                  <TouchableOpacity
+                    onPress={() => handleMoveSection(idx, 'up')}
+                    disabled={isFirst}
                     style={[
-                      styles.sectionRow,
+                      styles.reorderBtn,
                       {
-                        backgroundColor: theme.cardAlt,
+                        backgroundColor: theme.card,
                         borderColor: theme.border,
-                        opacity: isEnabled ? 1 : 0.6,
+                        opacity: isFirst ? 0.3 : 1,
                       },
                     ]}
                   >
-                    {/* Toggle show/hide checkmark */}
-                    <TouchableOpacity
-                      onPress={() => handleToggleSection(sec.id)}
-                      style={[
-                        styles.toggleBtn,
-                        {
-                          backgroundColor: isEnabled ? theme.primary : theme.border,
-                        },
-                      ]}
-                    >
-                      <Ionicons name={isEnabled ? 'checkmark' : 'eye-off-outline'} size={14} color="#FFF" />
-                    </TouchableOpacity>
+                    <Ionicons name="arrow-up" size={15} color={theme.text} />
+                  </TouchableOpacity>
 
-                    <View style={styles.sectionInfo}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name={getIcon()} size={16} color={theme.primaryLight} />
-                        <Text style={[styles.sectionRowName, { color: theme.text }]}>
-                          {sec.label}
-                        </Text>
-                      </View>
-                      <Text style={[styles.sectionRowStatus, { color: theme.textMuted }]}>
-                        {isEnabled ? 'Visible on Home' : 'Hidden'}
-                      </Text>
-                    </View>
-
-                    {/* Move Up / Move Down buttons */}
-                    <View style={styles.reorderBtns}>
-                      <TouchableOpacity
-                        onPress={() => handleMoveSection(idx, 'up')}
-                        disabled={isFirst}
-                        style={[
-                          styles.reorderBtn,
-                          {
-                            backgroundColor: theme.card,
-                            borderColor: theme.border,
-                            opacity: isFirst ? 0.3 : 1,
-                          },
-                        ]}
-                      >
-                        <Ionicons name="arrow-up" size={15} color={theme.text} />
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={() => handleMoveSection(idx, 'down')}
-                        disabled={isLast}
-                        style={[
-                          styles.reorderBtn,
-                          {
-                            backgroundColor: theme.card,
-                            borderColor: theme.border,
-                            opacity: isLast ? 0.3 : 1,
-                          },
-                        ]}
-                      >
-                        <Ionicons name="arrow-down" size={15} color={theme.text} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
-
-            {/* Bottom Actions: Reset & Save */}
-            <View style={[styles.customizeFooter, { borderTopColor: theme.border }]}>
-              <TouchableOpacity
-                onPress={handleResetSections}
-                style={[styles.resetBtn, { borderColor: theme.border }]}
-              >
-                <Ionicons name="refresh-outline" size={16} color={theme.textMuted} />
-                <Text style={[styles.resetBtnText, { color: theme.textMuted }]}>Reset</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleSaveSections}
-                style={[styles.saveBtn, { backgroundColor: theme.primary }]}
-              >
-                <Text style={styles.saveBtnText}>Save Preferences</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                  <TouchableOpacity
+                    onPress={() => handleMoveSection(idx, 'down')}
+                    disabled={isLast}
+                    style={[
+                      styles.reorderBtn,
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: theme.border,
+                        opacity: isLast ? 0.3 : 1,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="arrow-down" size={15} color={theme.text} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
         </View>
-      </Modal>
+
+        <View style={[styles.customizeFooter, { borderTopColor: theme.border }]}>
+          <TouchableOpacity
+            onPress={handleResetSections}
+            style={[styles.resetBtn, { borderColor: theme.border }]}
+          >
+            <Ionicons name="refresh-outline" size={16} color={theme.textMuted} />
+            <Text style={[styles.resetBtnText, { color: theme.textMuted }]}>Reset</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleSaveSections}
+            style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+          >
+            <Text style={styles.saveBtnText}>Save Preferences</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardSheetModal>
     </View>
   );
 };
@@ -1261,5 +1285,18 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     padding: 4,
+  },
+  doneReorderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  doneReorderText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

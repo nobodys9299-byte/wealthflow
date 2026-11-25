@@ -67,7 +67,7 @@ export const CalendarDatePickerModal = ({ visible, onClose, onSelectDate, select
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
         {/* Backdrop: Clicking outside closes calendar */}
         <TouchableOpacity

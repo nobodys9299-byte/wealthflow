@@ -1,9 +1,76 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import QRCode from 'qrcode';
 import { Platform } from 'react-native';
 import { formatCurrency, formatDateDisplay } from './formatters';
 
-export const generateTransactionPDF = async (transaction, category, account, currencySymbol = '$') => {
+export const encodeUpiParam = (val) =>
+  encodeURIComponent(String(val || '').trim()).replace(/%20/g, '+');
+
+export async function loadPhotoAsBase64DataUri(uri) {
+  if (!uri || typeof uri !== 'string') return null;
+  if (uri.startsWith('data:image/')) return uri;
+
+  const isPng = uri.toLowerCase().includes('.png');
+  const mime = isPng ? 'image/png' : 'image/jpeg';
+
+  if (Platform.OS !== 'web') {
+    try {
+      const raw = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType?.Base64 || 'base64',
+      });
+      if (raw) return `data:${mime};base64,${raw}`;
+    } catch (_readErr) {
+      // Fallback for content:// URIs on Android: copy into cacheDirectory first
+      try {
+        if (FileSystem.cacheDirectory && FileSystem.copyAsync) {
+          const tempPath = `${FileSystem.cacheDirectory}pdf_avatar_${Date.now()}.${isPng ? 'png' : 'jpg'}`;
+          await FileSystem.copyAsync({ from: uri, to: tempPath });
+          const rawCopied = await FileSystem.readAsStringAsync(tempPath, {
+            encoding: FileSystem.EncodingType?.Base64 || 'base64',
+          });
+          await FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+          if (rawCopied) return `data:${mime};base64,${rawCopied}`;
+        }
+      } catch (_copyErr) {
+        // Ignore copy failure and try fetch fallback below
+      }
+    }
+  }
+
+  try {
+    const resp = await fetch(uri);
+    const blob = await resp.blob();
+    if (typeof FileReader !== 'undefined') {
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (_fetchErr) {
+    // Ignore fetch failure
+  }
+
+  return null;
+}
+
+const escapeHtml = (value) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+export const generateTransactionPDF = async (
+  transaction,
+  category,
+  account,
+  currencySymbol = '$',
+  options = {}
+) => {
   const isIncome = transaction.type === 'income';
   const html = `
     <!DOCTYPE html>
@@ -73,10 +140,19 @@ export const generateTransactionPDF = async (transaction, category, account, cur
     </html>
   `;
 
-  return await exportAndSharePDF(html, `receipt_${transaction.id}.pdf`);
+  return await exportAndSharePDF(
+    html,
+    `receipt_${transaction.id}.pdf`,
+    options?.runWithSystemPicker
+  );
 };
 
-export const generateAccountStatementPDF = async (account, transactions, currencySymbol = '$') => {
+export const generateAccountStatementPDF = async (
+  account,
+  transactions,
+  currencySymbol = '$',
+  options = {}
+) => {
   const accTx = transactions.filter((t) => t.accountId === account.id);
   const totalIncome = accTx.filter((t) => t.type === 'income').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
   const totalExpense = accTx.filter((t) => t.type === 'expense').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
@@ -167,17 +243,71 @@ export const generateAccountStatementPDF = async (account, transactions, currenc
     </html>
   `;
 
-  return await exportAndSharePDF(html, `statement_${account.name.replace(/\s+/g, '_')}.pdf`);
+  return await exportAndSharePDF(
+    html,
+    `statement_${account.name.replace(/\s+/g, '_')}.pdf`,
+    options?.runWithSystemPicker
+  );
 };
 
-export const generateLendingStatementPDF = async (friend, currencySymbol = '$') => {
-  const isOwed = friend.balance >= 0;
-  const rows = (friend.transactions || []).map((t) => {
+export const generateLendingStatementPDF = async (
+  friend,
+  currencySymbol = '$',
+  options = {}
+) => {
+  const isOwed = (friend?.balance || 0) >= 0;
+  const friendName = friend?.name || 'Friend';
+  const txs = friend?.transactions || [];
+  const targetAmount = Math.abs(parseFloat(friend?.balance) || 0);
+
+  const upiId = (options?.userUpiSettings?.upiId || 'wealthflow@upi').trim();
+  const payeeName = (options?.userUpiSettings?.payeeName || 'WealthFlow User').trim();
+  const latestNote = txs.find((tx) => tx?.note && tx.note.trim())?.note?.trim();
+  const rawNote = friend?.note?.trim() || latestNote || 'Pending balance settlement';
+  const cleanNote = (
+    rawNote.toLowerCase().startsWith('loan')
+      ? rawNote
+      : `Loan to ${friendName}: ${rawNote}`
+  ).slice(0, 80);
+
+  // Exact UPI deep-link format:
+  // upi://pay?pa=...&cu=INR&pn=...&am=...&tn=...
+  const dynamicUpiUrl =
+    targetAmount > 0
+      ? `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&am=${targetAmount.toFixed(2)}&tn=${encodeUpiParam(cleanNote)}`
+      : `upi://pay?pa=${encodeUpiParam(upiId)}&cu=INR&pn=${encodeUpiParam(payeeName)}&tn=${encodeUpiParam(cleanNote)}`;
+
+  const resolvedPhotoUri =
+    friend?.photoUri ||
+    txs.find((tx) => tx?.photoUri)?.photoUri ||
+    null;
+
+  let friendPhotoBase64 = null;
+  if (resolvedPhotoUri) {
+    friendPhotoBase64 = await loadPhotoAsBase64DataUri(resolvedPhotoUri);
+  }
+
+  let qrSvg = '';
+  try {
+    qrSvg = await QRCode.toString(dynamicUpiUrl, {
+      type: 'svg',
+      width: 110,
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+  } catch (_qrErr) {
+    qrSvg = '';
+  }
+
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(dynamicUpiUrl)}&margin=2`;
+  const friendEmoji = friend?.avatarEmoji || '👤';
+
+  const rows = txs.map((t) => {
     const isLent = t.type === 'lent';
     return `
       <tr>
         <td>${formatDateDisplay(t.date)}</td>
-        <td><strong>${t.note || (isLent ? 'Money Lent' : 'Money Borrowed')}</strong></td>
+        <td><strong>${escapeHtml(t.note || (isLent ? 'Money Lent' : 'Money Borrowed'))}</strong></td>
         <td><span style="font-size:11px;padding:3px 8px;border-radius:4px;background:${isLent ? '#ecfdf5' : '#fff1f2'};color:${isLent ? '#059669' : '#e11d48'};font-weight:700">${isLent ? 'LENT' : 'BORROWED'}</span></td>
         <td style="text-align:right; font-weight:800; color:${isLent ? '#059669' : '#e11d48'}">
           ${formatCurrency(t.amount, currencySymbol)}
@@ -191,30 +321,44 @@ export const generateLendingStatementPDF = async (friend, currencySymbol = '$') 
     <html>
       <head>
         <meta charset="utf-8">
-        <title>Friend Debt Summary - ${friend.name}</title>
+        <title>Friend Debt Summary - ${escapeHtml(friendName)}</title>
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 25px; color: #1e293b; }
-          .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 25px; color: #1e293b; background: #fff; -webkit-print-color-adjust: exact; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
           .brand { font-size: 22px; font-weight: 900; color: #4f46e5; }
+          .friend-card { display: flex; align-items: center; gap: 14px; }
+          .friend-photo { width: 54px; height: 54px; border-radius: 27px; object-fit: cover; border: 2px solid #3B82F6; }
+          .friend-avatar { width: 54px; height: 54px; border-radius: 27px; background: #E2E8F0; border: 2px solid #CBD5E1; display: flex; align-items: center; justify-content: center; font-size: 26px; }
           .hero-box { text-align: center; padding: 20px; background: ${isOwed ? '#ecfdf5' : '#fff1f2'}; border-radius: 16px; margin-bottom: 20px; }
           .hero-title { font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; }
           .hero-amount { font-size: 36px; font-weight: 900; color: ${isOwed ? '#059669' : '#e11d48'}; margin-top: 5px; }
           table { width: 100%; border-collapse: collapse; margin-top: 15px; }
           th { background: #f1f5f9; text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; }
           td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-          .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8; }
+          .pay-box { margin-top: 22px; padding: 16px 18px; background: #F8FAFC; border: 1.5px dashed #0284C7; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; page-break-inside: avoid; }
+          .pay-btn { display: inline-block; background-color: #0284C7; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; border: 1px solid #0284C7; }
+          .footer { margin-top: 28px; text-align: center; font-size: 11px; color: #94a3b8; }
         </style>
       </head>
       <body>
         <div class="header">
-          <div class="brand">WealthFlow</div>
-          <div style="font-size:16px;font-weight:700;margin-top:4px">Lending Statement with ${friend.name}</div>
-          <div style="font-size:12px;color:#64748b">Generated on ${formatDateDisplay(new Date().toISOString().split('T')[0])}</div>
+          <div class="friend-card">
+            ${
+              friendPhotoBase64
+                ? `<img src="${friendPhotoBase64}" class="friend-photo" alt="${escapeHtml(friendName)}" />`
+                : `<div class="friend-avatar">${escapeHtml(friendEmoji)}</div>`
+            }
+            <div>
+              <div class="brand">WealthFlow</div>
+              <div style="font-size:16px;font-weight:700;margin-top:2px">Lending Statement with ${escapeHtml(friendName)}</div>
+              <div style="font-size:12px;color:#64748b">Generated on ${formatDateDisplay(new Date().toISOString().split('T')[0])} • ${txs.length} records</div>
+            </div>
+          </div>
         </div>
 
         <div class="hero-box">
-          <div class="hero-title">${isOwed ? `${friend.name} Owes You` : `You Owe ${friend.name}`}</div>
-          <div class="hero-amount">${formatCurrency(Math.abs(friend.balance), currencySymbol)}</div>
+          <div class="hero-title">${isOwed ? `${escapeHtml(friendName)} Owes You` : `You Owe ${escapeHtml(friendName)}`}</div>
+          <div class="hero-amount">${formatCurrency(targetAmount, currencySymbol)}</div>
         </div>
 
         <table>
@@ -231,6 +375,27 @@ export const generateLendingStatementPDF = async (friend, currencySymbol = '$') 
           </tbody>
         </table>
 
+        <div class="pay-box">
+          <div style="flex:1;padding-right:18px;">
+            <div style="font-size:11px;font-weight:800;color:#0284C7;text-transform:uppercase;letter-spacing:0.5px;">⚡ Instant UPI Payment Details</div>
+            <div style="font-size:16px;font-weight:800;color:#0F172A;margin-top:3px;">Amount: ${escapeHtml(currencySymbol)}${targetAmount.toFixed(2)}</div>
+            <div style="font-size:12px;color:#475569;margin-top:4px;"><strong>UPI ID:</strong> <span style="font-family:monospace;color:#0F172A;">${escapeHtml(upiId)}</span></div>
+            <div style="font-size:12px;color:#475569;margin-top:2px;"><strong>Payee:</strong> ${escapeHtml(payeeName)}</div>
+            <div style="margin-top:12px;margin-bottom:8px;">
+              <a href="${dynamicUpiUrl}" class="pay-btn">⚡ PAY NOW (${escapeHtml(currencySymbol)}${targetAmount.toFixed(2)}) &rarr;</a>
+            </div>
+            <div style="font-size:10px;color:#64748B;margin-top:6px;">Tap the blue 'PAY NOW' button to launch your UPI app with amount &amp; details pre-filled, or scan the QR code.</div>
+          </div>
+          <div style="text-align:center;">
+            <a href="${dynamicUpiUrl}" style="text-decoration:none;display:inline-block;">
+              <div style="width:110px;height:110px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid #CBD5E1;padding:4px;background:#FFFFFF;overflow:hidden;">
+                ${qrSvg || `<img src="${qrCodeUrl}" width="110" height="110" onerror="this.style.display='none'" alt="UPI QR" />`}
+              </div>
+              <div style="font-size:9px;font-weight:800;color:#0284C7;margin-top:4px;">SCAN &amp; PAY</div>
+            </a>
+          </div>
+        </div>
+
         <div class="footer">
           Generated with WealthFlow Money Tracker • Shareable via WhatsApp
         </div>
@@ -238,10 +403,14 @@ export const generateLendingStatementPDF = async (friend, currencySymbol = '$') 
     </html>
   `;
 
-  return await exportAndSharePDF(html, `debt_statement_${friend.name.replace(/\s+/g, '_')}.pdf`);
+  return await exportAndSharePDF(
+    html,
+    `debt_statement_${friendName.replace(/\s+/g, '_')}.pdf`,
+    options?.runWithSystemPicker
+  );
 };
 
-const exportAndSharePDF = async (html, filename) => {
+const exportAndSharePDF = async (html, filename, runWithSystemPicker = null) => {
   try {
     if (Platform.OS === 'web') {
       // In web browser, print dialog or opens printable window
@@ -261,16 +430,21 @@ const exportAndSharePDF = async (html, filename) => {
     );
     const { uri } = await Promise.race([printPromise, timeoutPromise]);
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
-        UTI: '.pdf',
-        mimeType: 'application/pdf',
-        dialogTitle: 'Share PDF via WhatsApp',
-      });
+      const doShare = () =>
+        Sharing.shareAsync(uri, {
+          UTI: '.pdf',
+          mimeType: 'application/pdf',
+          dialogTitle: 'Share PDF via WhatsApp',
+        });
+      if (typeof runWithSystemPicker === 'function') {
+        await runWithSystemPicker(doShare);
+      } else {
+        await doShare();
+      }
     }
     return { success: true, uri };
   } catch (err) {
     console.error('PDF error:', err);
-    alert('Failed to generate PDF: ' + err.message);
-    return { success: false, error: err.message };
+    return { success: false, error: err?.message || 'Failed to generate PDF' };
   }
 };

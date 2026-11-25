@@ -24,6 +24,9 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
     lendingSummary,
     settleFriendDebt,
     deleteFriendAccount,
+    userUpiSettings,
+    runWithSystemPicker,
+    showCustomAlert,
     t,
   } = useFinance();
 
@@ -74,7 +77,13 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
   };
 
   const handleShareWhatsAppPDF = async (friend) => {
-    await generateLendingStatementPDF(friend, currency.symbol);
+    const res = await generateLendingStatementPDF(friend, currency.symbol, {
+      userUpiSettings,
+      runWithSystemPicker,
+    });
+    if (res && res.success === false && showCustomAlert) {
+      showCustomAlert('PDF Notice', res.error || 'Could not generate PDF statement.', 'danger');
+    }
   };
 
   return (
@@ -315,7 +324,11 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
       {/* Friend Detail Dialogue Box */}
       <FriendDetailModal
         visible={!!selectedFriendDetails}
-        friend={lendingSummary.friends.find((f) => f.name === selectedFriendDetails?.name) || selectedFriendDetails}
+        friend={
+          lendingSummary.friends.find(
+            (f) => f.name?.trim().toLowerCase() === selectedFriendDetails?.name?.trim().toLowerCase()
+          ) || selectedFriendDetails
+        }
         onClose={() => setSelectedFriendDetails(null)}
         onOpenAddEntry={handleOpenAddForFriend}
         onOpenReminder={(friend) => setSelectedReminderFriend(friend)}
@@ -329,7 +342,11 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
       {/* Dedicated Friend Payment Reminder Dialogue Box */}
       <FriendReminderModal
         visible={!!selectedReminderFriend}
-        friend={selectedReminderFriend}
+        friend={
+          lendingSummary.friends.find(
+            (f) => f.name?.trim().toLowerCase() === selectedReminderFriend?.name?.trim().toLowerCase()
+          ) || selectedReminderFriend
+        }
         onClose={() => setSelectedReminderFriend(null)}
         onBackToDetails={(friend) => {
           setSelectedReminderFriend(null);
@@ -342,7 +359,11 @@ export const LendingScreen = ({ onNavigateTab, onBack, onOpenMore }) => {
         visible={!!selectedShareFriend}
         onClose={() => setSelectedShareFriend(null)}
         type="friend"
-        data={selectedShareFriend}
+        data={
+          lendingSummary.friends.find(
+            (f) => f.name?.trim().toLowerCase() === selectedShareFriend?.name?.trim().toLowerCase()
+          ) || selectedShareFriend
+        }
       />
     </ScrollView>
   );

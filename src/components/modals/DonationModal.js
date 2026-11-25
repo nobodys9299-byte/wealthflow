@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Image,
   TextInput,
   Linking,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFinance } from '../../context/FinanceContext';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { KeyboardSheetModal, useSheetScroll } from '../common/KeyboardSheetModal';
+import { encodeUpiParam } from '../../utils/pdfGenerator';
 
 const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
 const DONATION_UPI_ID = 's8675748237@slc';
@@ -24,6 +23,198 @@ const BANK_DETAILS = {
   accountNumber: '033311501048792',
   ifsc: 'NESF0000333',
   bankName: 'slice Small Finance Bank',
+};
+
+const DonationBody = ({
+  theme,
+  currency,
+  t,
+  selectedAmount,
+  setSelectedAmount,
+  customAmount,
+  setCustomAmount,
+  currentAmount,
+  qrCodeUrl,
+  copiedUpi,
+  handleCopyUpi,
+  handlePayViaUPI,
+  copiedAcc,
+  handleCopyAccountNum,
+  copiedIfsc,
+  handleCopyIfsc,
+}) => {
+  const { scrollToInput } = useSheetScroll();
+
+  return (
+    <View style={styles.scrollBody}>
+      {/* Inspiring Motivational Quote Box */}
+      <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+        <View style={styles.quoteTop}>
+          <Ionicons name="sparkles" size={16} color="#F59E0B" />
+          <Text style={styles.quoteBadgeText}>{t('developer_appreciation', 'DEVELOPER APPRECIATION')}</Text>
+        </View>
+        <Text style={styles.quoteText}>
+          &ldquo;{t('quote_text', 'No act of kindness, no matter how small, is ever wasted. Generosity is the heartbeat of community.')}&rdquo;
+        </Text>
+        <Text style={styles.quoteDesc}>
+          {t('quote_desc', 'Your voluntary contribution directly powers independent app development, keeping WealthFlow 100% free, private, and continuously updated for everyone. Thank you for your heartfelt support! ❤️')}
+        </Text>
+      </View>
+
+      {/* Quick Amount Selector */}
+      <Text style={[styles.sectionHeading, { color: theme.textMuted }]}>
+        {t('choose_donation_amount', 'CHOOSE DONATION AMOUNT')}
+      </Text>
+      <View style={styles.amountsRow}>
+        {PRESET_AMOUNTS.map((amt) => {
+          const isSelected = selectedAmount === amt && !customAmount;
+          return (
+            <TouchableOpacity
+              key={amt}
+              onPress={() => {
+                setSelectedAmount(amt);
+                setCustomAmount('');
+              }}
+              style={[
+                styles.amtChip,
+                {
+                  backgroundColor: isSelected ? '#F43F5E' : theme.inputBg,
+                  borderColor: isSelected ? '#F43F5E' : theme.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.amtChipText,
+                  { color: isSelected ? '#FFFFFF' : theme.text },
+                ]}
+              >
+                {currency.symbol}{amt}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Custom Amount Input */}
+      <View style={[styles.customInputBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+        <Text style={[styles.customPrefix, { color: theme.textMuted }]}>Custom {currency.symbol}</Text>
+        <TextInput
+          style={[styles.customInput, { color: theme.text }]}
+          placeholder="Or enter any custom amount"
+          placeholderTextColor={theme.textMuted}
+          keyboardType="decimal-pad"
+          value={customAmount}
+          onChangeText={(val) => {
+            setCustomAmount(val);
+            setSelectedAmount(null);
+          }}
+          onFocus={scrollToInput}
+        />
+      </View>
+
+      {/* UPI QR Code Display Card */}
+      <View style={[styles.qrCard, { backgroundColor: '#0F172A', borderColor: '#1E293B' }]}>
+        <View style={styles.qrHeader}>
+          <Ionicons name="qr-code-outline" size={16} color="#38BDF8" />
+          <Text style={styles.qrHeaderTitle}>INSTANT UPI QR CODE</Text>
+        </View>
+
+        <View style={styles.qrRow}>
+          <View style={styles.qrWrap}>
+            <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
+            <Text style={styles.qrSubTag}>SCAN TO DONATE</Text>
+          </View>
+
+          <View style={styles.qrDetailsCol}>
+            <Text style={styles.qrAmtLabel}>Contributing</Text>
+            <Text style={styles.qrAmtVal}>
+              {currency.symbol}{currentAmount > 0 ? currentAmount.toFixed(2) : 'Any Amount'}
+            </Text>
+            <Text style={styles.qrPayeeLabel}>Payee: <Text style={styles.qrPayeeText}>{DONATION_PAYEE}</Text></Text>
+            <Text style={styles.qrAppsNote}>
+              Supported by Google Pay, PhonePe, Paytm, BHIM & CRED
+            </Text>
+          </View>
+        </View>
+
+        {/* UPI ID Row with One-Tap Copy */}
+        <View style={styles.upiCopyRow}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.upiLabel}>UPI ID (VPA)</Text>
+            <Text style={styles.upiIdText} numberOfLines={1}>{DONATION_UPI_ID}</Text>
+          </View>
+          <TouchableOpacity onPress={handleCopyUpi} style={styles.copyBtn}>
+            <Ionicons name={copiedUpi ? 'checkmark-circle' : 'copy-outline'} size={15} color="#FFFFFF" />
+            <Text style={styles.copyBtnText}>{copiedUpi ? 'Copied' : 'Copy UPI'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Pay Via UPI Button */}
+      <TouchableOpacity onPress={handlePayViaUPI} style={styles.payBtn}>
+        <Ionicons name="flash" size={18} color="#FFFFFF" />
+        <Text style={styles.payBtnText}>
+          Pay {currency.symbol}{currentAmount > 0 ? currentAmount.toFixed(2) : ''} via UPI App
+        </Text>
+        <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* Direct Bank Transfer Details Card */}
+      <View style={[styles.bankCard, { backgroundColor: '#0F172A', borderColor: '#1E293B' }]}>
+        <View style={styles.bankHeader}>
+          <Ionicons name="business" size={16} color="#10B981" />
+          <Text style={styles.bankHeaderTitle}>DIRECT BANK TRANSFER DETAILS</Text>
+        </View>
+
+        <View style={styles.bankBody}>
+          {/* Account Holder Name */}
+          <View style={styles.bankFieldRow}>
+            <Text style={styles.bankFieldLabel}>ACCOUNT HOLDER NAME</Text>
+            <Text style={styles.bankFieldValueBold}>{BANK_DETAILS.holderName}</Text>
+          </View>
+
+          {/* Bank Name */}
+          <View style={styles.bankFieldRow}>
+            <Text style={styles.bankFieldLabel}>BANK</Text>
+            <Text style={styles.bankFieldValue}>{BANK_DETAILS.bankName}</Text>
+          </View>
+
+          {/* Account Number with Copy */}
+          <View style={styles.bankFieldCopyRow}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.bankFieldLabel}>ACCOUNT NUMBER</Text>
+              <Text style={styles.bankFieldValueMono}>{BANK_DETAILS.accountNumber}</Text>
+            </View>
+            <TouchableOpacity onPress={handleCopyAccountNum} style={styles.bankCopyBtn}>
+              <Ionicons name={copiedAcc ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
+              <Text style={styles.bankCopyBtnText}>{copiedAcc ? 'Copied' : 'Copy'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* IFSC with Copy */}
+          <View style={styles.bankFieldCopyRow}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.bankFieldLabel}>IFSC CODE</Text>
+              <Text style={styles.bankFieldValueMono}>{BANK_DETAILS.ifsc}</Text>
+            </View>
+            <TouchableOpacity onPress={handleCopyIfsc} style={styles.bankCopyBtn}>
+              <Ionicons name={copiedIfsc ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
+              <Text style={styles.bankCopyBtnText}>{copiedIfsc ? 'Copied' : 'Copy'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Text style={styles.bankFooterNote}>
+          Supports IMPS, NEFT & RTGS bank transfers directly to slice Small Finance Bank.
+        </Text>
+      </View>
+
+      <Text style={[styles.securityNotice, { color: theme.textMuted }]}>
+        🔒 100% Direct Transfer • No Intermediary Platform Fees
+      </Text>
+    </View>
+  );
 };
 
 export const DonationModal = ({ visible, onClose }) => {
@@ -44,8 +235,8 @@ export const DonationModal = ({ visible, onClose }) => {
   const currentAmount = customAmount ? (parseFloat(customAmount) || 0) : selectedAmount;
 
   const upiLink = currentAmount > 0
-    ? `upi://pay?pa=${DONATION_UPI_ID}&pn=${encodeURIComponent(DONATION_PAYEE)}&am=${currentAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Donation Support for WealthFlow')}`
-    : `upi://pay?pa=${DONATION_UPI_ID}&pn=${encodeURIComponent(DONATION_PAYEE)}&cu=INR&tn=${encodeURIComponent('Donation Support for WealthFlow')}`;
+    ? `upi://pay?pa=${encodeUpiParam(DONATION_UPI_ID)}&cu=INR&pn=${encodeUpiParam(DONATION_PAYEE)}&am=${currentAmount.toFixed(2)}&tn=${encodeUpiParam('Donation Support for WealthFlow')}`
+    : `upi://pay?pa=${encodeUpiParam(DONATION_UPI_ID)}&cu=INR&pn=${encodeUpiParam(DONATION_PAYEE)}&tn=${encodeUpiParam('Donation Support for WealthFlow')}`;
 
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiLink)}&margin=2`;
 
@@ -90,207 +281,15 @@ export const DonationModal = ({ visible, onClose }) => {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <View style={[styles.dialogCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Top Grab Bar Pill */}
-          <View style={styles.dragPillWrap}>
-            <View style={[styles.dragPill, { backgroundColor: theme.border }]} />
-          </View>
-
-          {/* Modal Header */}
-          <View style={styles.header}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={[styles.heartBadge, { backgroundColor: '#F43F5E20' }]}>
-                <Ionicons name="heart" size={20} color="#F43F5E" />
-              </View>
-              <View>
-                <Text style={[styles.title, { color: theme.text }]}>{t('donate_title', 'Support & Donate')}</Text>
-                <Text style={[styles.subTitle, { color: theme.textMuted }]}>
-                  {t('donate_sub', 'Help keep WealthFlow free & ad-free')}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
-            {/* Inspiring Motivational Quote Box */}
-            <View style={[styles.quoteCard, { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-              <View style={styles.quoteTop}>
-                <Ionicons name="sparkles" size={16} color="#F59E0B" />
-                <Text style={styles.quoteBadgeText}>{t('developer_appreciation', 'DEVELOPER APPRECIATION')}</Text>
-              </View>
-              <Text style={styles.quoteText}>
-                &ldquo;{t('quote_text', 'No act of kindness, no matter how small, is ever wasted. Generosity is the heartbeat of community.')}&rdquo;
-              </Text>
-              <Text style={styles.quoteDesc}>
-                {t('quote_desc', 'Your voluntary contribution directly powers independent app development, keeping WealthFlow 100% free, private, and continuously updated for everyone. Thank you for your heartfelt support! ❤️')}
-              </Text>
-            </View>
-
-            {/* Quick Amount Selector */}
-            <Text style={[styles.sectionHeading, { color: theme.textMuted }]}>
-              {t('choose_donation_amount', 'CHOOSE DONATION AMOUNT')}
-            </Text>
-            <View style={styles.amountsRow}>
-              {PRESET_AMOUNTS.map((amt) => {
-                const isSelected = selectedAmount === amt && !customAmount;
-                return (
-                  <TouchableOpacity
-                    key={amt}
-                    onPress={() => {
-                      setSelectedAmount(amt);
-                      setCustomAmount('');
-                    }}
-                    style={[
-                      styles.amtChip,
-                      {
-                        backgroundColor: isSelected ? '#F43F5E' : theme.inputBg,
-                        borderColor: isSelected ? '#F43F5E' : theme.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.amtChipText,
-                        { color: isSelected ? '#FFFFFF' : theme.text },
-                      ]}
-                    >
-                      {currency.symbol}{amt}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Custom Amount Input */}
-            <View style={[styles.customInputBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
-              <Text style={[styles.customPrefix, { color: theme.textMuted }]}>Custom {currency.symbol}</Text>
-              <TextInput
-                style={[styles.customInput, { color: theme.text }]}
-                placeholder="Or enter any custom amount"
-                placeholderTextColor={theme.textMuted}
-                keyboardType="decimal-pad"
-                value={customAmount}
-                onChangeText={(val) => {
-                  setCustomAmount(val);
-                  setSelectedAmount(null);
-                }}
-              />
-            </View>
-
-            {/* UPI QR Code Display Card */}
-            <View style={[styles.qrCard, { backgroundColor: '#0F172A', borderColor: '#1E293B' }]}>
-              <View style={styles.qrHeader}>
-                <Ionicons name="qr-code-outline" size={16} color="#38BDF8" />
-                <Text style={styles.qrHeaderTitle}>INSTANT UPI QR CODE</Text>
-              </View>
-
-              <View style={styles.qrRow}>
-                <View style={styles.qrWrap}>
-                  <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} resizeMode="contain" />
-                  <Text style={styles.qrSubTag}>SCAN TO DONATE</Text>
-                </View>
-
-                <View style={styles.qrDetailsCol}>
-                  <Text style={styles.qrAmtLabel}>Contributing</Text>
-                  <Text style={styles.qrAmtVal}>
-                    {currency.symbol}{currentAmount > 0 ? currentAmount.toFixed(2) : 'Any Amount'}
-                  </Text>
-                  <Text style={styles.qrPayeeLabel}>Payee: <Text style={styles.qrPayeeText}>{DONATION_PAYEE}</Text></Text>
-                  <Text style={styles.qrAppsNote}>
-                    Supported by Google Pay, PhonePe, Paytm, BHIM & CRED
-                  </Text>
-                </View>
-              </View>
-
-              {/* UPI ID Row with One-Tap Copy */}
-              <View style={styles.upiCopyRow}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.upiLabel}>UPI ID (VPA)</Text>
-                  <Text style={styles.upiIdText} numberOfLines={1}>{DONATION_UPI_ID}</Text>
-                </View>
-                <TouchableOpacity onPress={handleCopyUpi} style={styles.copyBtn}>
-                  <Ionicons name={copiedUpi ? 'checkmark-circle' : 'copy-outline'} size={15} color="#FFFFFF" />
-                  <Text style={styles.copyBtnText}>{copiedUpi ? 'Copied' : 'Copy UPI'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Pay Via UPI Button */}
-            <TouchableOpacity onPress={handlePayViaUPI} style={styles.payBtn}>
-              <Ionicons name="flash" size={18} color="#FFFFFF" />
-              <Text style={styles.payBtnText}>
-                Pay {currency.symbol}{currentAmount > 0 ? currentAmount.toFixed(2) : ''} via UPI App
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            {/* Direct Bank Transfer Details Card */}
-            <View style={[styles.bankCard, { backgroundColor: '#0F172A', borderColor: '#1E293B' }]}>
-              <View style={styles.bankHeader}>
-                <Ionicons name="business" size={16} color="#10B981" />
-                <Text style={styles.bankHeaderTitle}>DIRECT BANK TRANSFER DETAILS</Text>
-              </View>
-
-              <View style={styles.bankBody}>
-                {/* Account Holder Name */}
-                <View style={styles.bankFieldRow}>
-                  <Text style={styles.bankFieldLabel}>ACCOUNT HOLDER NAME</Text>
-                  <Text style={styles.bankFieldValueBold}>{BANK_DETAILS.holderName}</Text>
-                </View>
-
-                {/* Bank Name */}
-                <View style={styles.bankFieldRow}>
-                  <Text style={styles.bankFieldLabel}>BANK</Text>
-                  <Text style={styles.bankFieldValue}>{BANK_DETAILS.bankName}</Text>
-                </View>
-
-                {/* Account Number with Copy */}
-                <View style={styles.bankFieldCopyRow}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Text style={styles.bankFieldLabel}>ACCOUNT NUMBER</Text>
-                    <Text style={styles.bankFieldValueMono}>{BANK_DETAILS.accountNumber}</Text>
-                  </View>
-                  <TouchableOpacity onPress={handleCopyAccountNum} style={styles.bankCopyBtn}>
-                    <Ionicons name={copiedAcc ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
-                    <Text style={styles.bankCopyBtnText}>{copiedAcc ? 'Copied' : 'Copy'}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* IFSC with Copy */}
-                <View style={styles.bankFieldCopyRow}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Text style={styles.bankFieldLabel}>IFSC CODE</Text>
-                    <Text style={styles.bankFieldValueMono}>{BANK_DETAILS.ifsc}</Text>
-                  </View>
-                  <TouchableOpacity onPress={handleCopyIfsc} style={styles.bankCopyBtn}>
-                    <Ionicons name={copiedIfsc ? 'checkmark-circle' : 'copy-outline'} size={14} color="#FFFFFF" />
-                    <Text style={styles.bankCopyBtnText}>{copiedIfsc ? 'Copied' : 'Copy'}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <Text style={styles.bankFooterNote}>
-                Supports IMPS, NEFT & RTGS bank transfers directly to slice Small Finance Bank.
-              </Text>
-            </View>
-
-            <Text style={[styles.securityNotice, { color: theme.textMuted }]}>
-              🔒 100% Direct Transfer • No Intermediary Platform Fees
-            </Text>
-          </ScrollView>
-        </View>
-
-        {/* Photo 2 Styled Dialog Inside Modal (Guarantees zero native Android popups) */}
+    <KeyboardSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={t('donate_title', 'Support & Donate')}
+      subtitle={t('donate_sub', 'Help keep WealthFlow free & ad-free')}
+      icon="heart"
+      iconColor="#F43F5E"
+      maxHeightRatio={0.92}
+      overlayChildren={
         <ConfirmDeleteModal
           useModal={false}
           visible={!!modalAlert}
@@ -303,8 +302,27 @@ export const DonationModal = ({ visible, onClose }) => {
           confirmText="OK"
           confirmIcon={modalAlert?.type === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'}
         />
-      </View>
-    </Modal>
+      }
+    >
+      <DonationBody
+        theme={theme}
+        currency={currency}
+        t={t}
+        selectedAmount={selectedAmount}
+        setSelectedAmount={setSelectedAmount}
+        customAmount={customAmount}
+        setCustomAmount={setCustomAmount}
+        currentAmount={currentAmount}
+        qrCodeUrl={qrCodeUrl}
+        copiedUpi={copiedUpi}
+        handleCopyUpi={handleCopyUpi}
+        handlePayViaUPI={handlePayViaUPI}
+        copiedAcc={copiedAcc}
+        handleCopyAccountNum={handleCopyAccountNum}
+        copiedIfsc={copiedIfsc}
+        handleCopyIfsc={handleCopyIfsc}
+      />
+    </KeyboardSheetModal>
   );
 };
 
