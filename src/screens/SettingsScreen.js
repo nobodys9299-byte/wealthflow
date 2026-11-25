@@ -222,6 +222,20 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
   const [selectedNotifMinute, setSelectedNotifMinute] = useState(notificationSettings?.minute || 0);
   const [selectedNotifAmPm, setSelectedNotifAmPm] = useState(notificationSettings?.hour !== undefined && notificationSettings.hour < 12 ? 'AM' : 'PM');
 
+  // UPI Setup Modal
+  const [upiModalVisible, setUpiModalVisible] = useState(false);
+  const [upiIdInput, setUpiIdInput] = useState(userUpiSettings?.upiId || '');
+  const [payeeNameInput, setPayeeNameInput] = useState(userUpiSettings?.payeeName || '');
+
+  // CSV Modal
+  const [csvModalVisible, setCsvModalVisible] = useState(false);
+
+  // PIN Setup Modal
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [chosenLength, setChosenLength] = useState(securitySettings.pin?.length || 4);
+  const [newPin, setNewPin] = useState('');
+  const [pinAlert, setPinAlert] = useState(null);
+
   useEffect(() => {
     if (notifTimeModalVisible && notificationSettings) {
       const h24 = notificationSettings.hour !== undefined ? notificationSettings.hour : 20;
@@ -281,20 +295,6 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     onBack,
     onNavigateTab,
   ]);
-
-  // UPI Setup Modal
-  const [upiModalVisible, setUpiModalVisible] = useState(false);
-  const [upiIdInput, setUpiIdInput] = useState(userUpiSettings?.upiId || '');
-  const [payeeNameInput, setPayeeNameInput] = useState(userUpiSettings?.payeeName || '');
-
-  // CSV Modal
-  const [csvModalVisible, setCsvModalVisible] = useState(false);
-
-  // PIN Setup Modal
-  const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [chosenLength, setChosenLength] = useState(securitySettings.pin?.length || 4);
-  const [newPin, setNewPin] = useState('');
-  const [pinAlert, setPinAlert] = useState(null);
 
   const handleSaveCSVToInternalStorage = async () => {
     try {
