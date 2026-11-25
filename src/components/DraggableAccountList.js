@@ -5,6 +5,7 @@ import {
   Animated,
   PanResponder,
   Easing,
+  Platform,
 } from 'react-native';
 
 const DraggableAccountSlot = ({
@@ -16,6 +17,7 @@ const DraggableAccountSlot = ({
   shiftAnim,
   scaleAnim,
   slotPanHandlers,
+  slotTouchHandlers,
   dragHandleHandlers,
   registerLayout,
   renderItem,
@@ -25,9 +27,10 @@ const DraggableAccountSlot = ({
       collapsable={false}
       onLayout={(e) => registerLayout(account.id, e.nativeEvent.layout)}
       {...slotPanHandlers}
+      {...slotTouchHandlers}
       style={{
         zIndex: isDragging ? 999 : anyDragging ? 0 : 1,
-        elevation: isDragging ? 24 : 0,
+        elevation: isDragging ? 16 : 0,
         transform: [
           axis === 'x' ? { translateX: shiftAnim } : { translateY: shiftAnim },
           { scale: scaleAnim },
@@ -45,6 +48,7 @@ const DraggableAccountSlot = ({
 export const DraggableAccountList = ({
   accounts = [],
   axis = 'x', // 'x' for horizontal Dashboard carousel | 'y' for vertical Accounts tab list
+  holdDelayMs = 5000,
   onReorder,
   onHoldWithoutDrag,
   onCardPress,
@@ -66,6 +70,8 @@ export const DraggableAccountList = ({
   const startPageCoordRef = useRef(0);
   const lastDeltaRef = useRef(0);
   const didMoveWhileDraggingRef = useRef(false);
+  const pendingCoordRef = useRef(null);
+  const moveRafRef = useRef(null);
 
   const shiftMapRef = useRef({});
   const scaleMapRef = useRef({});
@@ -89,6 +95,7 @@ export const DraggableAccountList = ({
     onHoldWithoutDrag,
     onCardPress,
     axis,
+    holdDelayMs,
     parentScrollRef,
   });
   latestPropsRef.current = {
@@ -96,6 +103,7 @@ export const DraggableAccountList = ({
     onHoldWithoutDrag,
     onCardPress,
     axis,
+    holdDelayMs,
     parentScrollRef,
   };
 
@@ -193,7 +201,7 @@ export const DraggableAccountList = ({
     }).start();
   }, [setScrollLocked]);
 
-  const handleDragMove = useCallback((pageCoord) => {
+  const flushDragMove = useCallback((pageCoord) => {
     const activeId = draggingIdRef.current;
     if (!activeId || typeof pageCoord !== 'number' || Number.isNaN(pageCoord)) return;
 
@@ -241,7 +249,29 @@ export const DraggableAccountList = ({
     }
   }, [updateNeighborShifts]);
 
+  const handleDragMove = useCallback((pageCoord) => {
+    pendingCoordRef.current = pageCoord;
+    if (moveRafRef.current !== null) return;
+    moveRafRef.current = requestAnimationFrame(() => {
+      moveRafRef.current = null;
+      const coord = pendingCoordRef.current;
+      pendingCoordRef.current = null;
+      if (coord !== null) {
+        flushDragMove(coord);
+      }
+    });
+  }, [flushDragMove]);
+
   const finishDrag = useCallback(() => {
+    if (moveRafRef.current !== null) {
+      cancelAnimationFrame(moveRafRef.current);
+      moveRafRef.current = null;
+    }
+    if (pendingCoordRef.current !== null) {
+      flushDragMove(pendingCoordRef.current);
+      pendingCoordRef.current = null;
+    }
+
     const activeId = draggingIdRef.current;
     if (!activeId || settlingRef.current) return;
 
@@ -298,7 +328,7 @@ export const DraggableAccountList = ({
       setDraggingId(null);
       setScrollLocked(false);
     });
-  }, [setScrollLocked]);
+  }, [flushDragMove, setScrollLocked]);
 
   const createSlotResponders = useCallback((acc) => {
     const accId = acc.id;
@@ -317,51 +347,84 @@ export const DraggableAccountList = ({
     const getCoord = (evt) =>
       latestPropsRef.current.axis === 'x' ? evt.nativeEvent.pageX : evt.nativeEvent.pageY;
 
+    const getDelayMs = () => {
+      const ms = Number(latestPropsRef.current.holdDelayMs);
+      return Number.isFinite(ms) && ms > 0 ? ms : 5000;
+    };
+
+    const startTouchHold = (evt) => {
+      clearHold();
+      if (draggingIdRef.current || settlingRef.current) return;
+      cancelledTap = false;
+      downX = evt.nativeEvent.pageX || 0;
+      downY = evt.nativeEvent.pageY || 0;
+      const startCoord = getCoord(evt);
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
+        cancelledTap = true;
+        beginDrag(accId, startCoord);
+      }, getDelayMs());
+    };
+
+    const moveTouchHold = (evt) => {
+      if (draggingIdRef.current === accId) {
+        handleDragMove(getCoord(evt));
+        return;
+      }
+      if (!holdTimer) return;
+      const dx = (evt.nativeEvent.pageX || 0) - downX;
+      const dy = (evt.nativeEvent.pageY || 0) - downY;
+      if (Math.hypot(dx, dy) > 8) {
+        clearHold();
+        cancelledTap = true;
+      }
+    };
+
+    const endTouchHold = (wasCancelled = false) => {
+      clearHold();
+      if (draggingIdRef.current === accId) {
+        finishDrag();
+        return;
+      }
+      if (!wasCancelled && !cancelledTap) {
+        const curAcc = orderedRef.current.find((item) => item.id === accId) || acc;
+        latestPropsRef.current.onCardPress?.(curAcc);
+      }
+      cancelledTap = true;
+    };
+
+    const isWeb = Platform.OS === 'web';
+
     const slotResponder = PanResponder.create({
-      onStartShouldSetPanResponder: () => !settlingRef.current,
+      // On native (Android/iOS), NEVER claim touch-down so ScrollView vertical/horizontal scrolling never blocks.
+      // Only claim the responder via capture once holdDelayMs expires and drag mode has activated.
+      onStartShouldSetPanResponder: () => isWeb && !settlingRef.current,
+      onMoveShouldSetPanResponder: () => draggingIdRef.current === accId,
+      onMoveShouldSetPanResponderCapture: () => draggingIdRef.current === accId,
       onPanResponderTerminationRequest: () => draggingIdRef.current !== accId,
       onPanResponderGrant: (evt) => {
-        clearHold();
-        cancelledTap = false;
-        downX = evt.nativeEvent.pageX || 0;
-        downY = evt.nativeEvent.pageY || 0;
-        const startCoord = getCoord(evt);
-        holdTimer = setTimeout(() => {
-          holdTimer = null;
-          cancelledTap = true;
-          beginDrag(accId, startCoord);
-        }, 200);
+        if (draggingIdRef.current === accId) return;
+        startTouchHold(evt);
       },
       onPanResponderMove: (evt) => {
-        if (draggingIdRef.current === accId) {
-          handleDragMove(getCoord(evt));
-          return;
-        }
-        const dx = (evt.nativeEvent.pageX || 0) - downX;
-        const dy = (evt.nativeEvent.pageY || 0) - downY;
-        if (Math.hypot(dx, dy) > 8) {
-          clearHold();
-          cancelledTap = true;
-        }
+        moveTouchHold(evt);
       },
       onPanResponderRelease: () => {
-        clearHold();
-        if (draggingIdRef.current === accId) {
-          finishDrag();
-          return;
-        }
-        if (!cancelledTap) {
-          const curAcc = orderedRef.current.find((item) => item.id === accId) || acc;
-          latestPropsRef.current.onCardPress?.(curAcc);
-        }
+        endTouchHold(false);
       },
       onPanResponderTerminate: () => {
-        clearHold();
-        if (draggingIdRef.current === accId) {
-          finishDrag();
-        }
+        endTouchHold(true);
       },
     });
+
+    const slotTouchHandlers = isWeb
+      ? {}
+      : {
+          onTouchStart: (evt) => startTouchHold(evt),
+          onTouchMove: (evt) => moveTouchHold(evt),
+          onTouchEnd: () => endTouchHold(false),
+          onTouchCancel: () => endTouchHold(true),
+        };
 
     const handleResponder = PanResponder.create({
       onStartShouldSetPanResponder: () => !settlingRef.current,
@@ -384,6 +447,7 @@ export const DraggableAccountList = ({
 
     return {
       slotPanHandlers: slotResponder.panHandlers,
+      slotTouchHandlers,
       dragHandleHandlers: handleResponder.panHandlers,
     };
   }, [beginDrag, finishDrag, handleDragMove]);
@@ -398,7 +462,7 @@ export const DraggableAccountList = ({
 
   const items = orderedAccounts.map((acc, index) => {
     const isDragging = draggingId === acc.id;
-    const { slotPanHandlers, dragHandleHandlers } = getResponders(acc);
+    const { slotPanHandlers, slotTouchHandlers, dragHandleHandlers } = getResponders(acc);
 
     return (
       <DraggableAccountSlot
@@ -411,6 +475,7 @@ export const DraggableAccountList = ({
         shiftAnim={getShiftAnim(acc.id)}
         scaleAnim={getScaleAnim(acc.id)}
         slotPanHandlers={slotPanHandlers}
+        slotTouchHandlers={slotTouchHandlers}
         dragHandleHandlers={dragHandleHandlers}
         registerLayout={registerLayout}
         renderItem={renderItem}

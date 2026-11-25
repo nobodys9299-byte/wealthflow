@@ -25,14 +25,11 @@ const AccountCardComponent = ({
       <View
         style={[
           styles.compactCard,
-          UI_TOKENS.shadow.card,
           {
             backgroundColor: isDragging
-              ? `${theme.primary}28`
-              : reorderMode
-              ? `${theme.primary}15`
-              : isSelected
-              ? `${theme.primary}20`
+              ? (theme.cardHover || theme.cardAlt || theme.card)
+              : isHighlighted
+              ? (theme.cardAlt || theme.card)
               : theme.card,
             borderColor: isHighlighted ? theme.primary : theme.border,
             borderWidth: isHighlighted ? 1.5 : 1,

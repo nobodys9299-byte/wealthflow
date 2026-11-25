@@ -168,30 +168,10 @@ export const LockScreen = ({ onUnlock, correctPin = '1234', biometricsEnabled = 
         })}
       </View>
 
-      {/* Error Message / Fingerprint Quick Prompt Pill */}
+      {/* Error Message Display */}
       <View style={styles.messageBox}>
         {errorMsg ? (
           <Text style={[styles.errorText, { color: theme.danger }]}>{errorMsg}</Text>
-        ) : biometricsEnabled && hasBiometrics ? (
-          <TouchableOpacity
-            onPress={() => triggerBiometricAuth(true)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 14,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: `${theme.primary}18`,
-              borderWidth: 1,
-              borderColor: `${theme.primary}40`,
-            }}
-          >
-            <Ionicons name="finger-print" size={16} color={theme.primaryLight} />
-            <Text style={{ fontSize: 12, fontWeight: '700', color: theme.primaryLight }}>
-              {t('use_fingerprint', 'Tap to Scan Fingerprint')}
-            </Text>
-          </TouchableOpacity>
         ) : null}
       </View>
 

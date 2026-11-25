@@ -194,6 +194,10 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     updateSecurity,
     userUpiSettings,
     updateUpiSettings,
+    exportAsJSON,
+    importFromJSON,
+    saveToDeviceStorage,
+    pickAndRestoreFromDriveFile,
     exportCSVString,
     importFromCSV,
     transactions,
@@ -396,62 +400,97 @@ export const SettingsScreen = ({ onLockApp, onNavigateTab, onBack, onOpenMore })
     }
   };
 
+  const formatRestoreSummaryMessage = (res, fileName) => {
+    const s = res?.summary;
+    if (s) {
+      const lines = [
+        `• Transactions: ${s.transactions || 0}`,
+        `• Accounts: ${s.accounts || 0}`,
+        `• Friend Transactions: ${s.lending || 0}`,
+        `• Budgets: ${s.budgets || 0}`,
+        `• Recurring Bills: ${s.recurring || 0}`,
+        `• Categories: ${(s.categories || 0) + (s.friendCategories || 0)}`,
+      ];
+      return `Restored from "${fileName}":\n\n${lines.join('\n')}`;
+    }
+    return `Restored ${res?.count || 'all'} records from "${fileName}".`;
+  };
+
+  const handleSaveFullJSONToInternalStorage = async () => {
+    try {
+      setCsvModalVisible(false);
+      const jsonStr = exportAsJSON();
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `wealthflow_full_backup_${dateStr}.json`;
+
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const res = await saveToDeviceStorage(jsonStr, fileName, 'application/json');
+
+      if (res?.cancelled) return;
+      if (res?.success) {
+        showCustomAlert(
+          'Full Backup Saved!',
+          `Complete backup "${fileName}" saved successfully (includes all categories, friends tab & photos, accounts, budgets, recurring bills, and transactions).`,
+          { type: 'success' }
+        );
+      } else {
+        showCustomAlert(
+          'Backup Failed',
+          res?.error || 'Could not save backup file to internal storage.',
+          { type: 'danger' }
+        );
+      }
+    } catch (err) {
+      console.warn('Save Full JSON failed:', err);
+      showCustomAlert('Backup Error', err.message || 'Failed to save full backup', { type: 'danger' });
+    }
+  };
+
   const handlePickAndImportCSVFile = async () => {
     try {
-      const result = await runWithSystemPicker(() =>
-        DocumentPicker.getDocumentAsync({
-          type: ['text/csv', 'text/comma-separated-values', 'text/plain', '*/*'],
-          copyToCacheDirectory: true,
-        })
-      );
+      const pickRes = await pickAndRestoreFromDriveFile();
+      if (!pickRes || pickRes.canceled) return;
 
-      if (!result || result.canceled) return;
-
-      const file = result.assets ? result.assets[0] : result;
-      if (!file || !file.uri) {
-        showCustomAlert('No File Selected', 'Please select a valid CSV backup file.', { type: 'info' });
-        return;
-      }
-
-      let content = '';
-      if (Platform.OS === 'web' && file.file) {
-        content = await file.file.text();
-      } else {
-        try {
-          const res = await fetch(file.uri);
-          content = await res.text();
-        } catch (fetchErr) {
-          try {
-            if (FileSystem?.readAsStringAsync) {
-              content = await FileSystem.readAsStringAsync(file.uri, {
-                encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
-              });
-            }
-          } catch (fsErr) {
-            console.warn('FileSystem.readAsStringAsync failed:', fsErr);
-            throw fsErr;
-          }
-        }
-      }
-
-      if (!content || !content.trim()) {
-        showCustomAlert('Empty File', 'The selected CSV file is empty.', { type: 'danger' });
-        return;
-      }
-
-      const res = await importFromCSV(content.trim());
-      if (res.success) {
+      if (!pickRes.success) {
         showCustomAlert(
-          'Import Successful!',
-          `Restored ${res.count || 'all'} records from "${file.name || 'CSV file'}".`,
+          'Import Failed',
+          pickRes.error || 'Could not read the selected backup file.',
+          { type: 'danger' }
+        );
+        return;
+      }
+
+      const fileName = pickRes.fileName || 'backup file';
+      let res;
+      if (pickRes.format === 'json') {
+        res = await importFromJSON(pickRes.data || pickRes.rawJson, { merge: false });
+      } else if (pickRes.format === 'csv') {
+        res = await importFromCSV(pickRes.rawCsv);
+      } else {
+        showCustomAlert(
+          'Unsupported File',
+          'Please select a valid .json or .csv WealthFlow backup file.',
+          { type: 'info' }
+        );
+        return;
+      }
+
+      if (res?.success) {
+        showCustomAlert(
+          'Restore Successful!',
+          formatRestoreSummaryMessage(res, fileName),
           { type: 'success' }
         );
         setCsvModalVisible(false);
       } else {
-        showCustomAlert('Import Failed', 'Failed to parse CSV file: ' + (res.error || 'Invalid CSV format'), { type: 'danger' });
+        showCustomAlert(
+          'Restore Failed',
+          'Could not restore backup file: ' + (res?.error || 'Invalid backup format'),
+          { type: 'danger' }
+        );
       }
     } catch (err) {
-      console.warn('Import CSV error:', err);
+      console.warn('Import backup error:', err);
       showCustomAlert('Import Error', 'Failed to import file: ' + (err.message || 'Unknown error'), { type: 'danger' });
     }
   };
@@ -1033,24 +1072,24 @@ Status: Healthy. No fatal crash exceptions recorded.
         </View>
       </View>
 
-      {/* Local Device Backup (CSV) - Clean & Standalone */}
+      {/* Local Device Backup (JSON & CSV) - Clean & Standalone */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('LOCAL DEVICE BACKUP (CSV FILE)', 'LOCAL DEVICE BACKUP (CSV FILE)')}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{t('LOCAL DEVICE BACKUP', 'LOCAL DEVICE BACKUP')}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* CSV File Backup & Restore */}
+          {/* Local Backup & Restore */}
           <TouchableOpacity
             onPress={() => setCsvModalVisible(true)}
             style={styles.row}
           >
             <View style={styles.rowLeft}>
               <View style={[styles.iconWrap, { backgroundColor: `${theme.success}20` }]}>
-                <Ionicons name="document-text-outline" size={18} color={theme.success} />
+                <Ionicons name="folder-open-outline" size={18} color={theme.success} />
               </View>
               <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('CSV File Backup & Restore', 'CSV File Backup & Restore')}</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>{t('Internal Storage Backup & Restore', 'Internal Storage Backup & Restore')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {t('Export or import all accounts and transactions for Excel & Sheets', 'Export or import all accounts and transactions for Excel & Sheets')}
+                  {t('Back up categories, friends tab, accounts, budgets & recurring bills (.json / .csv)', 'Back up categories, friends tab, accounts, budgets & recurring bills (.json / .csv)')}
                 </Text>
               </View>
             </View>
@@ -1251,29 +1290,52 @@ Status: Healthy. No fatal crash exceptions recorded.
         confirmIcon="alert-circle-outline"
       />
 
-      {/* CSV Export / Import Modal */}
+      {/* Local Device Backup & Restore Modal */}
       <KeyboardSheetModal
         visible={csvModalVisible}
         onClose={() => setCsvModalVisible(false)}
-        title="CSV File Backup & Restore"
-        icon="document-text-outline"
+        title="Internal Storage Backup"
+        icon="folder-open-outline"
         iconColor="#10B981"
       >
         <View style={{ paddingTop: 4, paddingBottom: 8 }}>
           <Text style={[styles.modalHelp, { color: theme.textMuted }]}>
-            Export and import your entire financial database as a CSV spreadsheet file to easily back up or transfer between apps.
+            Back up and restore Categories, Friends Tab records, Accounts, Budgets, Recurring Bills, and Transactions directly on your phone.
           </Text>
 
-          {/* Action 1: Save CSV directly to Internal Storage (Downloads) */}
+          {/* Action 1: Save Full App Snapshot (.json) directly to Internal Storage */}
+          <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
+            <View style={styles.fileActionHeader}>
+              <View style={[styles.fileIconBadge, { backgroundColor: '#6366F120' }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#6366F1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.fileActionTitle, { color: theme.text }]}>Complete Backup (.json)</Text>
+                <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
+                  Recommended for phone transfer — preserves everything including photos & settings
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleSaveFullJSONToInternalStorage}
+              style={[styles.fileActionBtn, { backgroundColor: '#6366F1' }]}
+            >
+              <Ionicons name="save-outline" size={18} color="#FFF" />
+              <Text style={styles.fileActionBtnText}>Save Full Backup (.json)</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Action 2: Save CSV directly to Internal Storage (Downloads) */}
           <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
             <View style={styles.fileActionHeader}>
               <View style={[styles.fileIconBadge, { backgroundColor: '#10B98120' }]}>
-                <Ionicons name="save-outline" size={20} color="#10B981" />
+                <Ionicons name="document-text-outline" size={20} color="#10B981" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.fileActionTitle, { color: theme.text }]}>Save to Internal Storage (Downloads)</Text>
+                <Text style={[styles.fileActionTitle, { color: theme.text }]}>Spreadsheet Backup (.csv)</Text>
                 <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                  Save directly to phone storage — safe across app uninstalls
+                  Excel-compatible CSV containing all categories, friends, accounts, budgets & bills
                 </Text>
               </View>
             </View>
@@ -1287,16 +1349,16 @@ Status: Healthy. No fatal crash exceptions recorded.
             </TouchableOpacity>
           </View>
 
-          {/* Action 2: Import CSV File */}
+          {/* Action 3: Restore JSON or CSV Backup File */}
           <View style={[styles.fileActionCard, { backgroundColor: theme.cardAlt, borderColor: theme.border }]}>
             <View style={styles.fileActionHeader}>
               <View style={[styles.fileIconBadge, { backgroundColor: '#38BDF820' }]}>
-                <Ionicons name="folder-open-outline" size={20} color="#38BDF8" />
+                <Ionicons name="cloud-upload-outline" size={20} color="#38BDF8" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.fileActionTitle, { color: theme.text }]}>Import CSV File</Text>
+                <Text style={[styles.fileActionTitle, { color: theme.text }]}>Restore from Internal Storage</Text>
                 <Text style={[styles.fileActionSub, { color: theme.textMuted }]}>
-                  Select and restore a .csv backup file from your device storage
+                  Pick a saved .json or .csv backup file to restore all records
                 </Text>
               </View>
             </View>
@@ -1305,8 +1367,8 @@ Status: Healthy. No fatal crash exceptions recorded.
               onPress={handlePickAndImportCSVFile}
               style={[styles.fileActionBtn, { backgroundColor: '#0284C7' }]}
             >
-              <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
-              <Text style={styles.fileActionBtnText}>Choose & Import .CSV File</Text>
+              <Ionicons name="folder-open-outline" size={18} color="#FFF" />
+              <Text style={styles.fileActionBtnText}>Choose Backup (.json or .csv)</Text>
             </TouchableOpacity>
           </View>
         </View>

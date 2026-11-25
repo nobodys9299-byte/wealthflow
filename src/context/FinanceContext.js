@@ -1458,10 +1458,24 @@ export const FinanceProvider = ({ children }) => {
       }
 
       if (data.budgets && Array.isArray(data.budgets)) {
-        await persistBudgets(data.budgets);
+        let finalBudgets = data.budgets;
+        if (options.merge && budgets && budgets.length > 0) {
+          const bMap = new Map();
+          budgets.forEach((b) => { if (b && b.categoryId) bMap.set(b.categoryId, b); });
+          data.budgets.forEach((b) => { if (b && b.categoryId) bMap.set(b.categoryId, b); });
+          finalBudgets = Array.from(bMap.values());
+        }
+        await persistBudgets(finalBudgets);
       }
       if (data.recurring && Array.isArray(data.recurring)) {
-        await persistRecurring(data.recurring);
+        let finalRecurring = data.recurring;
+        if (options.merge && recurring && recurring.length > 0) {
+          const rMap = new Map();
+          recurring.forEach((r) => { if (r && r.id) rMap.set(r.id, r); });
+          data.recurring.forEach((r) => { if (r && r.id) rMap.set(r.id, r); });
+          finalRecurring = Array.from(rMap.values());
+        }
+        await persistRecurring(finalRecurring);
       }
       if (data.lendingRecords && Array.isArray(data.lendingRecords)) {
         let finalLending = data.lendingRecords;
@@ -1484,12 +1498,32 @@ export const FinanceProvider = ({ children }) => {
         await changeTheme(data.themeId);
       }
       if (data.categories && typeof data.categories === 'object') {
-        await persistCategories(data.categories);
+        let finalCategories = data.categories;
+        if (options.merge && categories && typeof categories === 'object') {
+          const mergeCatList = (baseList = [], incomingList = []) => {
+            const cMap = new Map();
+            baseList.forEach((c) => { if (c && c.id) cMap.set(c.id, c); });
+            incomingList.forEach((c) => { if (c && c.id) cMap.set(c.id, c); });
+            return Array.from(cMap.values());
+          };
+          finalCategories = {
+            expense: mergeCatList(categories.expense, data.categories.expense),
+            income: mergeCatList(categories.income, data.categories.income),
+          };
+        }
+        await persistCategories(finalCategories);
       }
       if (Array.isArray(data.friendCategories) && data.friendCategories.length > 0) {
-        setFriendCategories(data.friendCategories);
+        let finalFriendCats = data.friendCategories;
+        if (options.merge && friendCategories && friendCategories.length > 0) {
+          const fcMap = new Map();
+          friendCategories.forEach((fc) => { if (fc && fc.id) fcMap.set(fc.id, fc); });
+          data.friendCategories.forEach((fc) => { if (fc && fc.id) fcMap.set(fc.id, fc); });
+          finalFriendCats = Array.from(fcMap.values());
+        }
+        setFriendCategories(finalFriendCats);
         try {
-          await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(data.friendCategories));
+          await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(finalFriendCats));
         } catch (e) {}
       }
       if (Array.isArray(data.homeSections) && data.homeSections.length > 0) {
@@ -1501,35 +1535,129 @@ export const FinanceProvider = ({ children }) => {
       if (data.notificationSettings && typeof data.notificationSettings === 'object') {
         await updateNotificationSettings(data.notificationSettings);
       }
-      return { success: true, count, accountsCount };
+      return {
+        success: true,
+        count,
+        accountsCount,
+        summary: {
+          transactions: Array.isArray(data.transactions) ? data.transactions.length : 0,
+          accounts: Array.isArray(data.accounts) ? data.accounts.length : 0,
+          lending: Array.isArray(data.lendingRecords) ? data.lendingRecords.length : 0,
+          budgets: Array.isArray(data.budgets) ? data.budgets.length : 0,
+          recurring: Array.isArray(data.recurring) ? data.recurring.length : 0,
+          categories:
+            (data.categories?.expense?.length || 0) + (data.categories?.income?.length || 0),
+          friendCategories: Array.isArray(data.friendCategories) ? data.friendCategories.length : 0,
+        },
+      };
     } catch (e) {
       return { success: false, error: e.message };
     }
   };
 
-  // Complete App CSV Export
+  // Complete App CSV Export (includes Transactions, Accounts, Categories, Friend Categories, Friend Loans, Budgets, Recurring)
   const exportFullCSV = () => {
-    const allCategories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
-    return generateFullAppCSV(transactions, accounts, allCategories, lendingRecords);
+    return generateFullAppCSV(transactions, accountsWithBalances, categories, lendingRecords, {
+      budgets,
+      recurring,
+      friendCategories,
+      fullCategories: categories,
+    });
   };
 
-  // Complete App CSV Import
+  // Complete App CSV / JSON Import with deduplication across all collections
   const importFromCSV = async (csvText) => {
     try {
-      const parsed = parseFullAppCSV(csvText);
-      let count = 0;
-      if (parsed.transactions.length > 0) {
-        await persistTransactions([...parsed.transactions, ...transactions]);
-        count += parsed.transactions.length;
+      const trimmed = typeof csvText === 'string' ? csvText.trim() : '';
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        return await importFromJSON(trimmed, { merge: false });
       }
+
+      const parsed = parseFullAppCSV(trimmed);
+      const mergeByKey = (existingList = [], incomingList = [], keyField = 'id') => {
+        const map = new Map();
+        existingList.forEach((item) => {
+          if (item && item[keyField]) map.set(item[keyField], item);
+        });
+        incomingList.forEach((item) => {
+          if (item && item[keyField]) map.set(item[keyField], item);
+        });
+        return Array.from(map.values());
+      };
+
+      const parsedExpenseCats = parsed.categories?.expense || [];
+      const parsedIncomeCats = parsed.categories?.income || [];
+      const totalImportedCats = parsedExpenseCats.length + parsedIncomeCats.length;
+      if (totalImportedCats > 0) {
+        const mergedCats = {
+          expense: mergeByKey(categories.expense || EXPENSE_CATEGORIES, parsedExpenseCats, 'id'),
+          income: mergeByKey(categories.income || INCOME_CATEGORIES, parsedIncomeCats, 'id'),
+        };
+        await persistCategories(mergedCats);
+      }
+
+      const parsedFriendCats = parsed.friendCategories || [];
+      if (parsedFriendCats.length > 0) {
+        const mergedFriendCats = mergeByKey(friendCategories, parsedFriendCats, 'id');
+        setFriendCategories(mergedFriendCats);
+        try {
+          await AsyncStorage.setItem(STORAGE_KEYS.FRIEND_CATEGORIES, JSON.stringify(mergedFriendCats));
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+
       if (parsed.accounts.length > 0) {
-        await persistAccounts([...accounts, ...parsed.accounts]);
+        const mergedAcc = mergeByKey(accounts, parsed.accounts, 'id');
+        await persistAccounts(mergedAcc);
       }
+
+      if (parsed.budgets && parsed.budgets.length > 0) {
+        const mergedBudgets = mergeByKey(budgets, parsed.budgets, 'categoryId');
+        await persistBudgets(mergedBudgets);
+      }
+
+      if (parsed.recurring && parsed.recurring.length > 0) {
+        const mergedRec = mergeByKey(recurring, parsed.recurring, 'id');
+        await persistRecurring(mergedRec);
+      }
+
       if (parsed.lending.length > 0) {
-        await persistLending([...parsed.lending, ...lendingRecords]);
-        count += parsed.lending.length;
+        const mergedLending = mergeByKey(lendingRecords, parsed.lending, 'id');
+        await persistLending(mergedLending);
       }
-      return { success: true, count };
+
+      if (parsed.transactions.length > 0) {
+        const mergedTx = mergeByKey(transactions, parsed.transactions, 'id');
+        await persistTransactions(mergedTx);
+      }
+
+      const totalRestored =
+        parsed.transactions.length +
+        parsed.accounts.length +
+        parsed.lending.length +
+        (parsed.budgets?.length || 0) +
+        (parsed.recurring?.length || 0) +
+        totalImportedCats +
+        parsedFriendCats.length;
+
+      if (totalRestored === 0) {
+        return { success: false, error: 'No valid records found inside the selected backup file.' };
+      }
+
+      return {
+        success: true,
+        count: totalRestored,
+        summary: {
+          transactions: parsed.transactions.length,
+          accounts: parsed.accounts.length,
+          lending: parsed.lending.length,
+          budgets: parsed.budgets?.length || 0,
+          recurring: parsed.recurring?.length || 0,
+          categories: totalImportedCats,
+          friendCategories: parsedFriendCats.length,
+        },
+      };
     } catch (e) {
       return { success: false, error: e.message };
     }

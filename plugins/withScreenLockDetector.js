@@ -4,6 +4,7 @@ const { withDangerousMod, withMainApplication } = require('@expo/config-plugins'
 
 const SCREEN_LOCK_MODULE_KT = `package com.wealthflow.moneytracker
 
+import android.app.Activity
 import android.app.Application
 import android.app.KeyguardManager
 import android.content.BroadcastReceiver
@@ -11,6 +12,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -28,6 +32,32 @@ object ScreenLockState {
   @Volatile
   var onScreenOffCallback: (() -> Unit)? = null
 
+  private val mainHandler = Handler(Looper.getMainLooper())
+
+  fun isHardwareLockedOrOff(context: Context): Boolean {
+    return try {
+      val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+      val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+      val isInteractive = powerManager?.isInteractive ?: true
+      val isKeyguard = keyguardManager?.isKeyguardLocked ?: false
+      val isDeviceLocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+        keyguardManager?.isDeviceLocked ?: false
+      } else {
+        false
+      }
+      !isInteractive || isKeyguard || isDeviceLocked
+    } catch (_: Exception) {
+      false
+    }
+  }
+
+  private fun markScreenOff() {
+    didScreenTurnOff = true
+    try {
+      onScreenOffCallback?.invoke()
+    } catch (_: Exception) {}
+  }
+
   fun ensureRegistered(context: Context) {
     if (isRegistered) return
     synchronized(this) {
@@ -37,18 +67,40 @@ object ScreenLockState {
         val receiver = object : BroadcastReceiver() {
           override fun onReceive(ctx: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-              didScreenTurnOff = true
-              try {
-                onScreenOffCallback?.invoke()
-              } catch (_: Exception) {}
+              markScreenOff()
             }
           }
         }
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
         if (Build.VERSION.SDK_INT >= 33) {
-          appCtx.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+          try {
+            appCtx.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+          } catch (_: Exception) {
+            appCtx.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+          }
         } else {
           appCtx.registerReceiver(receiver, filter)
+        }
+
+        if (appCtx is Application) {
+          appCtx.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            private fun schedulePowerChecks() {
+              val checkRunnable = Runnable {
+                if (isHardwareLockedOrOff(appCtx)) {
+                  markScreenOff()
+                }
+              }
+              mainHandler.postDelayed(checkRunnable, 150L)
+              mainHandler.postDelayed(checkRunnable, 400L)
+            }
+            override fun onActivityPaused(activity: Activity) { schedulePowerChecks() }
+            override fun onActivityStopped(activity: Activity) { schedulePowerChecks() }
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+          })
         }
         isRegistered = true
       } catch (_: Exception) {}
@@ -66,23 +118,11 @@ class ScreenLockModule(private val reactContext: ReactApplicationContext) :
   override fun getName(): String = NAME
 
   private fun checkLockedOrOffNow(): Boolean {
-    return try {
-      val powerManager = reactContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
-      val keyguardManager = reactContext.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-      val isInteractive = powerManager?.isInteractive ?: true
-      val isKeyguard = keyguardManager?.isKeyguardLocked ?: false
-      val isDeviceLocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-        keyguardManager?.isDeviceLocked ?: false
-      } else {
-        false
-      }
-      if (!isInteractive || isKeyguard || isDeviceLocked) {
-        ScreenLockState.didScreenTurnOff = true
-      }
-      !isInteractive || isKeyguard || isDeviceLocked
-    } catch (_: Exception) {
-      false
+    val locked = ScreenLockState.isHardwareLockedOrOff(reactContext)
+    if (locked) {
+      ScreenLockState.didScreenTurnOff = true
     }
+    return locked
   }
 
   override fun initialize() {

@@ -201,6 +201,7 @@ export const AccountsScreen = ({
       <DraggableAccountList
         accounts={accounts}
         axis="y"
+        holdDelayMs={5000}
         parentScrollRef={outerScrollRef}
         onReorder={(ordered) => reorderAccounts && reorderAccounts(ordered)}
         onHoldWithoutDrag={() => setIsReorderingAccounts((prev) => !prev)}
