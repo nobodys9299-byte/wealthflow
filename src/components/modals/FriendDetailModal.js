@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
   },
   txList: {
     marginTop: 4,
-    maxHeight: 320,
+    paddingBottom: 8,
   },
   txCard: {
     borderRadius: 14,

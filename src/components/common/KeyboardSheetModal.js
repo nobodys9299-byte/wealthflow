@@ -254,6 +254,7 @@ export const KeyboardSheetModal = ({
             {scrollable ? (
               <ScrollView
                 ref={scrollRef}
+                style={{ width: '100%', flexShrink: 1 }}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 nestedScrollEnabled={true}
@@ -293,6 +294,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
+    flexShrink: 1,
     borderTopLeftRadius: UI_TOKENS.radius.sheet,
     borderTopRightRadius: UI_TOKENS.radius.sheet,
     borderWidth: 1,
